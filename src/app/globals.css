@@ -1,0 +1,192 @@
+@import "../styles/theme.css";
+
+@source "../components/**/*.{js,ts,jsx,tsx,mdx}";
+@source "../app/**/*.{js,ts,jsx,tsx,mdx}";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+  Calm, warm, child-friendly theme. Soft cream background, gentle ink text,
+  rounded friendly font. Large readable type is the default everywhere.
+  No harsh contrast, no aggressive accent — this is a quiet tool, not a game.
+*/
+/*
+  French school cursive ("lettres attachées") for the optional reading mode, so
+  the child can practise reading joined handwriting. "Belle Allure GS" (Jean
+  Boyault / JBFoundry) is free for personal/educational use only, so it is NOT
+  bundled in this repo — see public/fonts/README.md for how to download it.
+  Served from public/ at /fonts/cursive.woff when present. `font-display: swap`
+  + a cursive system fallback so layout never breaks if the file is missing.
+*/
+@font-face {
+  font-family: "Belle Allure GS";
+  src: url("/fonts/cursive.woff") format("woff");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --font-rounded: "Quicksand", "Comic Sans MS", system-ui, sans-serif;
+  /* Cursive reading mode. Falls back to a cursive system font if the file is
+     absent, so the toggle still visibly changes the text. */
+  --font-cursive: "Belle Allure GS", "Segoe Script", "Snell Roundhand", cursive;
+  --radius: 1.25rem;
+
+  --background: oklch(0.98 0.012 85);
+  --foreground: oklch(0.32 0.03 50);
+  --card: oklch(0.995 0.008 85);
+  --card-foreground: oklch(0.32 0.03 50);
+  /* Deepened terracotta: white-on-primary now ~3.7:1 (was ~2.5:1) for
+     readable large CTAs, while staying soft and warm. */
+  --primary: oklch(0.62 0.13 50);
+  --primary-foreground: oklch(0.99 0.01 85);
+  --secondary: oklch(0.93 0.04 80);
+  --secondary-foreground: oklch(0.4 0.04 50);
+  --muted: oklch(0.95 0.02 85);
+  --muted-foreground: oklch(0.52 0.03 55);
+  --accent: oklch(0.9 0.05 150);
+  --accent-foreground: oklch(0.35 0.05 150);
+  --border: oklch(0.9 0.025 80);
+  --input: oklch(0.92 0.025 80);
+  --ring: oklch(0.78 0.09 50);
+}
+
+html {
+  font-family: var(--font-rounded);
+}
+
+body {
+  font-size: 1.375rem; /* 22px body floor per spec */
+  line-height: 1.7;
+}
+
+/* Soft, slow motion only. Respect reduced-motion.
+   `animation-iteration-count: 1` is REQUIRED alongside the near-zero duration:
+   without it, an `infinite` animation (the floating feather, the breathing
+   dots) restarts its 0.001ms cycle every frame and samples quasi-random
+   keyframe positions — a frantic jitter on any device with "reduce motion" on
+   (the exact opposite of the intent). With it, the animation completes once,
+   instantly → the element simply sits still. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Breathing dots used on the calm waiting screen. */
+@keyframes story-breathe {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* Gentle floating feather while the story is being written. */
+@keyframes story-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-4deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(4deg);
+  }
+}
+
+/*
+  Reading aid: hovering the story text softly tints only the word under the
+  cursor, so a young reader can keep their place word by word. Decorative only
+  — calm, no stakes. The negative inline margin + matching padding keep word
+  spacing unchanged while giving the rounded tint a little breathing room.
+  Pointer devices only (no sticky highlight on touch); reduced-motion is honored
+  globally by the rule above.
+*/
+@media (hover: hover) {
+  .story-word {
+    border-radius: 0.35em;
+    padding: 0.02em 0.12em;
+    margin: 0 -0.12em;
+    transition: background-color 0.12s ease-out;
+  }
+
+  .story-word:hover {
+    background-color: var(--accent);
+  }
+}
+
+/*
+  Reading aids (lettres muettes + liaisons), CP-book style. Decorative only —
+  the text content, wrapping and copy/paste stay byte-identical; silent
+  letters are just faded and mandatory liaisons get a soft arc under the
+  inter-word gap (pure CSS pseudo-element: no ‿ character polluting copied
+  text, no extra DOM).
+*/
+.story-silent {
+  opacity: 0.35;
+}
+
+/* Liaised words never break across lines — the arc must stay whole. */
+.story-liaison-group {
+  white-space: nowrap;
+}
+
+.story-liaison-gap {
+  position: relative;
+}
+
+/* The arc: a bottom-half rounded "U" hugging the gap and the two adjacent
+   letters. Scales with the font via em units. */
+.story-liaison-gap::after {
+  content: "";
+  position: absolute;
+  left: -0.3em;
+  right: -0.3em;
+  bottom: -0.14em;
+  height: 0.3em;
+  border: 1.5px solid var(--muted-foreground);
+  border-top: none;
+  border-radius: 0 0 0.6em 0.6em;
+  opacity: 0.7;
+}
+
+/* --- Print: clean A5 booklet, nothing technical --- */
+@media print {
+  @page {
+    size: A5;
+    margin: 18mm 16mm;
+  }
+
+  body {
+    background: white;
+    font-size: 18pt;
+  }
+
+  /* Everything except the printable story is hidden. */
+  .no-print {
+    display: none !important;
+  }
+
+  .printable-story {
+    display: block !important;
+  }
+
+  /* Reading aids on paper: slightly stronger gray so laser output stays
+     legible, and a solid printable arc. */
+  .story-silent {
+    opacity: 0.45;
+  }
+
+  .story-liaison-gap::after {
+    border-color: #777;
+    opacity: 1;
+  }
+}

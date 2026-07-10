@@ -1,0 +1,26 @@
+# dependencies
+/node_modules
+
+# TanStack Start / Nitro
+/.tanstack/
+/.output/
+/.nitro/
+/.vercel/
+
+# build
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# env
+.env*
+!.env.example
+
+# generated stories, images, audio + local SQLite db
+/data/*
+!/data/.gitkeep
+
+# typescript
+*.tsbuildinfo

@@ -1,0 +1,1 @@
+ALTER TABLE `stories` ADD `visual_world` text;

@@ -1,0 +1,86 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
+  "root": true,
+  "files": {
+    "includes": [
+      "**",
+      "!!**/node_modules",
+      "!!**/.tanstack",
+      "!!**/.output",
+      "!!**/.nitro",
+      "!!**/.vercel",
+      "!!**/dist",
+      "!!**/build",
+      "!!**/data",
+      "!!**/routeTree.gen.ts"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineEnding": "lf",
+    "lineWidth": 80,
+    "attributePosition": "auto",
+    "bracketSameLine": false,
+    "bracketSpacing": true,
+    "expand": "auto",
+    "useEditorconfig": true
+  },
+  "linter": {
+    "rules": {
+      "a11y": {
+        "noRedundantRoles": "warn",
+        "useAriaPropsForRole": "warn",
+        "useButtonType": "warn",
+        "useFocusableInteractive": "warn",
+        "useSemanticElements": "off"
+      },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": {
+          "level": "info",
+          "options": {
+            "maxAllowedComplexity": 20
+          }
+        },
+        "noImportantStyles": "off"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "off",
+        "noNestedComponentDefinitions": "off"
+      },
+      "performance": {
+        "noNamespaceImport": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
+      },
+      "style": {
+        "noNestedTernary": "warn",
+        "useBlockStatements": "warn",
+        "useComponentExportOnlyModules": "off"
+      },
+      "suspicious": {
+        "noArrayIndexKey": "warn",
+        "noConsole": "off",
+        "noDocumentCookie": "warn",
+        "noDuplicateProperties": "off",
+        "noUnknownAtRules": "off",
+        "noShadow": "off"
+      }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double"
+    }
+  },
+  "css": {
+    "parser": {
+      "cssModules": true,
+      "allowWrongLineComments": true,
+      "tailwindDirectives": true
+    }
+  }
+}
