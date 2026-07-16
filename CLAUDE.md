@@ -51,8 +51,10 @@ yes → don't.
   the SAME call as the arc) and `story_segments.scene_hint` (per-beat scene
   description for the illustrator).
 - **Branding**: `src/config/app.ts` (display name, booklet footer/fallback
-  title). Sample heroes in `src/config/characters.ts` — meant to be replaced
-  by each family.
+  title) — overridable without code changes via `VITE_APP_NAME`,
+  `VITE_APP_DESCRIPTION`, `VITE_STORY_LABEL` (build-time Vite vars). Sample
+  heroes in `src/config/characters.ts` — meant to be replaced by each family
+  (they only seed empty tables; an already-populated db wins).
 - **LLM**: Vercel AI SDK (`ai` + `@ai-sdk/anthropic`), `generateObject` + Zod
   `{title, paragraphs[]}`. Model from `STORY_MODEL`.
 - **Adapters** in `src/server/providers/{text,image,tts}/` behind `types.ts`:
