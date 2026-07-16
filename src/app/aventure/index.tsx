@@ -121,10 +121,10 @@ function liftToArray(
   return ids.length > cap ? ids.slice(0, cap) : ids;
 }
 
-function readParcours(): ParcoursState {
+function readParcours(defaultHeroIds: string[]): ParcoursState {
   const fallback: ParcoursState = {
     step: "hero",
-    heroIds: [defaultCharacter.id],
+    heroIds: defaultHeroIds,
     elementIds: [],
     doudouIds: [],
   };
@@ -155,7 +155,7 @@ function readParcours(): ParcoursState {
     const heroIds = liftToArray(
       parsed.heroIds,
       parsed.heroId,
-      [defaultCharacter.id],
+      defaultHeroIds,
       HERO_CAP,
     );
     const elementIds = liftToArray(
@@ -220,12 +220,18 @@ function AventurePage() {
   const navigate = useNavigate();
   const { heroItems, elementItems, placeItems, doudouItems } =
     Route.useLoaderData();
+  // The pre-selected hero must be one the PICKER shows (first DB hero, loader
+  // order). The config `defaultCharacter` is only the pre-seed fallback: on an
+  // established db whose heroes don't match the sample config, a config id
+  // here would ride along INVISIBLY into the story (the creation path resolves
+  // unknown ids against the config as a last resort).
+  const defaultHeroIds = [heroItems[0]?.id ?? defaultCharacter.id];
   // Start from the SSR-safe default so the server and the client's first paint
   // agree (no hydration mismatch). The in-progress parcours is restored from
   // sessionStorage in an effect AFTER hydration — this is what survives a
   // remount (HMR/refresh/StrictMode) without resetting to step 1.
   const [step, setStep] = useState<Step>("hero");
-  const [heroIds, setHeroIds] = useState<string[]>([defaultCharacter.id]);
+  const [heroIds, setHeroIds] = useState<string[]>(defaultHeroIds);
   const [placeId, setPlaceId] = useState<string | undefined>(undefined);
   const [elementIds, setElementIds] = useState<string[]>([]);
   // The doudou step is MULTI-select + OPTIONAL — empty array = no doudou.
@@ -292,12 +298,18 @@ function AventurePage() {
     );
   }
 
-  // Restore the in-progress parcours once, after hydration.
+  // Restore the in-progress parcours once, after hydration. Restored hero ids
+  // are sanitized against the CURRENT picker items — a stale draft (heroes
+  // edited at /parents meanwhile, or an old config id) must never smuggle an
+  // invisible hero into the story.
   useEffect(() => {
-    const saved = readParcours();
+    const saved = readParcours(defaultHeroIds);
     if (saved.step !== "hero") {
+      const validHeroIds = saved.heroIds.filter((id) =>
+        heroItems.some((h) => h.id === id),
+      );
       setStep(saved.step);
-      setHeroIds(saved.heroIds);
+      setHeroIds(validHeroIds.length > 0 ? validHeroIds : defaultHeroIds);
       setPlaceId(saved.placeId);
       setElementIds(saved.elementIds);
       setDoudouIds(saved.doudouIds);
@@ -355,7 +367,7 @@ function AventurePage() {
     }
   }
   function restart() {
-    const freshHeroes = [defaultCharacter.id];
+    const freshHeroes = defaultHeroIds;
     setHeroIds(freshHeroes);
     setPlaceId(undefined);
     setElementIds([]);

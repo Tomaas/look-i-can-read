@@ -12,6 +12,7 @@
       "!!**/dist",
       "!!**/build",
       "!!**/data",
+      "!!**/.gstack",
       "!!**/routeTree.gen.ts"
     ]
   },

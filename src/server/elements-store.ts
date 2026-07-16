@@ -19,12 +19,21 @@ export interface ResolvedElement {
 }
 
 /**
- * Idempotently seed the immutable config elements into the DB, REUSING their
- * exact ids (codex #6). `onConflictDoNothing` keeps a parent's edits and never
- * resurrects a soft-deleted seed element. Reusing config ids keeps historical
+ * Seed the config elements into the DB on FIRST RUN ONLY: any existing row
+ * (active or soft-deleted) means the family already owns this table, and the
+ * sample config must never inject rows into it. On an empty table the exact
+ * config ids are reused (codex #6) with `onConflictDoNothing` guarding a
+ * concurrent double-seed. Reusing config ids keeps historical
  * `stories.elementId` references resolving to a live row.
  */
 export async function seedElementsIfNeeded(): Promise<void> {
+  const [existing] = await db
+    .select({ id: dbElements.id })
+    .from(dbElements)
+    .limit(1);
+  if (existing) {
+    return;
+  }
   await db
     .insert(dbElements)
     .values(
