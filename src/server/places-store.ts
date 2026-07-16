@@ -15,16 +15,19 @@ import { places } from "~/server/db/schema";
  */
 
 /**
- * Idempotently seed the 6 immutable config places into the DB, REUSING their
- * exact ids (codex #6: NOT seed-by-count). `onConflictDoNothing` on the primary
- * key means:
- *  - first run populates the table;
- *  - every later run is a no-op for existing ids → a parent's edits are NEVER
- *    overwritten, and a soft-deleted seed place is NOT resurrected.
- * Reusing the config ids keeps historical `stories.placeId` references resolving
- * to a live row for stories created before the snapshot columns existed.
+ * Seed the 6 config places into the DB on FIRST RUN ONLY: any existing row
+ * (active or soft-deleted) means the family already owns this table, and the
+ * sample config must never inject rows into it. On an empty table the exact
+ * config ids are reused (codex #6: NOT seed-by-count) with `onConflictDoNothing`
+ * guarding a concurrent double-seed. Reusing the config ids keeps historical
+ * `stories.placeId` references resolving to a live row for stories created
+ * before the snapshot columns existed.
  */
 export async function seedPlacesIfNeeded(): Promise<void> {
+  const [existing] = await db.select({ id: places.id }).from(places).limit(1);
+  if (existing) {
+    return;
+  }
   await db
     .insert(places)
     .values(

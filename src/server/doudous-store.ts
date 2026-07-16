@@ -14,13 +14,17 @@ import { doudous } from "~/server/db/schema";
  */
 
 /**
- * Idempotently seed the immutable config doudous into the DB, REUSING their
- * exact ids (same discipline as `seedPlacesIfNeeded`: NOT seed-by-count).
- * `onConflictDoNothing` on the primary key means a parent's edits are never
- * overwritten and a soft-deleted seed doudou is not resurrected. Reusing config
- * ids keeps historical references resolving to a live row.
+ * Seed the config doudous into the DB on FIRST RUN ONLY: any existing row
+ * (active or soft-deleted) means the family already owns this table, and the
+ * sample config must never inject rows into it (same discipline as
+ * `seedPlacesIfNeeded`). On an empty table the exact config ids are reused with
+ * `onConflictDoNothing` guarding a concurrent double-seed.
  */
 export async function seedDoudousIfNeeded(): Promise<void> {
+  const [existing] = await db.select({ id: doudous.id }).from(doudous).limit(1);
+  if (existing) {
+    return;
+  }
   await db
     .insert(doudous)
     .values(

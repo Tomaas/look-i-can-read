@@ -24,14 +24,20 @@ export interface ResolvedHero {
 }
 
 /**
- * Idempotently seed the immutable config heroes into the DB, REUSING their exact
- * ids (codex #6: NOT seed-by-count). `onConflictDoNothing` on the primary key
- * means a parent's edits are never overwritten and a soft-deleted seed hero is
- * not resurrected. Reusing config ids keeps historical `stories.heroId`
- * references resolving to a live row. `imageHint` is required on the table; the
- * legacy map already supplies a gentle default for config heroes lacking one.
+ * Seed the config heroes into the DB on FIRST RUN ONLY: any existing row
+ * (active or soft-deleted) means the family already owns this table, and the
+ * sample config must never inject rows into it — pointing the app at an
+ * established DB with different config ids used to do exactly that. On an empty
+ * table the exact config ids are reused (codex #6: NOT seed-by-count) with
+ * `onConflictDoNothing` guarding a concurrent double-seed. `imageHint` is
+ * required on the table; the legacy map already supplies a gentle default for
+ * config heroes lacking one.
  */
 export async function seedHeroesIfNeeded(): Promise<void> {
+  const [existing] = await db.select({ id: heroes.id }).from(heroes).limit(1);
+  if (existing) {
+    return;
+  }
   await db
     .insert(heroes)
     .values(
