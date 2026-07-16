@@ -57,15 +57,24 @@ yes → don't.
   full strings. Sample
   heroes in `src/config/characters.ts` — meant to be replaced by each family
   (they only seed empty tables; an already-populated db wins).
-- **LLM**: Vercel AI SDK (`ai` + `@ai-sdk/anthropic`), `generateObject` + Zod
-  `{title, paragraphs[]}`. Model from `STORY_MODEL`.
+- **LLM**: Vercel AI SDK (`ai` + `@ai-sdk/anthropic`), `generateObject` + the
+  Zod beat schema (see text adapter). Model from `STORY_MODEL`.
 - **Adapters** in `src/server/providers/{text,image,tts}/` behind `types.ts`:
-  - text: `anthropic` (required) — strict gentle story prompt; Zod shape PLUS
-    content guard-rail (`validateStoryContent`: 5–8 sentences, hero named, no
-    final question/injunction, forbidden scary/sad-term scan) → 1 corrective
-    retry (errors fed back into the prompt) → typed soft-failure → "On réessaie ?".
-  - text (dynamic beats): `dynamic.ts` — choose-your-own-adventure beats. A
-    hidden story arc ("fil rouge": goal → milestones → ending image) PLUS the
+  - text: `dynamic.ts` (`anthropicDynamicProvider`, the SOLE text provider;
+    required) — choose-your-own-adventure beats. Per-beat Zod schema (`title`
+    meaningful on the opening beat only, 1–3 short paragraphs — capped at 2 on
+    landing beats, exactly 2 choice labels or null on the final beat,
+    `sceneHint`) PLUS content guard-rail: `safetyProblems` (fatal — hero
+    named, narration never ends on a question, `forbidden-terms.ts`
+    scary/sad-term + stakes/evaluation-language scan, `sceneHint` included
+    since it drives the illustration) and
+    `structureProblems` (non-fatal — length/readability) → up to 3 corrective
+    attempts with problems fed back into the prompt (only a SAFETY failure
+    drops the child's saveur on the next attempt) → if the text is safe but
+    structure still off, `coerceBeat` salvages a valid beat → else typed
+    soft-failure → "On réessaie ?".
+  - text coherence (same file): a hidden
+    story arc ("fil rouge": goal → milestones → ending image) PLUS the
     story's visual world (one-sentence illustration ambiance) are generated in
     ONE call at creation (15s bound, best-effort — null never blocks the
     first page); the arc is injected into EVERY beat prompt so the story
@@ -95,7 +104,8 @@ yes → don't.
     text-to-image — never fails the beat's image. Gemini call aborts at 90s.
   - tts: `edge` (msedge-tts, default) / `elevenlabs`, behind `TTS_ENABLED`.
 - **Secrets**: read only in `src/env.ts` (server). Vite exposes only `VITE_*`;
-  all keys/LLM calls live in server functions (`src/server/functions.ts`).
+  all keys/LLM calls live in server functions (`src/server/*-functions.ts`,
+  story generation in `dynamic-functions.ts`).
 - **Generated media** (`src/server/providers/media-store.ts`, single
   choke-point): dual backend gated on env. Cloud (Vercel) when
   `BLOB_READ_WRITE_TOKEN` is set → uploads to Vercel Blob, returns a public
