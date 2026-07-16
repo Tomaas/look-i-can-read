@@ -22,5 +22,11 @@
 /data/*
 !/data/.gitkeep
 
+# cursive reading font — personal-use license, not redistributable
+# (see public/fonts/README.md)
+/public/fonts/cursive.woff
+/public/fonts/LICENSE-cursive.txt
+
 # typescript
 *.tsbuildinfo
+.gstack/
