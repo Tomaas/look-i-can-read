@@ -35,9 +35,10 @@ moment.
 
 Two files to personalize (plus in-app management at `/parents`):
 
-- `src/config/app.ts` — the app's display name and booklet footer. Prefer the
-  `VITE_APP_NAME`, `VITE_APP_DESCRIPTION` and `VITE_STORY_LABEL` env vars (see
-  `.env.example`) to personalize without touching the code.
+- `src/config/app.ts` — the app's display name and booklet footer. Prefer
+  setting `VITE_CHILD_NAME=Léa` (see `.env.example`) to derive both without
+  touching the code; `VITE_APP_NAME` / `VITE_APP_DESCRIPTION` /
+  `VITE_STORY_LABEL` override the full strings.
 - `src/config/characters.ts` — the heroes: replace the sample kids with your
   child, siblings, friends. The default hero is pre-selected in the wizard.
   Places, surprise elements and doudous have the same kind of config files
