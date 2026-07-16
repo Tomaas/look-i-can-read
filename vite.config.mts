@@ -25,11 +25,12 @@ export default defineConfig({
         routeFileIgnorePattern: "^(client|ssr)\\.tsx$",
       },
     }),
-    // Vercel deploy: the `vercel` preset emits a Vercel-compatible build
-    // output. Generated images are persisted to Vercel Blob (see media-store.ts)
-    // since Vercel's filesystem is ephemeral. Local dev still works (Vite dev
-    // server + local-disk media fallback when BLOB_READ_WRITE_TOKEN is unset).
-    nitro({ preset: "vercel" }),
+    // Self-hosted deploy: the `node-server` preset emits a standalone
+    // `.output/server/index.mjs` (what `bun run start` runs, also the Docker
+    // image entrypoint). Generated media persists under DATA_DIR (volume in
+    // Docker); on ephemeral filesystems set BLOB_READ_WRITE_TOKEN instead
+    // (see media-store.ts).
+    nitro({ preset: "node-server" }),
     viteReact(),
   ],
 });

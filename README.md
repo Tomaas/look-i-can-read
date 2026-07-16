@@ -112,16 +112,39 @@ bun run start
 
 Restart `bun run dev` after changing a setting.
 
-## Deploying (Vercel)
+## Deploying (Docker)
 
-The build uses Nitro's `vercel` preset, so the repo deploys to Vercel as-is
-(`vercel.json` is included). Two production notes:
+The repo ships a `Dockerfile` (multi-stage: Bun build → `node:22-slim`
+runtime) and a `compose.yml`. On the deploy machine:
 
-- Set `BLOB_READ_WRITE_TOKEN` (Vercel Blob) so generated images/audio persist —
-  the serverless filesystem is ephemeral.
-- **There is no authentication.** A deployed instance is public, and each
-  story costs real API money. Put it behind Vercel's deployment protection, a
-  proxy with auth, or keep it on your own network.
+1. Create `.env.production` at the repo root with the runtime settings
+   (same names as the table above: `ANTHROPIC_API_KEY`, `DATABASE_URL`,
+   `TURSO_AUTH_TOKEN`, plus any optional image/TTS settings).
+2. The `VITE_*` branding vars are baked in at **build time** — put them in a
+   root `.env` file (Docker Compose reads it for `${...}` substitution) or
+   pass them as build args.
+3. Run the migrations once from the checkout (`bun run db:migrate`), then:
+
+```
+bun run deploy   # = docker compose up -d --build
+```
+
+The app listens on **127.0.0.1:3009** (loopback only, on purpose) and
+generated images/audio persist in the `app-data` volume. To customize the
+setup for your machine, drop a `compose.override.yml` next to `compose.yml`
+(gitignored) — Compose merges it automatically.
+
+Production notes:
+
+- **There is no authentication.** Anyone who can reach the port can generate
+  stories, and each story costs real API money. Exposing the app beyond
+  localhost (reverse proxy, VPN, LAN) is your deliberate choice — keep it
+  private.
+- Build from a working tree that contains `public/fonts/cursive.woff` if you
+  use the cursive mode — the font is gitignored (license) and won't be in a
+  fresh clone.
+- On ephemeral filesystems (no volume), set `BLOB_READ_WRITE_TOKEN`
+  (Vercel Blob) instead so generated media persists.
 
 ## How it works for the child
 
@@ -143,11 +166,14 @@ The build uses Nitro's `vercel` preset, so the repo deploys to Vercel as-is
   Anthropic for text, Gemini for images, Edge/ElevenLabs for TTS.
 - **All keys and model calls live in server functions** — nothing sensitive
   ever reaches the browser.
-- **Generated media** goes to Vercel Blob when `BLOB_READ_WRITE_TOKEN` is set,
-  else to local disk under `data/` (gitignored), served by a dedicated route.
-- **Story safety**: a Zod schema plus a content validator (sentence count
-  bounds, hero named, no final question/injunction, forbidden-term scan) with
-  one corrective retry; a soft "shall we try again?" failure otherwise.
+- **Generated media** goes to local disk under `data/` (gitignored, a volume
+  in Docker), served by a dedicated route — or to Vercel Blob when
+  `BLOB_READ_WRITE_TOKEN` is set (for ephemeral filesystems).
+- **Story safety**: a per-beat Zod schema plus validators — safety (hero
+  named, narration never ends on a question, forbidden scary/sad and
+  stakes-language scan) is fatal, structure (length/readability) is not —
+  with up to 3 corrective retries, then a safe-text salvage; a soft "shall we
+  try again?" failure otherwise.
 - **Tests**: `bun run test` runs golden assertion scripts (prompt identity,
   coherence validators, media store, reading aids) — plain Bun, no test
   runner needed.

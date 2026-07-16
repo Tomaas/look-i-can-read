@@ -2,9 +2,9 @@
 
 Single-family web app that generates calm illustrated read-aloud stories in
 French where the configured child hero stars. TanStack Start + React 19.
-Deploys to Vercel and runs locally; either way REQUIRES network + a Turso
-cloud database (no offline mode). No authentication — protect public deploys
-yourself.
+Deploys via Docker (Compose) and runs locally; either way REQUIRES network +
+a Turso cloud database (no offline mode). No authentication — the compose
+file binds to loopback only; exposing it further is the operator's problem.
 
 ## THE NON-NEGOTIABLE CONSTRAINT
 
@@ -29,15 +29,21 @@ yes → don't.
 - `bun run db:migrate` — apply migrations to the remote Turso db (run once on
   setup / after schema changes). `db:generate` creates a new migration from
   schema edits; `db:push` is also available for quick dev sync to remote.
+- `bun run deploy` — `docker compose up -d --build` (see Nitro bullet; needs
+  `.env.production` + optionally `.env` for build-time `VITE_*` args).
 
 ## Architecture
 
 - **Framework**: TanStack Start (file routes in `src/app/`; index + aventure +
   bibliotheque + parents section).
-- **Nitro**: `vercel` preset → builds to `.vercel/output` (Build Output API),
-  cloud-deployable on Vercel. `vercel.json` declares
-  `framework: "tanstack-start"` + `outputDirectory: null` (without it Vercel
-  defaults to the Vite preset and fails: "No Output Directory named dist").
+- **Nitro**: `node-server` preset → builds a standalone `.output/server/
+  index.mjs` (traced deps included, native libsql binding too) that `bun run
+  start` and the Docker image both run. Deploy = `Dockerfile` (multi-stage:
+  `oven/bun` build with `SKIP_ENV_VALIDATION=1` + `VITE_*` build args →
+  `node:22-slim` runtime, port 3009) + `compose.yml` (loopback-bound port,
+  `app-data` volume on `/app/data`, secrets via `env_file: .env.production`).
+  Machine-specific compose changes go in a gitignored `compose.override.yml`,
+  never in `compose.yml`.
 - **DB**: remote Turso cloud (libSQL) via `@libsql/client/node` + Drizzle.
   `db/index.ts` is just `createClient({ url: DATABASE_URL, authToken:
   TURSO_AUTH_TOKEN })`. Schema is applied to the remote db via drizzle
@@ -107,12 +113,12 @@ yes → don't.
   all keys/LLM calls live in server functions (`src/server/*-functions.ts`,
   story generation in `dynamic-functions.ts`).
 - **Generated media** (`src/server/providers/media-store.ts`, single
-  choke-point): dual backend gated on env. Cloud (Vercel) when
-  `BLOB_READ_WRITE_TOKEN` is set → uploads to Vercel Blob, returns a public
-  `https://` CDN URL. Local fallback when absent → writes `DATA_DIR/media/`
-  (gitignored), returns a `/data/media/<file>` web path served by the `/data/$`
-  route. The `/`-prefix (local) vs `https://` (blob) IS the back-compat
-  boundary; old local rows keep working. Read-back (for the reference-image
+  choke-point): dual backend gated on env. Local (default, Docker volume) when
+  `BLOB_READ_WRITE_TOKEN` is absent → writes `DATA_DIR/media/` (gitignored),
+  returns a `/data/media/<file>` web path served by the `/data/$` route.
+  Vercel Blob when the token is set (ephemeral filesystems) → uploads and
+  returns a public `https://` CDN URL. The `/`-prefix (local) vs `https://`
+  (blob) IS the back-compat boundary; old rows of either kind keep working. Read-back (for the reference-image
   flow): `readStoredMediaBytes` returns local media bytes and rejects any path
   escaping the media dir; `blobStoreHost()` derives the exact allowlist host
   from the rw token.

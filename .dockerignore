@@ -1,0 +1,13 @@
+.git
+node_modules
+.output
+.tanstack
+.nitro
+.vercel
+data
+.env*
+!.env.example
+Dockerfile
+compose*.yml
+local
+.gstack
