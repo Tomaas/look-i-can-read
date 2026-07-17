@@ -6,8 +6,9 @@ import { HighlightableText } from "./highlightable-text";
 
 /**
  * The discreet colophon printed at the end of every booklet.
+ * Shared with the operations sheet (printable-operations.tsx).
  */
-function Colophon() {
+export function Colophon() {
   return (
     <p
       className="mt-16 text-center italic"
