@@ -39,8 +39,11 @@ yes → don't.
 - **Nitro**: `node-server` preset → builds a standalone `.output/server/
   index.mjs` (traced deps included, native libsql binding too) that `bun run
   start` and the Docker image both run. Deploy = `Dockerfile` (multi-stage:
-  `oven/bun` build with `SKIP_ENV_VALIDATION=1` + `VITE_*` build args →
-  `node:22-slim` runtime, port 3009) + `compose.yml` (loopback-bound port,
+  `node:22-slim` build stage with the bun binary copied in from `oven/bun` —
+  bun only installs deps and runs scripts; vite/rolldown MUST run under real
+  node, because under bun `ws` resolves as a builtin and the bundle ships a
+  bare `import "ws"` that crashes the node runtime — `SKIP_ENV_VALIDATION=1`
+  + `VITE_*` build args → `node:22-slim` runtime, port 3009) + `compose.yml` (loopback-bound port,
   `app-data` volume on `/app/data`, secrets via `env_file: .env.production`).
   Machine-specific compose changes go in a gitignored `compose.override.yml`,
   never in `compose.yml`.

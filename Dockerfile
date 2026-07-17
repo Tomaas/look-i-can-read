@@ -1,4 +1,9 @@
-FROM oven/bun:1 AS build
+# Build on node (not oven/bun): in oven/bun `node` is a bun shim, so vite/
+# rolldown resolve with bun semantics — bun treats `ws` as a builtin, the
+# bundle keeps a bare `import "ws"` and the node:22-slim runtime crashes with
+# ERR_MODULE_NOT_FOUND. bun is only copied in for `bun install` + script runs.
+FROM node:22-slim AS build
+COPY --from=oven/bun:1 /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --ignore-scripts
