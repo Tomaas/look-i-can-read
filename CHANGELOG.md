@@ -37,6 +37,7 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/) adapté, versions
 
 - Nouveau module pur `src/lib/operations` (générateur déterministe seedé,
   géométrie partagée écran/print, échelle des paliers, énoncés à gabarits),
-  verrouillé par 286 assertions golden (`bun run test:operations`).
+  verrouillé par 60 vérifications golden — certaines balayant tous les
+  paliers × 60 seeds (`bun run test:operations`).
 - Table `math_skills` (migration additive 0009) pour le palier et la taille
   de série choisis par le parent.
