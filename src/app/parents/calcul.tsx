@@ -1,10 +1,10 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { Home, Printer } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PrintableOperationsSheet } from "~/components/printable-operations";
 import { Button } from "~/components/ui/button";
 import {
-  DEFAULT_SERIE_SIZE,
+  clampSerieSize,
   type GeneratedOperation,
   generateSerie,
   MAX_SERIE_SIZE,
@@ -19,8 +19,10 @@ import { getMathSettingsFn, saveMathSettingsFn } from "~/server/math-functions";
 
 export const Route = createFileRoute("/parents/calcul")({
   loader: async () => {
+    // Settings has server-side DEFAULTS — a DB hiccup shouldn't kill the
+    // whole parent page any more than the heroes/doudous lists do.
     const [settings, heroes, doudous] = await Promise.all([
-      getMathSettingsFn(),
+      getMathSettingsFn().catch(() => null),
       listHeroesFn().catch(() => []),
       listDoudousFn().catch(() => []),
     ]);
@@ -45,9 +47,9 @@ const FICHE_SIZE = 6;
 function ParentsCalculPage() {
   const router = useRouter();
   const { settings, heroName, doudouName } = Route.useLoaderData();
-  const [palierId, setPalierId] = useState(resolvePalier(settings.palier).id);
+  const [palierId, setPalierId] = useState(resolvePalier(settings?.palier).id);
   const [serieSize, setSerieSize] = useState(
-    settings.serieSize || DEFAULT_SERIE_SIZE,
+    clampSerieSize(settings?.serieSize),
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -56,7 +58,24 @@ function ParentsCalculPage() {
   >(null);
 
   const dirty =
-    palierId !== settings.palier || serieSize !== settings.serieSize;
+    palierId !== resolvePalier(settings?.palier).id ||
+    serieSize !== clampSerieSize(settings?.serieSize);
+
+  // Print AFTER the sheet is committed and painted (double rAF) — a bare
+  // setTimeout can race the paint on slow devices and snapshot a blank fiche.
+  useEffect(() => {
+    if (!ficheOperations) {
+      return;
+    }
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => window.print());
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [ficheOperations]);
 
   async function save() {
     setSaving(true);
@@ -86,8 +105,7 @@ function ParentsCalculPage() {
       FICHE_SIZE,
     );
     setFicheOperations(operations);
-    // Let React render the printable sheet before opening the dialog.
-    setTimeout(() => window.print(), 50);
+    // L'impression part de l'effet ci-dessus, après commit + paint.
   }
 
   return (

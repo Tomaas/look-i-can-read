@@ -13,6 +13,7 @@ export {
 } from "~/lib/operations/generator";
 export { layoutOperation, type OperationLayout } from "~/lib/operations/layout";
 export {
+  clampSerieSize,
   DEFAULT_PALIER_ID,
   DEFAULT_SERIE_SIZE,
   MAX_SERIE_SIZE,

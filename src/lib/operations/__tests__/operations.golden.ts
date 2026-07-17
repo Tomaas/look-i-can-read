@@ -212,20 +212,40 @@ for (const palier of PALIERS) {
 }
 
 // Soustraction : a > b strict par construction (0 n'apprend rien à poser).
+// Et le swap du diminuende ne doit jamais sortir des plages de chiffres
+// déclarées (invariant qui protège les futurs paliers à plages disjointes).
 {
   let strict = true;
+  let digitsOk = true;
   for (const palier of PALIERS) {
     if (palier.constraints.op !== "soustraction") {
       continue;
     }
+    const { aDigits, bDigits } = palier.constraints;
+    const minDigits = Math.min(aDigits.min, bDigits.min);
+    const maxDigits = Math.max(aDigits.max, bDigits.max);
     for (let seed = 1; seed <= 200; seed++) {
       const o = generateOperation(palier.constraints, seed);
       if (o.a <= o.b) {
         strict = false;
       }
+      const aLen = String(o.a).length;
+      const bLen = String(o.b).length;
+      if (
+        aLen < minDigits ||
+        aLen > maxDigits ||
+        bLen < minDigits ||
+        bLen > maxDigits
+      ) {
+        digitsOk = false;
+      }
     }
   }
   check("soustraction: a > b strict (jamais de résultat nul)", strict);
+  check(
+    "soustraction: les opérandes échangés restent dans les plages de chiffres",
+    digitsOk,
+  );
 }
 
 // Série : taille, déterminisme, même palier.

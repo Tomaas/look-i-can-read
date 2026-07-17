@@ -117,3 +117,16 @@ export function palierById(id: string): Palier | undefined {
 export function resolvePalier(id: string | null | undefined): Palier {
   return (id && palierById(id)) || PALIERS[0];
 }
+
+/**
+ * Taille de série sûre, quelle que soit la source (cache localStorage édité,
+ * ligne DB modifiée à la main…) : une valeur non bornée partirait dans une
+ * génération sans fin sur la page enfant. Toujours passer par ici.
+ */
+export function clampSerieSize(value: unknown): number {
+  const n =
+    typeof value === "number" && Number.isFinite(value)
+      ? Math.round(value)
+      : DEFAULT_SERIE_SIZE;
+  return Math.min(MAX_SERIE_SIZE, Math.max(MIN_SERIE_SIZE, n));
+}

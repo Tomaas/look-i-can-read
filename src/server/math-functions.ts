@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import {
+  clampSerieSize,
   DEFAULT_PALIER_ID,
   DEFAULT_SERIE_SIZE,
   MAX_SERIE_SIZE,
@@ -22,7 +23,11 @@ import { mathSkills } from "~/server/db/schema";
  */
 const SKILL_KEY = "calcul-pose";
 
-/** House timestamp format — matches the strftime column default (schema.ts). */
+/**
+ * House timestamp format — same idiom as the sibling *-functions.ts files
+ * (space-separated, 23 chars). Note: the column DEFAULT (strftime, schema.ts)
+ * additionally carries "+00" — both shapes coexist app-wide by convention.
+ */
 function nowSqlTimestamp(): string {
   return new Date().toISOString().replace("T", " ").slice(0, 23);
 }
@@ -47,7 +52,9 @@ export const getMathSettingsFn = createServerFn({ method: "GET" }).handler(
     if (!row) {
       return DEFAULTS;
     }
-    return { palier: row.palier, serieSize: row.serieSize };
+    // Clamp even the DB value: a hand-edited row bypasses the zod save path,
+    // and an unbounded serieSize would hang the child-facing generator.
+    return { palier: row.palier, serieSize: clampSerieSize(row.serieSize) };
   },
 );
 

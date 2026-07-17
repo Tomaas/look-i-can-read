@@ -10,11 +10,13 @@ import {
 import { SoftNumpad } from "~/components/calcul/soft-numpad";
 import { Button } from "~/components/ui/button";
 import {
-  DEFAULT_SERIE_SIZE,
+  clampSerieSize,
   enonceFor,
+  type GeneratedOperation,
   generateSerie,
   layoutOperation,
   newSerieSeed,
+  type Palier,
   resolvePalier,
 } from "~/lib/operations";
 import { listDoudousFn } from "~/server/doudous-functions";
@@ -61,7 +63,41 @@ interface SerieState {
   serieSize: number;
   seed: number;
   index: number;
+  /**
+   * Empreinte des opérations générées à la création de la série. À la
+   * reprise, la régénération depuis (palier, seed) doit produire la MÊME
+   * empreinte — sinon le générateur ou les contraintes du palier ont changé
+   * depuis, et les chiffres écrits ne correspondraient plus aux opérations
+   * affichées (corruption silencieuse) : on repart sur une série fraîche.
+   */
+  opsFingerprint: string;
   perOp: { entries: GridEntries; done: boolean }[];
+}
+
+function fingerprintOps(ops: GeneratedOperation[]): string {
+  return ops.map((o) => `${o.op}:${o.a}:${o.b}`).join("|");
+}
+
+/**
+ * Génération contenue : une contrainte de palier devenue insatisfaisable
+ * (erreur de code future) ne doit JAMAIS montrer un écran d'erreur à
+ * l'enfant — on retombe sur le premier palier, puis sur rien (l'atelier
+ * rangé) si même lui échoue.
+ */
+function safeGenerateSerie(
+  palier: Palier,
+  seed: number,
+  size: number,
+): GeneratedOperation[] {
+  try {
+    return generateSerie(palier.constraints, seed, size);
+  } catch {
+    try {
+      return generateSerie(resolvePalier(null).constraints, seed, size);
+    } catch {
+      return [];
+    }
+  }
 }
 
 function readJson<T>(key: string): T | null {
@@ -99,12 +135,24 @@ function isResumableSerie(
     saved.index < saved.serieSize &&
     Array.isArray(saved.perOp) &&
     saved.perOp.length === saved.serieSize &&
+    typeof saved.opsFingerprint === "string" &&
     saved.perOp.every(
       (op) =>
         typeof op?.done === "boolean" &&
         Array.isArray(op?.entries?.result) &&
-        Array.isArray(op?.entries?.carries),
-    )
+        op.entries.result.every((v) => v === null || typeof v === "string") &&
+        Array.isArray(op?.entries?.carries) &&
+        op.entries.carries.every((v) => v === null || typeof v === "string"),
+    ) &&
+    // La régénération doit reproduire exactement les opérations d'origine —
+    // sinon les chiffres écrits appartiennent à d'autres calculs.
+    fingerprintOps(
+      safeGenerateSerie(
+        resolvePalier(saved.palierId),
+        saved.seed,
+        saved.serieSize,
+      ),
+    ) === saved.opsFingerprint
   );
 }
 
@@ -126,19 +174,19 @@ function CalculWorkshopPage() {
   const [serie, setSerie] = useState<SerieState | null>(null);
   const [selected, setSelected] = useState<CellRef | null>(null);
 
-  // Settings: DB when reachable (and cache it), else device cache, else defaults.
+  // Settings: DB when reachable (and cache it), else device cache, else
+  // defaults. NORMALIZED whatever the source — a hand-edited cache or DB row
+  // must never feed the generator an unbounded serieSize or a ghost palier.
   useEffect(() => {
+    const raw = dbSettings ?? readJson<MathSettings>(SETTINGS_CACHE_KEY);
+    const normalized: MathSettings = {
+      palier: resolvePalier(raw?.palier).id,
+      serieSize: clampSerieSize(raw?.serieSize),
+    };
     if (dbSettings) {
-      writeJson(SETTINGS_CACHE_KEY, dbSettings);
-      setSettings(dbSettings);
-      return;
+      writeJson(SETTINGS_CACHE_KEY, normalized);
     }
-    setSettings(
-      readJson<MathSettings>(SETTINGS_CACHE_KEY) ?? {
-        palier: resolvePalier(null).id,
-        serieSize: DEFAULT_SERIE_SIZE,
-      },
-    );
+    setSettings(normalized);
   }, [dbSettings]);
 
   // Série: resume the in-progress one if it matches the current settings,
@@ -170,7 +218,7 @@ function CalculWorkshopPage() {
   const operations = useMemo(
     () =>
       serieSeed !== undefined && serieSize !== undefined
-        ? generateSerie(palier.constraints, serieSeed, serieSize)
+        ? safeGenerateSerie(palier, serieSeed, serieSize)
         : [],
     [serieSeed, serieSize, palier],
   );
@@ -357,13 +405,16 @@ function WorkshopTidied({ onNewSerie }: { onNewSerie: () => void }) {
 function freshSerie(settings: MathSettings): SerieState {
   const palier = resolvePalier(settings.palier);
   const seed = newSerieSeed();
-  const size = settings.serieSize;
-  const ops = generateSerie(palier.constraints, seed, size);
+  const size = clampSerieSize(settings.serieSize);
+  const ops = safeGenerateSerie(palier, seed, size);
   return {
     palierId: palier.id,
     serieSize: size,
     seed,
+    // ops vide (palier cassé, cas théorique) : perOp vide → le rendu tombe
+    // sur l'état "rangé" via le garde operation/current — dégradation calme.
     index: 0,
+    opsFingerprint: fingerprintOps(ops),
     perOp: ops.map((op) => ({
       entries: emptyEntries(layoutOperation(op)),
       done: false,
