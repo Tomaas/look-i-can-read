@@ -20,6 +20,7 @@ import { Route as ParentsHeroesRouteImport } from './app/parents/heroes'
 import { Route as ParentsElementsRouteImport } from './app/parents/elements'
 import { Route as ParentsDoudousRouteImport } from './app/parents/doudous'
 import { Route as ParentsCalculRouteImport } from './app/parents/calcul'
+import { Route as DataSplatRouteImport } from './app/data.$'
 import { Route as AventureIdRouteImport } from './app/aventure/$id'
 
 const BibliothequeRoute = BibliothequeRouteImport.update({
@@ -77,6 +78,11 @@ const ParentsCalculRoute = ParentsCalculRouteImport.update({
   path: '/parents/calcul',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DataSplatRoute = DataSplatRouteImport.update({
+  id: '/data/$',
+  path: '/data/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AventureIdRoute = AventureIdRouteImport.update({
   id: '/aventure/$id',
   path: '/aventure/$id',
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bibliotheque': typeof BibliothequeRoute
   '/aventure/$id': typeof AventureIdRoute
+  '/data/$': typeof DataSplatRoute
   '/parents/calcul': typeof ParentsCalculRoute
   '/parents/doudous': typeof ParentsDoudousRoute
   '/parents/elements': typeof ParentsElementsRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/bibliotheque': typeof BibliothequeRoute
   '/aventure/$id': typeof AventureIdRoute
+  '/data/$': typeof DataSplatRoute
   '/parents/calcul': typeof ParentsCalculRoute
   '/parents/doudous': typeof ParentsDoudousRoute
   '/parents/elements': typeof ParentsElementsRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/bibliotheque': typeof BibliothequeRoute
   '/aventure/$id': typeof AventureIdRoute
+  '/data/$': typeof DataSplatRoute
   '/parents/calcul': typeof ParentsCalculRoute
   '/parents/doudous': typeof ParentsDoudousRoute
   '/parents/elements': typeof ParentsElementsRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/bibliotheque'
     | '/aventure/$id'
+    | '/data/$'
     | '/parents/calcul'
     | '/parents/doudous'
     | '/parents/elements'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/bibliotheque'
     | '/aventure/$id'
+    | '/data/$'
     | '/parents/calcul'
     | '/parents/doudous'
     | '/parents/elements'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/bibliotheque'
     | '/aventure/$id'
+    | '/data/$'
     | '/parents/calcul'
     | '/parents/doudous'
     | '/parents/elements'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BibliothequeRoute: typeof BibliothequeRoute
   AventureIdRoute: typeof AventureIdRoute
+  DataSplatRoute: typeof DataSplatRoute
   ParentsCalculRoute: typeof ParentsCalculRoute
   ParentsDoudousRoute: typeof ParentsDoudousRoute
   ParentsElementsRoute: typeof ParentsElementsRoute
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParentsCalculRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/data/$': {
+      id: '/data/$'
+      path: '/data/$'
+      fullPath: '/data/$'
+      preLoaderRoute: typeof DataSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/aventure/$id': {
       id: '/aventure/$id'
       path: '/aventure/$id'
@@ -279,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BibliothequeRoute: BibliothequeRoute,
   AventureIdRoute: AventureIdRoute,
+  DataSplatRoute: DataSplatRoute,
   ParentsCalculRoute: ParentsCalculRoute,
   ParentsDoudousRoute: ParentsDoudousRoute,
   ParentsElementsRoute: ParentsElementsRoute,
