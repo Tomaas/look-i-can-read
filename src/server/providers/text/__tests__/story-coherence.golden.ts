@@ -364,7 +364,7 @@ check(
   })(),
 );
 check(
-  "system: sceneHint CONTINUITÉ clause (same time/light/setting unless the story moved)",
+  "system: sceneHint CONTINUITÉ clause (same time/light unless the story moved; decor follows the story)",
   (() => {
     const s = buildSystem("fr");
     return (

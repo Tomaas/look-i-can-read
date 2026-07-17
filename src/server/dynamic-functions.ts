@@ -41,9 +41,10 @@ import {
 } from "~/server/providers/types";
 import { getFrozenStoryPromptContext } from "~/server/story-context";
 
-// Max choice points per story (spec). After the 5th chosen choice, the next
-// beat is forced to be final.
-const MAX_CHOICES = 5;
+// Max choice points per story. After the 4th chosen choice, the next beat is
+// forced to be final. Was 5 — the TOTAL reading volume of a full story still
+// tired a beginning reader even with the landing decrescendo.
+const MAX_CHOICES = 4;
 
 // Calm-tool guardrails (codex #2/#6), mirrored from functions.ts.
 const HERO_CAP = 2;
@@ -767,8 +768,12 @@ async function generateSegmentImage(
   // Feed the WHOLE beat's text (now 1–3 short sentences) so the page's image
   // reflects that full page, not just its first ~8-word sentence.
   const prompt = [
+    // The reference anchors CHARACTER IDENTITY + STYLE only — never the decor.
+    // The earlier "dans une NOUVELLE scène" wording let the model clone page
+    // 1's backdrop on every page, so the illustrations never moved even when
+    // the story did.
     referenceImage
-      ? "Reprends EXACTEMENT les personnages de l'image fournie (visages, coiffures, vêtements, proportions) et son style, dans une NOUVELLE scène :"
+      ? "Reprends EXACTEMENT les personnages de l'image fournie (visages, coiffures, vêtements, proportions) et son style — mais PAS son décor ni son cadrage. Dessine le lieu où l'histoire se trouve MAINTENANT (voir « La scène » ci-dessous), même s'il ne ressemble plus à celui de l'image fournie :"
       : "Illustration pour un bout d'une histoire d'enfant, tendre et rassurante.",
     segment.paragraphs.join(" "),
     sceneLine,
