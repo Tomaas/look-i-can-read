@@ -36,6 +36,13 @@ const SECTIONS = [
     description: "Les compagnons rassurants, toujours facultatifs.",
   },
   {
+    to: "/parents/calcul",
+    emoji: "🔢",
+    title: "Les calculs",
+    description:
+      "Le palier des opérations posées, la taille des séries et les fiches à imprimer.",
+  },
+  {
     to: "/parents/image-model",
     emoji: "🎨",
     title: "Le modèle d'image",

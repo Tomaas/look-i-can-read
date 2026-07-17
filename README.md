@@ -5,6 +5,10 @@ A tiny web app that invents calm, illustrated, read-aloud mini-stories in
 reading tool for beginning readers (fin CP / début CE1, ~6–7 years old) — not
 a game. No score, no timer, no rewards.
 
+Since v0.2 the home page is a small two-door shelf: the stories, plus a quiet
+**"Poser des calculs"** workshop — column arithmetic the same calm way, with
+the level always chosen by the parent, never by an algorithm.
+
 The printed A5 booklet that comes out of the printer is often the real magic
 moment.
 
@@ -30,6 +34,19 @@ moment.
 - **Read-aloud** (optional): free Edge TTS French voices, or ElevenLabs.
 - **Print**: one click → a clean A5 booklet, no headers, no tech noise.
 - **Library**: every kept story is saved and re-readable.
+- **"Poser des calculs" workshop** (`/calcul`): a short series of column
+  operations (additions, subtractions, multiplications) the child writes
+  freely on a soft numpad, then compares with the solved version — nothing is
+  marked, nothing is scored. Word problems can feature the family's hero and
+  doudou ("Arsène range 24 marrons…") — template-based, no AI call, works
+  even offline once the page is open.
+- **Parent-chosen level**: the adult picks the palier (7 steps, from
+  carry-free additions to column multiplications) and the series size at
+  `/parents/calcul` — the app never evaluates the child and never
+  auto-advances.
+- **Printable operation sheets**: A5 sheets of posed operations to complete
+  in pencil, in the same format as the story booklets, matching the chosen
+  palier.
 
 ## Make it yours
 
@@ -148,6 +165,9 @@ Production notes:
 
 ## How it works for the child
 
+The home page offers two doors: the story, and the operations workshop.
+For a story:
+
 1. **Invent a story** → pick hero(es), a place, a surprise element (or hit
    "random 🎲").
 2. The story writes itself (gentle animation, no progress bar).
@@ -158,6 +178,12 @@ Production notes:
 > **Printing a real booklet:** the "Print" button opens the print dialog. On
 > macOS, pick "Save as PDF" (or your printer's booklet option) — the A5 layout
 > is ready; the print dialog handles booklet pagination.
+
+The **operations workshop** works the same quiet way: a short series of posed
+operations arrives as little trays; the child writes the digits, compares
+with the solved version when ready, and the workshop puts itself away at the
+end of the series. An operation left mid-way resumes exactly where it was
+(kept on the device).
 
 ## Technical notes
 
@@ -174,9 +200,15 @@ Production notes:
   stakes-language scan) is fatal, structure (length/readability) is not —
   with up to 3 corrective retries, then a safe-text salvage; a soft "shall we
   try again?" failure otherwise.
+- **The operations module** (`src/lib/operations`) is pure and deterministic:
+  a seeded generator (an interrupted series regenerates identically), shared
+  screen/print geometry, a descriptive palier ladder, and template word
+  problems — no LLM involved. The parent's palier choice lives in the
+  `math_skills` table (and is mirrored on-device so the workshop shrugs off a
+  network hiccup).
 - **Tests**: `bun run test` runs golden assertion scripts (prompt identity,
-  coherence validators, media store, reading aids) — plain Bun, no test
-  runner needed.
+  coherence validators, media store, reading aids, posed operations) — plain
+  Bun, no test runner needed.
 
 ## License
 

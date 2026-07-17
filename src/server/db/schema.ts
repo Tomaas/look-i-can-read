@@ -323,6 +323,32 @@ export const dbElements = sqliteTable("elements", {
   ),
 });
 
+/**
+ * Settings of the "poser des calculs" mini-app, one row per skill key
+ * (today a single key, "calcul-pose"). The palier is chosen MANUALLY by the
+ * parent at /parents/calcul (eng-review decision T2-A: no automatic
+ * progression, no comfort score, no evaluation of the child — the adult
+ * decides the presentation, like the educator does in a Montessori class).
+ * `palier` stores a palier id from src/lib/operations/progression.ts; an
+ * unknown/stale id resolves to the first palier (resolvePalier), never errors.
+ * `serieSize` is the length of the "série qui se range" (decision T4-A).
+ */
+export const mathSkills = sqliteTable(
+  "math_skills",
+  {
+    id: text("id")
+      .primaryKey()
+      .$defaultFn(() => generateId("mathskill")),
+    skill: text("skill").notNull(),
+    palier: text("palier").notNull(),
+    serieSize: integer("serie_size").notNull().default(3),
+    updatedAt: text("updated_at").default(
+      sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`,
+    ),
+  },
+  (table) => [uniqueIndex("math_skills_skill_idx").on(table.skill)],
+);
+
 export type Story = typeof stories.$inferSelect;
 export type NewStory = typeof stories.$inferInsert;
 export type StorySegment = typeof storySegments.$inferSelect;
