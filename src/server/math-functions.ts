@@ -4,6 +4,8 @@ import { z } from "zod";
 import {
   DEFAULT_PALIER_ID,
   DEFAULT_SERIE_SIZE,
+  MAX_SERIE_SIZE,
+  MIN_SERIE_SIZE,
   PALIERS,
 } from "~/lib/operations";
 import { db } from "~/server/db";
@@ -19,6 +21,11 @@ import { mathSkills } from "~/server/db/schema";
  * error to the child; that read-through happens client-side, not here.
  */
 const SKILL_KEY = "calcul-pose";
+
+/** House timestamp format — matches the strftime column default (schema.ts). */
+function nowSqlTimestamp(): string {
+  return new Date().toISOString().replace("T", " ").slice(0, 23);
+}
 
 export interface MathSettings {
   palier: string;
@@ -48,7 +55,7 @@ const saveSchema = z.object({
   palier: z
     .string()
     .refine((id) => PALIERS.some((p) => p.id === id), "Palier inconnu."),
-  serieSize: z.number().int().min(1).max(6),
+  serieSize: z.number().int().min(MIN_SERIE_SIZE).max(MAX_SERIE_SIZE),
 });
 
 export type MathSettingsMutationResult =
@@ -58,26 +65,30 @@ export type MathSettingsMutationResult =
 export const saveMathSettingsFn = createServerFn({ method: "POST" })
   .inputValidator(saveSchema)
   .handler(async ({ data }): Promise<MathSettingsMutationResult> => {
-    const [existing] = await db
-      .select()
-      .from(mathSkills)
-      .where(eq(mathSkills.skill, SKILL_KEY))
-      .limit(1);
-    if (existing) {
+    try {
+      // Single-statement upsert on the unique skill key: atomic (no
+      // select-then-insert race) and one Turso roundtrip instead of two.
       await db
-        .update(mathSkills)
-        .set({
+        .insert(mathSkills)
+        .values({
+          skill: SKILL_KEY,
           palier: data.palier,
           serieSize: data.serieSize,
-          updatedAt: new Date().toISOString(),
         })
-        .where(eq(mathSkills.id, existing.id));
-    } else {
-      await db.insert(mathSkills).values({
-        skill: SKILL_KEY,
-        palier: data.palier,
-        serieSize: data.serieSize,
-      });
+        .onConflictDoUpdate({
+          target: mathSkills.skill,
+          set: {
+            palier: data.palier,
+            serieSize: data.serieSize,
+            updatedAt: nowSqlTimestamp(),
+          },
+        });
+    } catch (error) {
+      return {
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Enregistrement impossible.",
+      };
     }
     return {
       success: true,

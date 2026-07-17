@@ -43,11 +43,14 @@ function pick<T>(rand: () => number, items: readonly T[]): T {
  * Une phrase d'habillage pour l'opération, déterministe (op.seed).
  * Le compagnon (doudou) n'apparaît que s'il est fourni.
  */
+/** Décorrèle le PRNG des énoncés du flux du générateur (même seed d'op). */
+const ENONCE_SEED_SALT = 0x5f3759df;
+
 export function enonceFor(
   op: GeneratedOperation,
   entities: EnonceEntities,
 ): string {
-  const rand = mulberry32(op.seed ^ 0x5f3759df);
+  const rand = mulberry32(op.seed ^ ENONCE_SEED_SALT);
   const objet = pick(rand, OBJETS);
   const hero = entities.hero;
   const compagnon = entities.doudou;

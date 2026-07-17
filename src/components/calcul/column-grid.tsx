@@ -68,16 +68,22 @@ export function ColumnGrid({
             key={`carry-${col}-${layout.expectedDigits.length}`}
           >
             {slot && !isSolution ? (
+              // Touch target ≥ 44px for small fingers (p-2 hit slop around
+              // the small visual box, negative margin keeps the layout).
               <button
-                className={cn(
-                  "mt-0 flex h-6 w-8 items-center justify-center rounded-lg border border-muted-foreground/30 border-dashed text-muted-foreground text-sm",
-                  isSelected({ row: "carry", col }) &&
-                    "border-primary border-solid",
-                )}
+                className="-m-2 p-2"
                 onClick={() => onSelect?.({ row: "carry", col })}
                 type="button"
               >
-                {entries?.carries[col] ?? ""}
+                <span
+                  className={cn(
+                    "flex h-6 w-8 items-center justify-center rounded-lg border border-muted-foreground/30 border-dashed text-muted-foreground text-sm",
+                    isSelected({ row: "carry", col }) &&
+                      "border-2 border-primary border-solid",
+                  )}
+                >
+                  {entries?.carries[col] ?? ""}
+                </span>
               </button>
             ) : null}
           </span>
@@ -121,8 +127,9 @@ export function ColumnGrid({
             <button
               className={cn(
                 cellBase,
-                "border border-muted-foreground/40",
-                isSelected({ row: "result", col }) && "border-primary",
+                "border border-muted-foreground/40 focus-visible:outline-2 focus-visible:outline-primary/60",
+                isSelected({ row: "result", col }) &&
+                  "border-2 border-primary bg-primary/5",
               )}
               key={`res-${col}-${expectedDigit}`}
               onClick={() => onSelect?.({ row: "result", col })}

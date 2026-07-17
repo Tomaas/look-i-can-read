@@ -7,6 +7,9 @@ import {
   DEFAULT_SERIE_SIZE,
   type GeneratedOperation,
   generateSerie,
+  MAX_SERIE_SIZE,
+  MIN_SERIE_SIZE,
+  newSerieSeed,
   PALIERS,
   resolvePalier,
 } from "~/lib/operations";
@@ -47,6 +50,7 @@ function ParentsCalculPage() {
     settings.serieSize || DEFAULT_SERIE_SIZE,
   );
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [ficheOperations, setFicheOperations] = useState<
     GeneratedOperation[] | null
   >(null);
@@ -56,9 +60,19 @@ function ParentsCalculPage() {
 
   async function save() {
     setSaving(true);
+    setSaveError(null);
     try {
-      await saveMathSettingsFn({ data: { palier: palierId, serieSize } });
+      const result = await saveMathSettingsFn({
+        data: { palier: palierId, serieSize },
+      });
+      if (!result.success) {
+        setSaveError(result.error);
+        return;
+      }
       await router.invalidate();
+    } catch {
+      // Réseau en panne : message calme côté parent, le formulaire reste dirty.
+      setSaveError("Enregistrement impossible pour le moment — réessaie.");
     } finally {
       setSaving(false);
     }
@@ -68,7 +82,7 @@ function ParentsCalculPage() {
     const palier = resolvePalier(palierId);
     const operations = generateSerie(
       palier.constraints,
-      Date.now() % 2147483647,
+      newSerieSeed(),
       FICHE_SIZE,
     );
     setFicheOperations(operations);
@@ -126,7 +140,10 @@ function ParentsCalculPage() {
           onChange={(e) => setSerieSize(Number(e.target.value))}
           value={serieSize}
         >
-          {[1, 2, 3, 4, 5, 6].map((n) => (
+          {Array.from(
+            { length: MAX_SERIE_SIZE - MIN_SERIE_SIZE + 1 },
+            (_, i) => MIN_SERIE_SIZE + i,
+          ).map((n) => (
             <option key={n} value={n}>
               {n}
             </option>
@@ -142,6 +159,9 @@ function ParentsCalculPage() {
           <Printer className="size-5" />
           Imprimer une fiche
         </Button>
+        {saveError ? (
+          <p className="text-muted-foreground text-sm">{saveError}</p>
+        ) : null}
       </div>
 
       {ficheOperations ? (

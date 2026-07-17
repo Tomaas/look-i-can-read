@@ -14,6 +14,7 @@ import {
   type GeneratedOperation,
   type GenerationConstraints,
   MAX_RESULT,
+  type Quota,
 } from "~/lib/operations/types";
 
 export class UnsatisfiableConstraintError extends Error {
@@ -85,6 +86,11 @@ export function countMultCarries(a: number, b: number): number {
 
 /** Compte les emprunts d'une soustraction posée (a ≥ b requis). */
 export function countBorrows(a: number, b: number): number {
+  if (a < b) {
+    // Sans cette garde, la boucle ci-dessous ne termine jamais (le borrow
+    // se réamorce indéfiniment) — précondition exécutable, pas commentée.
+    throw new RangeError("countBorrows requiert a ≥ b");
+  }
   let borrows = 0;
   let borrow = 0;
   let x = a;
@@ -100,10 +106,15 @@ export function countBorrows(a: number, b: number): number {
   return borrows;
 }
 
-function matchesQuota(
-  quota: "none" | "some" | "any" | undefined,
-  count: number,
-): boolean {
+/** Seed maximal (31 bits) — les seeds vivent dans [0, MAX_SEED]. */
+export const MAX_SEED = 2147483647;
+
+/** Seed de série fraîche, dérivée de l'horloge (seul point non déterministe). */
+export function newSerieSeed(): number {
+  return Date.now() % MAX_SEED;
+}
+
+export function matchesQuota(quota: Quota | undefined, count: number): boolean {
   if (quota === "none") {
     return count === 0;
   }

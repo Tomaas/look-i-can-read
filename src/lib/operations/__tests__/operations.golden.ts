@@ -26,6 +26,9 @@ import {
   generateSerie,
   layoutOperation,
   MAX_RESULT,
+  MAX_SERIE_SIZE,
+  MIN_SERIE_SIZE,
+  matchesQuota,
   PALIERS,
   palierById,
   RANK_COLORS,
@@ -78,18 +81,28 @@ check("countMultCarries(48, 7) = 2", countMultCarries(48, 7) === 2);
 
 /* ------------------------- Générateur : invariants ------------------------- */
 
-function quotaHolds(
-  quota: "none" | "some" | "any" | undefined,
-  count: number,
-): boolean {
-  if (quota === "none") {
-    return count === 0;
+// La sémantique des quotas vit dans matchesQuota (exportée) — pas de copie ici.
+const quotaHolds = matchesQuota;
+
+// Précondition exécutable : countBorrows(a &lt; b) lève au lieu de boucler.
+{
+  let threw = false;
+  try {
+    countBorrows(1, 2);
+  } catch (e) {
+    threw = e instanceof RangeError;
   }
-  if (quota === "some") {
-    return count > 0;
-  }
-  return true;
+  check("countBorrows(1, 2) → RangeError (précondition a ≥ b gardée)", threw);
 }
+
+// Bornes de série : source unique pour l'UI et la validation zod.
+check(
+  "bornes de série: MIN=1 ≤ DEFAULT=3 ≤ MAX=6",
+  MIN_SERIE_SIZE === 1 &&
+    MAX_SERIE_SIZE === 6 &&
+    DEFAULT_SERIE_SIZE >= MIN_SERIE_SIZE &&
+    DEFAULT_SERIE_SIZE <= MAX_SERIE_SIZE,
+);
 
 for (const palier of PALIERS) {
   let allValid = true;

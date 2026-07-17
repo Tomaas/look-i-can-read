@@ -16,6 +16,9 @@
 import type { Palier } from "~/lib/operations/types";
 
 export const DEFAULT_SERIE_SIZE = 3;
+/** Bornes de la taille de série — source unique pour l'UI ET la validation zod. */
+export const MIN_SERIE_SIZE = 1;
+export const MAX_SERIE_SIZE = 6;
 
 export const PALIERS: readonly Palier[] = [
   {

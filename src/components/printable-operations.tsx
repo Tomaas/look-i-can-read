@@ -118,7 +118,8 @@ function PrintedOperation({
           style={{
             borderTop: "1.2pt solid #444",
             margin: "1mm auto 1.5mm",
-            width: `${(layout.columnCount + 1) * (CELL_MM + 1.5)}mm`,
+            // n+1 cells have only n gaps — no 1.5mm overhang on the sheet.
+            width: `${(layout.columnCount + 1) * CELL_MM + layout.columnCount * 1.5}mm`,
           }}
         />
         <div style={rowStyle}>

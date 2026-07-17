@@ -8,11 +8,9 @@ import { Button } from "~/components/ui/button";
 export function SoftNumpad({
   onDigit,
   onErase,
-  disabled,
 }: {
   onDigit: (digit: string) => void;
   onErase: () => void;
-  disabled?: boolean;
 }) {
   const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
   return (
@@ -20,7 +18,6 @@ export function SoftNumpad({
       {digits.map((d) => (
         <Button
           className="size-14 rounded-2xl text-2xl sm:size-16"
-          disabled={disabled}
           key={d}
           onClick={() => onDigit(d)}
           variant="outline"
@@ -31,7 +28,6 @@ export function SoftNumpad({
       <Button
         aria-label="Effacer"
         className="col-span-2 h-14 rounded-2xl sm:h-16"
-        disabled={disabled}
         onClick={onErase}
         variant="ghost"
       >
