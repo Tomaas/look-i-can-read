@@ -29,7 +29,9 @@ const CONTENT_TYPES: Record<string, string> = {
   wav: "audio/wav",
 };
 
-function contentTypeFor(filename: string): string {
+// Exported for the /data/$ disk-serve route, which needs the same mapping to
+// set the response Content-Type it serves stored files with.
+export function contentTypeFor(filename: string): string {
   const ext = filename.split(".").pop()?.toLowerCase() ?? "";
   return CONTENT_TYPES[ext] ?? "application/octet-stream";
 }
