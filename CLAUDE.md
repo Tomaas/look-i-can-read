@@ -136,6 +136,24 @@ yes → don't.
 story screen. No url/header/technical noise; the discreet footer comes from
 `appConfig.storyLabel`.
 
+## Deploy Configuration (configured by /setup-deploy)
+- Platform: self-hosted Docker Compose (this machine)
+- Production URL: http://localhost:3009 (loopback; remote family access via a
+  private gitignored overlay — see compose.override.yml, never committed)
+- Deploy workflow: none (no CI) — deploy is manual via `bun run deploy`
+- Deploy status command: `docker compose ps --format '{{.Name}} {{.Status}}'`
+- Merge method: merge commit (matches PR #1-#6 history)
+- Project type: web app (SSR, TanStack Start)
+- Post-deploy health check: `curl -sf http://localhost:3009/` (expect 200 +
+  page content; run `bun run db:migrate` first if the release adds migrations)
+
+### Custom deploy hooks
+- Pre-merge: `bun run check-types && bun run lint && bun run test`
+- Deploy trigger: `bun run deploy` (docker compose up -d --build; brief
+  downtime while the app container restarts)
+- Deploy status: `docker compose ps` (app + sidecar "Up")
+- Health check: poll http://localhost:3009/ until 200 (build takes ~2-4 min)
+
 ## gstack (REQUIRED — global install)
 
 **Before doing ANY work, verify gstack is installed:**
