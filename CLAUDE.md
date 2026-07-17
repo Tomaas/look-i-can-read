@@ -1,7 +1,8 @@
 # CLAUDE.md — look-i-can-read
 
-Single-family web app that generates calm illustrated read-aloud stories in
-French where the configured child hero stars. TanStack Start + React 19.
+Single-family web app, a two-door shelf: calm illustrated read-aloud stories
+in French where the configured child hero stars, plus a "Poser des calculs"
+mini-app (posed column arithmetic, no LLM). TanStack Start + React 19.
 Deploys via Docker (Compose) and runs locally; either way REQUIRES network +
 a Turso cloud database (no offline mode). No authentication — the compose
 file binds to loopback only; exposing it further is the operator's problem.
@@ -25,17 +26,22 @@ yes → don't.
   `test:golden` pins prompt identity; `test:coherence` pins the safety/structure
   validators, the anti-"doux" repetition guard, the landing decrescendo and the
   prompt builders; `test:media` pins the media-store path rules;
-  `test:reading-aids` pins the silent-letter/liaison annotator.
+  `test:reading-aids` pins the silent-letter/liaison annotator;
+  `test:operations` pins the posed-operations module (seeded generator,
+  layout geometry, palier ladder, énoncé templates, calm-wording scan).
 - `bun run db:migrate` — apply migrations to the remote Turso db (run once on
   setup / after schema changes). `db:generate` creates a new migration from
   schema edits; `db:push` is also available for quick dev sync to remote.
 - `bun run deploy` — `docker compose up -d --build` (see Nitro bullet; needs
   `.env.production` + optionally `.env` for build-time `VITE_*` args).
+- Releases: 4-digit `VERSION` + `CHANGELOG.md` (French, Keep-a-Changelog
+  style); deferred work lives in `TODOS.md`.
 
 ## Architecture
 
-- **Framework**: TanStack Start (file routes in `src/app/`; index + aventure +
-  bibliotheque + parents section).
+- **Framework**: TanStack Start (file routes in `src/app/`; index (two-door
+  shelf) + aventure + calcul + bibliotheque + parents section, incl.
+  /parents/calcul).
 - **Nitro**: `node-server` preset → builds a standalone `.output/server/
   index.mjs` (traced deps included, native libsql binding too) that `bun run
   start` and the Docker image both run. Deploy = `Dockerfile` (multi-stage:
@@ -52,7 +58,9 @@ yes → don't.
   TURSO_AUTH_TOKEN })`. Schema is applied to the remote db via drizzle
   migrations — run `bun run db:migrate` on setup. Persisted tables
   (`src/server/db/schema.ts`): `stories`, `story_segments`, `places`,
-  `doudous`, `heroes`, `elements`. The `src/config/*.ts` files seed/back those
+  `doudous`, `heroes`, `elements`, plus `math_skills` (migration 0009,
+  additive — the parent-chosen palier + série size, one row per skill key).
+  The `src/config/*.ts` files seed/back those
   entity tables (editable via in-app CRUD at /parents). Coherence columns
   (nullable, older rows fall back to prior behavior): `stories.story_arc`
   (hidden "fil rouge" frozen at creation), `stories.visual_world` (story-level
@@ -129,12 +137,29 @@ yes → don't.
   (silent letters + mandatory liaisons, CP-book style), golden-tested;
   decorative CSS only (`.story-silent`, `.story-liaison-*`) — copied text stays
   byte-identical.
+- **Operations mini-app** (`src/lib/operations/`, pure module, golden-tested
+  via `test:operations`): seeded deterministic generator (mulberry32 — an
+  interrupted série regenerates IDENTICALLY from (palier, seed)), shared
+  screen/print layout geometry, template énoncés (hero/doudou word problems,
+  NO LLM call), and the palier ladder (`progression.ts`, 7 paliers) which is
+  purely DESCRIPTIVE: the parent picks the palier at /parents/calcul — NO
+  automatic progression, no comfort score, no evaluation of the child (the
+  calm constraint applies in full). `/calcul` runs the "série qui se range":
+  free writing on a soft numpad (everything inks like pencil, never red),
+  self-comparison with the solved operation, localStorage resume
+  (shape-guarded; storage failure degrades silently — the child never sees an
+  error). Server functions in `src/server/math-functions.ts` read/write
+  `math_skills`; unknown/stale palier ids resolve to the first palier
+  (`resolvePalier`) and série size is always clamped (`clampSerieSize`) — a
+  hand-edited row or cache never errors. A5 sheets via
+  `PrintableOperationsSheet` (`src/components/printable-operations.tsx`).
 
 ## Print
 
 `PrintableStory` + `@media print` A5 in `globals.css`. `window.print()` from the
 story screen. No url/header/technical noise; the discreet footer comes from
-`appConfig.storyLabel`.
+`appConfig.storyLabel`. `PrintableOperationsSheet` reuses the same A5 print
+setup for the posed-operation sheets (triggered from /parents/calcul).
 
 ## gstack (REQUIRED — global install)
 
