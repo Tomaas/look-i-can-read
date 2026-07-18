@@ -36,7 +36,8 @@ moment.
 - **Library**: every kept story is saved and re-readable.
 - **"Poser des calculs" workshop** (`/calcul`): a short series of column
   operations (additions, subtractions, multiplications) the child writes
-  freely on a soft numpad, then compares with the solved version — nothing is
+  freely on a soft numpad (tap a key, or drag the digit straight onto a
+  cell), then compares with the solved version — nothing is
   marked, nothing is scored. Word problems can feature the family's hero and
   doudou ("Arsène range 24 marrons…") — template-based, no AI call, works
   even offline once the page is open.
