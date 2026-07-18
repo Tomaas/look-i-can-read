@@ -4,6 +4,24 @@ Toutes les évolutions notables de l'app, une version par livraison.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/) adapté, versions
 4 chiffres `MAJOR.MINOR.PATCH.MICRO` (fichier `VERSION`).
 
+## [0.2.1.0] - 2026-07-18
+
+### Added
+
+- Atelier calcul : les chiffres du pavé doux se glissent maintenant du bout du
+  doigt directement dans les cases de l'opération — la tuile suit le doigt et
+  s'encre à l'endroit posé, comme un crayon qui se pose. Le tap d'avant marche
+  toujours exactement pareil ; les deux gestes se mélangent librement.
+
+### Changed
+
+- Pendant un glissement, une seule case s'illumine à la fois (celle sous le
+  doigt) — l'ancienne sélection s'éteint le temps du geste.
+- Le dépôt est indulgent pour les petits doigts : si le doigt est juste à côté
+  d'une case mais que la tuile la chevauche, le chiffre s'y pose quand même.
+- La petite case de retenue est un peu plus facile à toucher (cible tactile
+  élargie à 44 px de haut).
+
 ## [0.2.0.0] - 2026-07-17
 
 ### Added
