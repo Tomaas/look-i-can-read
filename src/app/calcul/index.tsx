@@ -1,14 +1,30 @@
+import {
+  type CollisionDetection,
+  DndContext,
+  type DragEndEvent,
+  DragOverlay,
+  type DragStartEvent,
+  PointerSensor,
+  pointerWithin,
+  rectIntersection,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   type CellRef,
   ColumnGrid,
   emptyEntries,
   type GridEntries,
 } from "~/components/calcul/column-grid";
-import { SoftNumpad } from "~/components/calcul/soft-numpad";
+import {
+  DIGIT_TILE_CLASSES,
+  SoftNumpad,
+} from "~/components/calcul/soft-numpad";
 import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/cn";
 import {
   clampSerieSize,
   enonceFor,
@@ -57,6 +73,41 @@ export const Route = createFileRoute("/calcul/")({
 
 const SETTINGS_CACHE_KEY = "calcul:settings";
 const SERIE_STATE_KEY = "calcul:serie";
+
+// 8px of travel before a drag starts: a plain tap stays a click. Hoisted so
+// dnd-kit's useSensor memo keeps a stable options identity across renders.
+const POINTER_ACTIVATION = { activationConstraint: { distance: 8 } };
+
+/**
+ * Forgiving drop detection for small fingers: precise when the fingertip is
+ * inside a cell (pointerWithin), else the cell the tile overlaps most counts
+ * (rectIntersection) — a near-miss inks the obvious cell instead of nothing.
+ */
+const forgivingCollision: CollisionDetection = (args) => {
+  const within = pointerWithin(args);
+  return within.length > 0 ? within : rectIntersection(args);
+};
+
+/** The droppable payload crosses dnd-kit untyped — validate, never cast. */
+function isCellRef(value: unknown): value is CellRef {
+  const cell = value as CellRef | null;
+  return (
+    typeof cell === "object" &&
+    cell !== null &&
+    (cell.row === "result" || cell.row === "carry") &&
+    typeof cell.col === "number"
+  );
+}
+
+/**
+ * Pencil flow, shared by tap and drag: after a result digit, the pencil steps
+ * to the next column leftwards; col 0 and carry cells keep the pencil put.
+ */
+function pencilAdvance(cell: CellRef): CellRef {
+  return cell.row === "result" && cell.col > 0
+    ? { row: "result", col: cell.col - 1 }
+    : cell;
+}
 
 interface SerieState {
   palierId: string;
@@ -173,6 +224,18 @@ function CalculWorkshopPage() {
   const [settings, setSettings] = useState<MathSettings | null>(null);
   const [serie, setSerie] = useState<SerieState | null>(null);
   const [selected, setSelected] = useState<CellRef | null>(null);
+  // Digit currently being dragged from the numpad (drives the DragOverlay).
+  const [dragDigit, setDragDigit] = useState<string | null>(null);
+  // On touch, implicit pointer capture retargets the post-drag click onto the
+  // numpad key — this one-shot flag swallows that ghost click so a drag never
+  // ALSO writes into the selected cell. Consumed by the first suppressed
+  // click; the fallback timer covers pointers that never emit one (a mouse
+  // released away from the key).
+  const dragJustEndedRef = useRef(false);
+  // The operation index a drag started on: a drop landing after the tray
+  // advanced (multi-touch) must never ink the NEXT operation's grid.
+  const dragOpIndexRef = useRef<number | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, POINTER_ACTIVATION));
 
   // Settings: DB when reachable (and cache it), else device cache, else
   // defaults. NORMALIZED whatever the source — a hand-edited cache or DB row
@@ -246,26 +309,87 @@ function CalculWorkshopPage() {
   }
 
   function setCell(cell: CellRef, value: string | null) {
-    if (!current) {
-      return;
-    }
-    const entries: GridEntries = {
-      result: [...current.entries.result],
-      carries: [...current.entries.carries],
-    };
-    entries[cell.row === "result" ? "result" : "carries"][cell.col] = value;
-    updateCurrent({ entries });
+    // Everything derives from prev INSIDE the updater (never the render-time
+    // closure) and is bounds/done-guarded: a late drop or a second write in
+    // the same event can never clobber state or ink a frozen answer.
+    setSerie((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const op = prev.perOp[prev.index];
+      if (!op || op.done) {
+        return prev;
+      }
+      const rowKey = cell.row === "result" ? "result" : "carries";
+      if (cell.col < 0 || cell.col >= op.entries[rowKey].length) {
+        return prev;
+      }
+      const entries: GridEntries = {
+        result: [...op.entries.result],
+        carries: [...op.entries.carries],
+      };
+      entries[rowKey][cell.col] = value;
+      const perOp = prev.perOp.map((o, i) =>
+        i === prev.index ? { ...o, entries } : o,
+      );
+      return { ...prev, perOp };
+    });
   }
 
   function writeDigit(digit: string) {
+    if (dragJustEndedRef.current) {
+      // The ghost click after a drag — swallow it and re-arm for real taps.
+      dragJustEndedRef.current = false;
+      return;
+    }
     if (!selected) {
       return;
     }
     setCell(selected, digit);
-    // Pencil flow: after a result digit, step to the next column leftwards.
-    if (selected.row === "result" && selected.col > 0) {
-      setSelected({ row: "result", col: selected.col - 1 });
+    setSelected(pencilAdvance(selected));
+  }
+
+  function endDrag() {
+    setDragDigit(null);
+    dragOpIndexRef.current = null;
+    dragJustEndedRef.current = true;
+    // Browsers don't guarantee the ghost click lands before a 0ms timer, so
+    // the flag is one-shot (see writeDigit) with a generous fallback window.
+    setTimeout(() => {
+      dragJustEndedRef.current = false;
+    }, 300);
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    const digit = event.active.data.current?.digit;
+    setDragDigit(typeof digit === "string" ? digit : null);
+    dragOpIndexRef.current = serie?.index ?? null;
+    // Single-pencil metaphor: the lifted tile IS the pencil now — the old
+    // selection halo goes out so only the hovered cell glows during the drag.
+    setSelected(null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const dragOpIndex = dragOpIndexRef.current;
+    endDrag();
+    const digit = event.active.data.current?.digit;
+    const cell = event.over?.data.current?.cell;
+    if (typeof digit !== "string" || !isCellRef(cell)) {
+      return;
     }
+    // A drop only counts on the operation it started on, and only while that
+    // operation is still being written — a drag surviving a "J'ai fini" or a
+    // tray change (second finger) lands as a calm no-op.
+    if (dragOpIndex === null || dragOpIndex !== serie?.index) {
+      return;
+    }
+    if (!current || current.done) {
+      return;
+    }
+    setCell(cell, digit);
+    // Same pencil flow as a tap: the dropped cell becomes "where the pencil
+    // is", stepping leftwards on the result line.
+    setSelected(pencilAdvance(cell));
   }
 
   function erase() {
@@ -301,54 +425,77 @@ function CalculWorkshopPage() {
       {/* No tray/progress row (review decision 3B): the series is bounded but
           never counted in front of the child — the end simply arrives, like
           the end of a story. */}
-      {heroName ? (
-        <p className="max-w-md text-center text-muted-foreground text-xl leading-relaxed">
-          {enonceFor(operation, {
-            hero: heroName,
-            doudou: doudouName ?? undefined,
-          })}
-        </p>
-      ) : null}
-
-      <div className="flex flex-wrap items-start justify-center gap-6">
-        <ColumnGrid
-          entries={current.entries}
-          layout={layout}
-          onSelect={setSelected}
-          selected={selected}
-          variant="libre"
-        />
-        {current.done ? (
-          <ColumnGrid layout={layout} variant="solution" />
+      <DndContext
+        collisionDetection={forgivingCollision}
+        onDragCancel={endDrag}
+        onDragEnd={handleDragEnd}
+        onDragStart={handleDragStart}
+        sensors={sensors}
+      >
+        {heroName ? (
+          <p className="max-w-md text-center text-muted-foreground text-xl leading-relaxed">
+            {enonceFor(operation, {
+              hero: heroName,
+              doudou: doudouName ?? undefined,
+            })}
+          </p>
         ) : null}
-      </div>
 
-      {current.done ? (
-        <Button
-          className="gap-2 text-muted-foreground text-xl"
-          onClick={nextTray}
-          variant="ghost"
-        >
-          {serie.index + 1 < serie.serieSize
-            ? "Plateau suivant"
-            : "Ranger l'atelier"}
-        </Button>
-      ) : (
-        <>
-          <SoftNumpad onDigit={writeDigit} onErase={erase} />
+        <div className="flex flex-wrap items-start justify-center gap-6">
+          <ColumnGrid
+            entries={current.entries}
+            layout={layout}
+            onSelect={setSelected}
+            selected={selected}
+            variant="libre"
+          />
+          {current.done ? (
+            <ColumnGrid layout={layout} variant="solution" />
+          ) : null}
+        </div>
+
+        {current.done ? (
           <Button
             className="gap-2 text-muted-foreground text-xl"
-            disabled={current.entries.result.every((d) => d === null)}
-            onClick={() => {
-              updateCurrent({ done: true });
-              setSelected(null);
-            }}
+            onClick={nextTray}
             variant="ghost"
           >
-            J'ai fini, je compare
+            {serie.index + 1 < serie.serieSize
+              ? "Plateau suivant"
+              : "Ranger l'atelier"}
           </Button>
-        </>
-      )}
+        ) : (
+          <>
+            <SoftNumpad onDigit={writeDigit} onErase={erase} />
+            <Button
+              className="gap-2 text-muted-foreground text-xl"
+              disabled={current.entries.result.every((d) => d === null)}
+              onClick={() => {
+                updateCurrent({ done: true });
+                setSelected(null);
+              }}
+              variant="ghost"
+            >
+              J'ai fini, je compare
+            </Button>
+          </>
+        )}
+        {/* The dragged digit follows the finger as a tile — same ink as a key,
+          a soft shadow, nothing else. No drop animation: the digit is simply
+          inked in the cell, like a pencil lifting. */}
+        <DragOverlay dropAnimation={null}>
+          {dragDigit ? (
+            <span
+              className={cn(
+                DIGIT_TILE_CLASSES,
+                "flex items-center justify-center border bg-background shadow-md",
+              )}
+            >
+              {dragDigit}
+            </span>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
     </WorkshopShell>
   );
 }
