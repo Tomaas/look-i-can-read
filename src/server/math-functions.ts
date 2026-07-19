@@ -70,7 +70,7 @@ export type MathSettingsMutationResult =
   | { success: false; error: string };
 
 export const saveMathSettingsFn = createServerFn({ method: "POST" })
-  .inputValidator(saveSchema)
+  .validator(saveSchema)
   .handler(async ({ data }): Promise<MathSettingsMutationResult> => {
     try {
       // Single-statement upsert on the unique skill key: atomic (no

@@ -38,7 +38,7 @@ export interface TestImageResult {
  * Calm-tool note: this is a PARENT control — the child flow is untouched.
  */
 export const generateTestImageFn = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       prompt: z.string().min(1).max(2000),
       imageModel: z.string().optional(),
@@ -89,7 +89,7 @@ export const generateTestImageFn = createServerFn({ method: "POST" })
  * re-listen doesn't regenerate.
  */
 export const synthesizeFn = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.string() }))
+  .validator(z.object({ id: z.string() }))
   .handler(async ({ data }): Promise<{ audioPath: string | null }> => {
     if (!serverEnv.ttsEnabled) {
       return { audioPath: null };

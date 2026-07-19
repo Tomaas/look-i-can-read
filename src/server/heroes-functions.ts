@@ -39,7 +39,7 @@ export type HeroMutationResult =
   | { success: false; error: string };
 
 export const createHeroFn = createServerFn({ method: "POST" })
-  .inputValidator(upsertSchema)
+  .validator(upsertSchema)
   .handler(async ({ data }): Promise<HeroMutationResult> => {
     const [hero] = await db
       .insert(heroes)
@@ -56,7 +56,7 @@ export const createHeroFn = createServerFn({ method: "POST" })
   });
 
 export const updateHeroFn = createServerFn({ method: "POST" })
-  .inputValidator(upsertSchema.extend({ id: z.string() }))
+  .validator(upsertSchema.extend({ id: z.string() }))
   .handler(async ({ data }): Promise<HeroMutationResult> => {
     const [hero] = await db
       .update(heroes)
@@ -82,7 +82,7 @@ export const updateHeroFn = createServerFn({ method: "POST" })
  * anyway). No hard delete exists in the parent UI.
  */
 export const deleteHeroFn = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.string() }))
+  .validator(z.object({ id: z.string() }))
   .handler(async ({ data }): Promise<{ success: boolean }> => {
     await db
       .update(heroes)

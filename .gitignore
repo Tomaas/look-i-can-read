@@ -17,6 +17,8 @@
 # machine-specific deploy overrides
 /compose.override.yml
 /local/
+.claude/settings.local.json
+.claude/worktrees/
 
 # env
 .env*

@@ -4,6 +4,21 @@ Toutes les évolutions notables de l'app, une version par livraison.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/) adapté, versions
 4 chiffres `MAJOR.MINOR.PATCH.MICRO` (fichier `VERSION`).
 
+## [0.2.2.0] - 2026-07-19
+
+### Changed
+
+- Les fonctions serveur utilisent l'API de validation actuelle de TanStack
+  Start (`validator` remplace l'alias déprécié `inputValidator`, strictement
+  équivalent) — le serveur de dev démarre désormais sans le mur
+  d'avertissements de dépréciation. Aucun changement de comportement.
+
+### Fixed
+
+- `bun run lint` ne casse plus quand un espace de travail d'agent existe sous
+  `.claude/worktrees/` (exclusion Biome + entrée `.gitignore`) ; les réglages
+  locaux `.claude/settings.local.json` restent aussi hors du dépôt.
+
 ## [0.2.1.0] - 2026-07-18
 
 ### Added
