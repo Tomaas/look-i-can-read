@@ -1,6 +1,7 @@
 {
   "permissions": {
     "allow": [
+      "Bash(gh pr merge*)",
       "Bash(bun run test*)",
       "Bash(bun run lint)",
       "Bash(bun run check-types)",
