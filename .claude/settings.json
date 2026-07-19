@@ -1,4 +1,18 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(bun run test*)",
+      "Bash(bun run lint)",
+      "Bash(bun run check-types)",
+      "Bash(docker compose ps*)",
+      "Bash(docker compose config*)",
+      "Bash(curl -s http://localhost:*)",
+      "Bash(curl -s http://127.0.0.1:*)",
+      "Bash(curl -s -o /dev/null http://localhost:*)",
+      "Bash(curl -s -o /dev/null http://127.0.0.1:*)",
+      "Bash(curl -sf http://localhost:*)"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {
