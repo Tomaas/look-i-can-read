@@ -58,8 +58,11 @@ yes → don't.
   TURSO_AUTH_TOKEN })`. Schema is applied to the remote db via drizzle
   migrations — run `bun run db:migrate` on setup. Persisted tables
   (`src/server/db/schema.ts`): `stories`, `story_segments`, `places`,
-  `doudous`, `heroes`, `elements`, plus `math_skills` (migration 0009,
-  additive — the parent-chosen palier + série size, one row per skill key).
+  `doudous`, `heroes`, `elements`, plus `math_skills` (migration 0009 ; the
+  DATA migration 0010, guarded/idempotent, rekeyed it) — one row per
+  ACTIVATED operation family (`calcul-pose:<famille>`, presence = activated),
+  each carrying that family's parent-chosen palier + the global série size
+  (copied on every row, read in canonical family order — settingsFromRows).
   The `src/config/*.ts` files seed/back those
   entity tables (editable via in-app CRUD at /parents). Coherence columns
   (nullable, older rows fall back to prior behavior): `stories.story_arc`
@@ -141,21 +144,33 @@ yes → don't.
   via `test:operations`): seeded deterministic generator (mulberry32 — an
   interrupted série regenerates IDENTICALLY from (palier, seed)), shared
   screen/print layout geometry, template énoncés (hero/doudou word problems,
-  NO LLM call), and the palier ladder (`progression.ts`, 7 paliers) which is
-  purely DESCRIPTIVE: the parent picks the palier at /parents/calcul — NO
-  automatic progression, no comfort score, no evaluation of the child (the
-  calm constraint applies in full). `/calcul` runs the "série qui se range":
-  free writing on a soft numpad — tap into the selected cell or drag the
-  digit tile straight onto a grid cell (`@dnd-kit/core`: draggable keys,
-  droppable cells, DragOverlay ghost, forgiving drop for small fingers;
-  everything inks like pencil, never red),
-  self-comparison with the solved operation, localStorage resume
-  (shape-guarded; storage failure degrades silently — the child never sees an
-  error). Server functions in `src/server/math-functions.ts` read/write
-  `math_skills`; unknown/stale palier ids resolve to the first palier
-  (`resolvePalier`) and série size is always clamped (`clampSerieSize`) — a
-  hand-edited row or cache never errors. A5 sheets via
-  `PrintableOperationsSheet` (`src/components/printable-operations.tsx`).
+  NO LLM call), and the palier ladder (`progression.ts`, 7 paliers grouped in
+  3 canonical families — addition/soustraction/multiplication) which is
+  purely DESCRIPTIVE: the parent prepares the SHELF at /parents/calcul (one
+  card per family: activated + that family's palier; the last active family
+  cannot be deactivated) — NO automatic progression, no comfort score, no
+  evaluation of the child (the calm constraint applies in full). `/calcul`
+  opens on the TRAY SHELF (`src/components/calcul/tray-shelf.tsx`): one tray
+  per activated family — fixed scene (frozen object counts, no numbers,
+  in-palette SVGs), sign medallion, phrase — the child picks a tray, never
+  sees a level; a non-activated family does NOT exist on screen (no greyed
+  tray). Then the "série qui se range" runs unchanged: free writing on a soft
+  numpad — tap into the selected cell or drag the digit tile straight onto a
+  grid cell (`@dnd-kit/core`: draggable keys, droppable cells, DragOverlay
+  ghost, forgiving drop for small fingers; everything inks like pencil, never
+  red), self-comparison with the solved operation. The série resumes PER
+  FAMILY (localStorage key per family, shape-guarded; the "sorti" tray state
+  uses the full resumable predicate, never key-existence; a one-time bridge
+  migrates the pre-shelf `calcul:serie` key; storage failure degrades
+  silently — the child never sees an error). Back arrow is two-level:
+  série → "Reposer le plateau" (shelf) → "Retour à l'accueil"; the end of a
+  série is a 🌿 transition back to the shelf, never a destination. Server
+  functions in `src/server/math-functions.ts` read/write `math_skills` (one
+  atomic `db.batch` save; zod cross-checks palier↔family); dirty ids are
+  repaired (`resolvePalierForFamille`, `settingsFromRows`) and série size
+  always clamped — a hand-edited row or cache never errors. A5 sheets per
+  family via `PrintableOperationsSheet`
+  (`src/components/printable-operations.tsx`).
 
 ## Print
 
