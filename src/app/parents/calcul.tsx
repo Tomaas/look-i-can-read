@@ -5,13 +5,16 @@ import { PrintableOperationsSheet } from "~/components/printable-operations";
 import { Button } from "~/components/ui/button";
 import {
   clampSerieSize,
+  FAMILLES,
+  type FamilleSetting,
   type GeneratedOperation,
   generateSerie,
   MAX_SERIE_SIZE,
   MIN_SERIE_SIZE,
   newSerieSeed,
-  PALIERS,
-  resolvePalier,
+  type Operation,
+  paliersByFamille,
+  resolvePalierForFamille,
 } from "~/lib/operations";
 import { listDoudousFn } from "~/server/doudous-functions";
 import { listHeroesFn } from "~/server/heroes-functions";
@@ -37,17 +40,41 @@ export const Route = createFileRoute("/parents/calcul")({
 
 const FICHE_SIZE = 6;
 
+const FAMILLE_LABELS: Record<Operation, string> = {
+  addition: "Additions",
+  soustraction: "Soustractions",
+  multiplication: "Multiplications",
+};
+
+/** Réglage local d'une carte : activée + palier (toujours de la famille). */
+type CardState = Record<Operation, { active: boolean; palier: string }>;
+
+function cardStateFrom(familles: FamilleSetting[] | undefined): CardState {
+  const state = {} as CardState;
+  for (const op of FAMILLES) {
+    const saved = familles?.find((f) => f.op === op);
+    state[op] = {
+      active: Boolean(saved),
+      palier: resolvePalierForFamille(op, saved?.palier).id,
+    };
+  }
+  return state;
+}
+
 /**
- * Parent-only page for the "poser des calculs" mini-app: pick the palier
- * (the ONLY progression mechanism — eng-review T2-A: the adult decides, like
- * the educator in a Montessori class; the app never evaluates the child),
- * set the series size, and print an A5 sheet of operations to complete in
- * pencil at the kitchen table.
+ * Parent-only page for the "poser des calculs" mini-app: prepare the child's
+ * SHELF — one card per operation family (activated + palier), like the
+ * educator prepares the classroom shelf (eng-review T2-A + premise 2: the
+ * adult decides what is AVAILABLE, the child chooses their tray; the app
+ * never evaluates the child). Series size stays global. Each active family
+ * can print its own A5 sheet of operations to complete in pencil.
  */
 function ParentsCalculPage() {
   const router = useRouter();
   const { settings, heroName, doudouName } = Route.useLoaderData();
-  const [palierId, setPalierId] = useState(resolvePalier(settings?.palier).id);
+  const [cards, setCards] = useState<CardState>(() =>
+    cardStateFrom(settings?.familles),
+  );
   const [serieSize, setSerieSize] = useState(
     clampSerieSize(settings?.serieSize),
   );
@@ -57,9 +84,16 @@ function ParentsCalculPage() {
     GeneratedOperation[] | null
   >(null);
 
+  const savedCards = cardStateFrom(settings?.familles);
   const dirty =
-    palierId !== resolvePalier(settings?.palier).id ||
-    serieSize !== clampSerieSize(settings?.serieSize);
+    serieSize !== clampSerieSize(settings?.serieSize) ||
+    FAMILLES.some(
+      (op) =>
+        cards[op].active !== savedCards[op].active ||
+        cards[op].palier !== savedCards[op].palier,
+    );
+
+  const activeCount = FAMILLES.filter((op) => cards[op].active).length;
 
   // Print AFTER the sheet is committed and painted (double rAF) — a bare
   // setTimeout can race the paint on slow devices and snapshot a blank fiche.
@@ -77,12 +111,22 @@ function ParentsCalculPage() {
     };
   }, [ficheOperations]);
 
+  function setCard(op: Operation, update: Partial<CardState[Operation]>) {
+    setCards((prev) => ({ ...prev, [op]: { ...prev[op], ...update } }));
+  }
+
   async function save() {
     setSaving(true);
     setSaveError(null);
     try {
       const result = await saveMathSettingsFn({
-        data: { palier: palierId, serieSize },
+        data: {
+          serieSize,
+          familles: FAMILLES.filter((op) => cards[op].active).map((op) => ({
+            op,
+            palier: cards[op].palier,
+          })),
+        },
       });
       if (!result.success) {
         setSaveError(result.error);
@@ -97,8 +141,8 @@ function ParentsCalculPage() {
     }
   }
 
-  function printFiche() {
-    const palier = resolvePalier(palierId);
+  function printFiche(op: Operation) {
+    const palier = resolvePalierForFamille(op, cards[op].palier);
     const operations = generateSerie(
       palier.constraints,
       newSerieSeed(),
@@ -125,27 +169,83 @@ function ParentsCalculPage() {
       <div className="no-print space-y-2">
         <h1 className="font-bold text-3xl">Les calculs</h1>
         <p className="text-muted-foreground">
-          Choisis le palier des opérations posées — comme l'éducatrice décide
-          des présentations, c'est toi qui décides quand avancer. Rien de tout
-          cela n'est montré à l'enfant.
+          Prépare l'étagère — comme l'éducatrice décide des présentations,
+          c'est toi qui choisis les familles d'opérations disponibles et leur
+          palier. L'enfant choisit son plateau ; rien de tout cela ne lui est
+          montré.
         </p>
       </div>
 
-      <ul className="no-print space-y-2">
-        {PALIERS.map((palier) => (
-          <li key={palier.id}>
-            <label className="flex cursor-pointer items-center gap-4 rounded-2xl border bg-card p-4 transition-colors has-checked:border-primary">
-              <input
-                checked={palierId === palier.id}
-                className="size-4 accent-primary"
-                name="palier"
-                onChange={() => setPalierId(palier.id)}
-                type="radio"
-              />
-              <span className="text-lg">{palier.label}</span>
-            </label>
-          </li>
-        ))}
+      <ul className="no-print space-y-4">
+        {FAMILLES.map((op) => {
+          const card = cards[op];
+          const lastActive = card.active && activeCount === 1;
+          return (
+            <li
+              className="space-y-3 rounded-2xl border bg-card p-4"
+              key={op}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <label className="flex cursor-pointer items-center gap-3">
+                  <input
+                    checked={card.active}
+                    className="size-4 accent-primary"
+                    disabled={lastActive}
+                    onChange={(e) => setCard(op, { active: e.target.checked })}
+                    type="checkbox"
+                  />
+                  <span className="font-semibold text-lg">
+                    {FAMILLE_LABELS[op]}
+                  </span>
+                </label>
+                {card.active ? (
+                  <Button
+                    className="gap-2"
+                    onClick={() => printFiche(op)}
+                    size="sm"
+                    variant="outline"
+                  >
+                    <Printer className="size-4" />
+                    Imprimer une fiche
+                  </Button>
+                ) : null}
+              </div>
+              {lastActive ? (
+                <p className="text-muted-foreground text-sm">
+                  Au moins une famille reste sur l'étagère.
+                </p>
+              ) : null}
+              {card.active ? (
+                <div className="space-y-2">
+                  <ul className="space-y-2">
+                    {paliersByFamille(op).map((palier) => (
+                      <li key={palier.id}>
+                        <label className="flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors has-checked:border-primary">
+                          <input
+                            checked={card.palier === palier.id}
+                            className="size-4 accent-primary"
+                            name={`palier-${op}`}
+                            onChange={() => setCard(op, { palier: palier.id })}
+                            type="radio"
+                          />
+                          <span>{palier.label}</span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-muted-foreground text-sm">
+                    Changer le palier range la série en cours.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm">
+                  N'apparaît pas sur l'étagère. Désactiver oublie le palier
+                  choisi.
+                </p>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       <div className="no-print flex items-center gap-4">
@@ -172,10 +272,6 @@ function ParentsCalculPage() {
       <div className="no-print flex flex-wrap items-center gap-4">
         <Button disabled={!dirty || saving} onClick={save}>
           {saving ? "Enregistrement…" : "Enregistrer"}
-        </Button>
-        <Button className="gap-2" onClick={printFiche} variant="outline">
-          <Printer className="size-5" />
-          Imprimer une fiche
         </Button>
         {saveError ? (
           <p className="text-muted-foreground text-sm">{saveError}</p>
