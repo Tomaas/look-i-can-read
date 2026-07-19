@@ -88,7 +88,7 @@ export type MathSettingsMutationResult =
   | { success: false; error: string };
 
 export const saveMathSettingsFn = createServerFn({ method: "POST" })
-  .inputValidator(saveSchema)
+  .validator(saveSchema)
   .handler(async ({ data }): Promise<MathSettingsMutationResult> => {
     const keptKeys = data.familles.map((f) => skillKeyOf(f.op));
     try {

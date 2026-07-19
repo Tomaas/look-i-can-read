@@ -114,7 +114,7 @@ function beatToSegmentValues(beat: DynamicBeat) {
  * (mode="dynamic") + segment 0, return both. Soft-fails to "On réessaie ?".
  */
 export const startDynamicStoryFn = createServerFn({ method: "POST" })
-  .inputValidator(startSchema)
+  .validator(startSchema)
   .handler(async ({ data }): Promise<DynamicStartResult> => {
     const lang = data.lang ?? serverEnv.defaultLang;
     // Heroes + elements DB-backed + editable + multi-select: resolve all chosen.
@@ -268,7 +268,7 @@ export const startDynamicStoryFn = createServerFn({ method: "POST" })
  *    the 5th choice has been made.
  */
 export const continueDynamicStoryFn = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ storyId: z.string(), choiceId: z.string() }))
+  .validator(z.object({ storyId: z.string(), choiceId: z.string() }))
   .handler(async ({ data }): Promise<DynamicContinueResult> => {
     const segments = await db
       .select()
@@ -467,7 +467,7 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
 
 /** A dynamic story plus its ordered segments (library replay, read-only). */
 export const getDynamicStoryFn = createServerFn({ method: "GET" })
-  .inputValidator(z.string())
+  .validator(z.string())
   .handler(
     async ({
       data: storyId,
@@ -504,7 +504,7 @@ const inFlightSegmentImages = new Map<string, Promise<ImageResult>>();
  * Gemini spend on route remounts). Fails soft — image is always optional.
  */
 export const generateSegmentImageFn = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       storyId: z.string(),
       idx: z.number(),
@@ -556,7 +556,7 @@ export const generateSegmentImageFn = createServerFn({ method: "POST" })
  * fetch, so a double-tap (or a racing background fetch) shares one billed call.
  */
 export const retrySegmentImageFn = createServerFn({ method: "POST" })
-  .inputValidator(
+  .validator(
     z.object({
       storyId: z.string(),
       idx: z.number(),

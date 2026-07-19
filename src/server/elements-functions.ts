@@ -35,7 +35,7 @@ export type ElementMutationResult =
   | { success: false; error: string };
 
 export const createElementFn = createServerFn({ method: "POST" })
-  .inputValidator(upsertSchema)
+  .validator(upsertSchema)
   .handler(async ({ data }): Promise<ElementMutationResult> => {
     const [element] = await db
       .insert(dbElements)
@@ -51,7 +51,7 @@ export const createElementFn = createServerFn({ method: "POST" })
   });
 
 export const updateElementFn = createServerFn({ method: "POST" })
-  .inputValidator(upsertSchema.extend({ id: z.string() }))
+  .validator(upsertSchema.extend({ id: z.string() }))
   .handler(async ({ data }): Promise<ElementMutationResult> => {
     const [element] = await db
       .update(dbElements)
@@ -76,7 +76,7 @@ export const updateElementFn = createServerFn({ method: "POST" })
  * anyway). No hard delete exists in the parent UI.
  */
 export const deleteElementFn = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.string() }))
+  .validator(z.object({ id: z.string() }))
   .handler(async ({ data }): Promise<{ success: boolean }> => {
     await db
       .update(dbElements)

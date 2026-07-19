@@ -38,7 +38,7 @@ export type DoudouMutationResult =
   | { success: false; error: string };
 
 export const createDoudouFn = createServerFn({ method: "POST" })
-  .inputValidator(upsertSchema)
+  .validator(upsertSchema)
   .handler(async ({ data }): Promise<DoudouMutationResult> => {
     const [doudou] = await db
       .insert(doudous)
@@ -55,7 +55,7 @@ export const createDoudouFn = createServerFn({ method: "POST" })
   });
 
 export const updateDoudouFn = createServerFn({ method: "POST" })
-  .inputValidator(upsertSchema.extend({ id: z.string() }))
+  .validator(upsertSchema.extend({ id: z.string() }))
   .handler(async ({ data }): Promise<DoudouMutationResult> => {
     const [doudou] = await db
       .update(doudous)
@@ -81,7 +81,7 @@ export const updateDoudouFn = createServerFn({ method: "POST" })
  * anyway). No hard delete exists in the parent UI.
  */
 export const deleteDoudouFn = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.string() }))
+  .validator(z.object({ id: z.string() }))
   .handler(async ({ data }): Promise<{ success: boolean }> => {
     await db
       .update(doudous)
