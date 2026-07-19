@@ -34,7 +34,7 @@ export type PlaceMutationResult =
   | { success: false; error: string };
 
 export const createPlaceFn = createServerFn({ method: "POST" })
-  .inputValidator(upsertSchema)
+  .validator(upsertSchema)
   .handler(async ({ data }): Promise<PlaceMutationResult> => {
     const [place] = await db
       .insert(places)
@@ -50,7 +50,7 @@ export const createPlaceFn = createServerFn({ method: "POST" })
   });
 
 export const updatePlaceFn = createServerFn({ method: "POST" })
-  .inputValidator(upsertSchema.extend({ id: z.string() }))
+  .validator(upsertSchema.extend({ id: z.string() }))
   .handler(async ({ data }): Promise<PlaceMutationResult> => {
     const [place] = await db
       .update(places)
@@ -75,7 +75,7 @@ export const updatePlaceFn = createServerFn({ method: "POST" })
  * anyway). No hard delete exists in the parent UI (codex #5).
  */
 export const deletePlaceFn = createServerFn({ method: "POST" })
-  .inputValidator(z.object({ id: z.string() }))
+  .validator(z.object({ id: z.string() }))
   .handler(async ({ data }): Promise<{ success: boolean }> => {
     await db
       .update(places)
