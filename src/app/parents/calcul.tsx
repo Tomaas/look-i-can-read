@@ -107,7 +107,7 @@ function SettingsUnavailable() {
       <h1 className="font-bold text-3xl">Les calculs</h1>
       <p className="text-muted-foreground">
         Réglages indisponibles pour le moment — recharge la page dans un
-        instant. Rien n'a été modifié.
+        instant.
       </p>
     </div>
   );
@@ -137,12 +137,14 @@ function ParentsCalculForm({
   >(null);
 
   const savedCards = cardStateFrom(settings.familles);
+  // Le palier d'une famille DÉSACTIVÉE ne compte pas (adversarial #5) : il
+  // ne part pas dans la sauvegarde, il ne peut pas rendre le formulaire sale.
   const dirty =
     serieSize !== clampSerieSize(settings.serieSize) ||
     FAMILLES.some(
       (op) =>
         cards[op].active !== savedCards[op].active ||
-        cards[op].palier !== savedCards[op].palier,
+        (cards[op].active && cards[op].palier !== savedCards[op].palier),
     );
 
   const activeCount = FAMILLES.filter((op) => cards[op].active).length;
@@ -170,6 +172,7 @@ function ParentsCalculForm({
   async function save() {
     setSaving(true);
     setSaveError(null);
+    let saved = false;
     try {
       const result = await saveMathSettingsFn({
         data: {
@@ -184,10 +187,17 @@ function ParentsCalculForm({
         setSaveError(result.error);
         return;
       }
+      saved = true;
+      // Hors du try/catch d'enregistrement (adversarial #4) : un re-load qui
+      // échoue APRÈS un save réussi ne doit pas prétendre que rien n'a été
+      // enregistré.
       await onSaved();
     } catch {
-      // Réseau en panne : message calme côté parent, le formulaire reste dirty.
-      setSaveError("Enregistrement impossible pour le moment — réessaie.");
+      setSaveError(
+        saved
+          ? "Enregistré — le rechargement a échoué, recharge la page pour vérifier."
+          : "Enregistrement impossible pour le moment — réessaie.",
+      );
     } finally {
       setSaving(false);
     }
@@ -303,25 +313,32 @@ function ParentsCalculForm({
         })}
       </ul>
 
-      <div className="no-print flex items-center gap-4">
-        <label className="text-lg" htmlFor="serie-size">
-          Opérations par série
-        </label>
-        <select
-          className="rounded-xl border bg-card px-3 py-2 text-lg"
-          id="serie-size"
-          onChange={(e) => setSerieSize(Number(e.target.value))}
-          value={serieSize}
-        >
-          {Array.from(
-            { length: MAX_SERIE_SIZE - MIN_SERIE_SIZE + 1 },
-            (_, i) => MIN_SERIE_SIZE + i,
-          ).map((n) => (
-            <option key={n} value={n}>
-              {n}
-            </option>
-          ))}
-        </select>
+      <div className="no-print space-y-2">
+        <div className="flex items-center gap-4">
+          <label className="text-lg" htmlFor="serie-size">
+            Opérations par série
+          </label>
+          <select
+            className="rounded-xl border bg-card px-3 py-2 text-lg"
+            id="serie-size"
+            onChange={(e) => setSerieSize(Number(e.target.value))}
+            value={serieSize}
+          >
+            {Array.from(
+              { length: MAX_SERIE_SIZE - MIN_SERIE_SIZE + 1 },
+              (_, i) => MIN_SERIE_SIZE + i,
+            ).map((n) => (
+              <option key={n} value={n}>
+                {n}
+              </option>
+            ))}
+          </select>
+        </div>
+        {/* Même transparence que pour le palier (adversarial #2) : la
+            conséquence est dite AVANT le geste, pour toutes les familles. */}
+        <p className="text-muted-foreground text-sm">
+          Changer la taille range les séries en cours de toutes les familles.
+        </p>
       </div>
 
       <div className="no-print flex flex-wrap items-center gap-4">

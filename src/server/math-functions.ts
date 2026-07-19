@@ -59,7 +59,13 @@ export const getMathSettingsFn = createServerFn({ method: "GET" }).handler(
       .where(like(mathSkills.skill, `${SKILL_KEY_PREFIX}%`));
     // settingsFromRows carries every edge case (empty table → default
     // addition, dirty palier repaired within its family, serieSize clamped).
-    return { ...settingsFromRows(rows), authoritative: rows.length > 0 };
+    // authoritative exige au moins une ligne RECONNUE (adversarial #1) : une
+    // clé exotique (`calcul-pose:banana`, casse LIKE) matcherait le LIKE mais
+    // produirait des défauts — qui ne doivent jamais armer la purge client.
+    const recognized = rows.some((row) =>
+      FAMILLES.some((op) => row.skill === skillKeyOf(op)),
+    );
+    return { ...settingsFromRows(rows), authoritative: recognized };
   },
 );
 

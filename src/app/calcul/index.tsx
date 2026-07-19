@@ -227,9 +227,18 @@ function CalculWorkshopPage() {
     // sa famille (dérivée de son palier) — jamais écrasante, et l'ancienne
     // clé ne disparaît qu'après RELECTURE de la clé cible (red-team RT1 : un
     // write avalé par un quota plein ne doit pas coûter la série).
-    const legacyRaw = readJson<unknown>(LEGACY_SERIE_STATE_KEY);
-    if (legacyRaw !== null) {
-      const legacy = bridgeLegacySerie(legacyRaw);
+    // readJson rend null pour « absente » comme pour « illisible » : on lit
+    // la chaîne brute pour pouvoir nettoyer une clé corrompue (adversarial #7).
+    let legacyStr: string | null = null;
+    try {
+      legacyStr = window.localStorage.getItem(LEGACY_SERIE_STATE_KEY);
+    } catch {
+      // Storage unavailable — nothing to migrate anyway.
+    }
+    if (legacyStr !== null) {
+      const legacy = bridgeLegacySerie(
+        readJson<unknown>(LEGACY_SERIE_STATE_KEY),
+      );
       if (legacy) {
         const target = serieStorageKeyOf(legacy.famille);
         if (readJson<unknown>(target) === null) {
@@ -253,7 +262,10 @@ function CalculWorkshopPage() {
       const normalized = normalizeFamilySettings(
         dbSettings ?? readJson<unknown>(SETTINGS_CACHE_KEY),
       );
-      if (dbSettings) {
+      // Le cache appareil ne mémorise que des réglages AUTHORITATIFS
+      // (adversarial #3) : des défauts servis pendant la fenêtre
+      // pré-migration écraseraient les vrais réglages mémorisés.
+      if (dbSettings?.authoritative) {
         writeJson(SETTINGS_CACHE_KEY, normalized);
       }
       // Purge des clés orphelines (D-3A/F9) — SEULEMENT sur des réglages
