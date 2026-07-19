@@ -1,12 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
-import { and, like, notInArray } from "drizzle-orm";
+import { and, eq, like, notInArray, or } from "drizzle-orm";
 import { z } from "zod";
 import type { FamilySettings, Operation } from "~/lib/operations";
 import {
   FAMILLES,
+  isPalierOfFamille,
   MAX_SERIE_SIZE,
   MIN_SERIE_SIZE,
-  paliersByFamille,
   SKILL_KEY_PREFIX,
   settingsFromRows,
   skillKeyOf,
@@ -40,7 +40,16 @@ function nowSqlTimestamp(): string {
   return new Date().toISOString().replace("T", " ").slice(0, 23);
 }
 
-export type MathSettings = FamilySettings;
+export interface MathSettings extends FamilySettings {
+  /**
+   * true seulement quand les réglages viennent de VRAIES lignes DB (red-team
+   * RT1) : une réponse par défaut (table vide, DB pas encore migrée) n'est
+   * pas une vérité sur les familles — le client ne doit JAMAIS purger des
+   * séries locales sur cette base. Absent d'un cache appareil par
+   * construction (normalizeFamilySettings ne le produit pas).
+   */
+  authoritative?: boolean;
+}
 
 export const getMathSettingsFn = createServerFn({ method: "GET" }).handler(
   async (): Promise<MathSettings> => {
@@ -50,7 +59,7 @@ export const getMathSettingsFn = createServerFn({ method: "GET" }).handler(
       .where(like(mathSkills.skill, `${SKILL_KEY_PREFIX}%`));
     // settingsFromRows carries every edge case (empty table → default
     // addition, dirty palier repaired within its family, serieSize clamped).
-    return settingsFromRows(rows);
+    return { ...settingsFromRows(rows), authoritative: rows.length > 0 };
   },
 );
 
@@ -69,7 +78,7 @@ const saveSchema = z.object({
         // incohérente écrite « proprement » serait réparée en silence à la
         // lecture — un palier qui change dans le dos du parent. On refuse.
         .refine(
-          (f) => paliersByFamille(f.op).some((p) => p.id === f.palier),
+          (f) => isPalierOfFamille(f.op, f.palier),
           "Palier hors de sa famille.",
         ),
     )
@@ -97,14 +106,18 @@ export const saveMathSettingsFn = createServerFn({ method: "POST" })
       // remplaçante. Upsert par famille activée + suppression des
       // désactivées (désactiver = supprimer la ligne, prémisse 5).
       await db.batch([
-        db
-          .delete(mathSkills)
-          .where(
+        db.delete(mathSkills).where(
+          or(
             and(
               like(mathSkills.skill, `${SKILL_KEY_PREFIX}%`),
               notInArray(mathSkills.skill, keptKeys),
             ),
+            // Auto-nettoyage : une ligne legacy nue recréée par l'ANCIEN
+            // code pendant la fenêtre post-migration/pré-redéploiement
+            // (data-migration review) disparaît à la première sauvegarde.
+            eq(mathSkills.skill, "calcul-pose"),
           ),
+        ),
         ...data.familles.map((famille) =>
           db
             .insert(mathSkills)
@@ -124,10 +137,12 @@ export const saveMathSettingsFn = createServerFn({ method: "POST" })
         ),
       ]);
     } catch (error) {
+      // Le détail technique (chaîne Turso, SQL) reste côté serveur — le
+      // parent reçoit un message calme et fixe (security review).
+      console.error("saveMathSettingsFn:", error);
       return {
         success: false,
-        error:
-          error instanceof Error ? error.message : "Enregistrement impossible.",
+        error: "Enregistrement impossible pour le moment — réessaie.",
       };
     }
     return {

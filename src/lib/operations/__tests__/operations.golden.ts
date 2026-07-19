@@ -26,8 +26,11 @@ import {
   enonceFor,
   FAMILLES,
   familleOfPalier,
+  fingerprintOps,
   generateOperation,
   generateSerie,
+  isPalierOfFamille,
+  isResumableSerie,
   LEGACY_SERIE_STATE_KEY,
   layoutOperation,
   MAX_RESULT,
@@ -42,6 +45,7 @@ import {
   RANK_LABELS,
   resolvePalier,
   resolvePalierForFamille,
+  safeGenerateSerie,
   serieStorageKeyOf,
   settingsFromRows,
   skillKeyOf,
@@ -718,10 +722,121 @@ check(
       bridgeLegacySerie("calcul") === null,
   );
   check(
+    "pont legacy: un champ famille INVALIDE est re-dérivé du palierId",
+    bridgeLegacySerie({ ...legacy, famille: "licorne" })?.famille ===
+      "soustraction",
+  );
+  const nul = normalizeFamilySettings(null);
+  const texte = normalizeFamilySettings("calcul");
+  check(
+    "normalizeFamilySettings: null ou non-objet → défauts sûrs (jamais de crash)",
+    nul.familles.length === 1 &&
+      nul.familles[0].op === "addition" &&
+      nul.serieSize === DEFAULT_SERIE_SIZE &&
+      texte.familles.length === 1 &&
+      texte.familles[0].op === "addition",
+  );
+  const brouillon = normalizeFamilySettings({
+    serieSize: "beaucoup",
+    familles: ["addition", null, 7, { op: "soustraction", palier: 42 }],
+  });
+  check(
+    "normalizeFamilySettings: entrées non-objet filtrées, palier non-string et serieSize sales réparés",
+    brouillon.familles.map((f) => `${f.op}:${f.palier}`).join(",") ===
+      "soustraction:sous-sans-emprunt" &&
+      brouillon.serieSize === DEFAULT_SERIE_SIZE,
+  );
+  check(
     "clés de rangement: une par famille + préfixe skill stable",
     serieStorageKeyOf("addition") === "calcul:serie:addition" &&
       LEGACY_SERIE_STATE_KEY === "calcul:serie" &&
       skillKeyOf("soustraction") === "calcul-pose:soustraction",
+  );
+
+  // isPalierOfFamille — le prédicat du refine zod (T7) : REFUSE, ne répare pas.
+  check(
+    "isPalierOfFamille: appartient / autre famille / inconnu / null",
+    isPalierOfFamille("soustraction", "sous-emprunt") &&
+      !isPalierOfFamille("addition", "sous-emprunt") &&
+      !isPalierOfFamille("addition", "fantome") &&
+      !isPalierOfFamille("addition", null),
+  );
+
+  // normalizeFamilySettings — la taille de série d'un vieux cache SURVIT
+  // (red-team RT4) même quand aucune famille n'est reconnaissable.
+  const vieuxCache = normalizeFamilySettings({
+    palier: "mult-1-chiffre",
+    serieSize: 5,
+  });
+  check(
+    "normalizeFamilySettings: vieux format → défaut addition MAIS serieSize conservée",
+    vieuxCache.familles.length === 1 &&
+      vieuxCache.familles[0].op === "addition" &&
+      vieuxCache.serieSize === 5,
+  );
+
+  // isResumableSerie — le prédicat de l'état « sorti » (D-3A/F5), désormais
+  // pur et golden-testé : chaque branche de refus.
+  const palierS = resolvePalierForFamille("soustraction", "sous-sans-emprunt");
+  const opsS = safeGenerateSerie(palierS, 77, 2);
+  const resumable = {
+    famille: "soustraction" as const,
+    palierId: palierS.id,
+    serieSize: 2,
+    seed: 77,
+    index: 1,
+    opsFingerprint: fingerprintOps(opsS),
+    perOp: opsS.map(() => ({
+      entries: { result: ["4", null], carries: [null] },
+      done: false,
+    })),
+  };
+  check(
+    "isResumableSerie: une série valide se reprend",
+    isResumableSerie(resumable, "soustraction", palierS.id, 2),
+  );
+  check(
+    "isResumableSerie: autre famille / autre palier / autre taille → refus",
+    !isResumableSerie(resumable, "addition", palierS.id, 2) &&
+      !isResumableSerie(resumable, "soustraction", "sous-emprunt", 2) &&
+      !isResumableSerie(resumable, "soustraction", palierS.id, 3),
+  );
+  check(
+    "isResumableSerie: série FINIE (index === size) → rangée, pas sortie",
+    !isResumableSerie(
+      { ...resumable, index: 2 },
+      "soustraction",
+      palierS.id,
+      2,
+    ),
+  );
+  check(
+    "isResumableSerie: empreinte qui ne régénère pas → série fraîche",
+    !isResumableSerie(
+      { ...resumable, opsFingerprint: "corrompue" },
+      "soustraction",
+      palierS.id,
+      2,
+    ),
+  );
+  check(
+    "isResumableSerie: null et perOp difforme → refus sans crash",
+    !isResumableSerie(null, "soustraction", palierS.id, 2) &&
+      !isResumableSerie(
+        {
+          ...resumable,
+          perOp: [{ entries: { result: [3], carries: [] }, done: false }],
+        } as never,
+        "soustraction",
+        palierS.id,
+        2,
+      ),
+  );
+  check(
+    "safeGenerateSerie: palier valide → série pleine, déterministe",
+    safeGenerateSerie(palierS, 77, 2).length === 2 &&
+      fingerprintOps(safeGenerateSerie(palierS, 77, 2)) ===
+        fingerprintOps(opsS),
   );
 }
 

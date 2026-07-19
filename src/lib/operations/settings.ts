@@ -12,6 +12,7 @@
  * Pur : aucune lecture d'env, de DB ou de DOM (condition des golden tests).
  */
 
+import { generateSerie } from "~/lib/operations/generator";
 import {
   clampSerieSize,
   DEFAULT_SERIE_SIZE,
@@ -20,7 +21,22 @@ import {
   paliersByFamille,
   resolvePalierForFamille,
 } from "~/lib/operations/progression";
-import type { Operation } from "~/lib/operations/types";
+import type {
+  GeneratedOperation,
+  Operation,
+  Palier,
+} from "~/lib/operations/types";
+
+/**
+ * Noms français des familles — l'UNIQUE mapping d'affichage (l'étagère les
+ * utilise tels quels dans l'aria, la page parent les capitalise) : une
+ * nouvelle famille ne peut pas silencieusement manquer son libellé.
+ */
+export const FAMILLE_NOMS: Record<Operation, string> = {
+  addition: "additions",
+  soustraction: "soustractions",
+  multiplication: "multiplications",
+};
 
 /** Préfixe des clés de la table math_skills (une ligne par famille). */
 export const SKILL_KEY_PREFIX = "calcul-pose:";
@@ -119,7 +135,13 @@ export function normalizeFamilySettings(value: unknown): FamilySettings {
     familles.push({ op, palier: resolvePalierForFamille(op, palier).id });
   }
   if (familles.length === 0) {
-    return defaultFamilySettings();
+    // Un cache d'un ANCIEN format ({palier, serieSize}) n'a pas de familles
+    // reconnaissables mais sa taille de série reste valable (red-team RT4) —
+    // la série de l'enfant ne rétrécit pas en silence à la mise à jour.
+    return {
+      ...defaultFamilySettings(),
+      serieSize: clampSerieSize(raw?.serieSize),
+    };
   }
   return { serieSize: clampSerieSize(raw?.serieSize), familles };
 }
@@ -154,4 +176,104 @@ export function bridgeLegacySerie(
     ? state.famille
     : familleOfPalier(state.palierId);
   return { famille, state: { ...state, famille } };
+}
+
+/* ------------------------- Série : état & reprise ------------------------- */
+
+/** La grille écrite d'une opération (même forme que GridEntries côté UI). */
+export interface SerieEntriesLike {
+  result: (string | null)[];
+  carries: (string | null)[];
+}
+
+/**
+ * L'état persisté d'une série (clé serieStorageKeyOf). `opsFingerprint` :
+ * empreinte des opérations générées à la création — à la reprise, la
+ * régénération depuis (palier, seed) doit produire la MÊME empreinte, sinon
+ * les chiffres écrits appartiendraient à d'autres calculs (corruption
+ * silencieuse) et on repart sur une série fraîche.
+ */
+export interface SerieStateLike {
+  famille: Operation;
+  palierId: string;
+  serieSize: number;
+  seed: number;
+  index: number;
+  opsFingerprint: string;
+  perOp: { entries: SerieEntriesLike; done: boolean }[];
+}
+
+export function fingerprintOps(ops: readonly GeneratedOperation[]): string {
+  return ops.map((o) => `${o.op}:${o.a}:${o.b}`).join("|");
+}
+
+/**
+ * Génération contenue : une contrainte de palier devenue insatisfaisable
+ * (erreur de code future) ne doit JAMAIS montrer un écran d'erreur à
+ * l'enfant — on retombe sur le premier palier d'addition, puis sur rien
+ * (l'atelier rangé) si même lui échoue.
+ */
+export function safeGenerateSerie(
+  palier: Palier,
+  seed: number,
+  size: number,
+): GeneratedOperation[] {
+  try {
+    return generateSerie(palier.constraints, seed, size);
+  } catch {
+    try {
+      return generateSerie(
+        resolvePalierForFamille("addition", null).constraints,
+        seed,
+        size,
+      );
+    } catch {
+      return [];
+    }
+  }
+}
+
+/**
+ * Shape guard de la série reprise : un cache corrompu, d'un ancien format,
+ * d'une autre famille ou d'une série FINIE retombe sur « pas reprenable »,
+ * jamais sur un crash. L'état « sorti » d'un plateau utilise CE prédicat
+ * complet (design-review D-3A/F5) — jamais « la clé existe » — pour qu'un
+ * plateau sorti reprenne toujours pour de vrai.
+ */
+export function isResumableSerie(
+  saved: SerieStateLike | null,
+  famille: Operation,
+  palierId: string,
+  serieSize: number,
+): saved is SerieStateLike {
+  return (
+    saved !== null &&
+    saved.famille === famille &&
+    saved.palierId === palierId &&
+    saved.serieSize === serieSize &&
+    typeof saved.seed === "number" &&
+    typeof saved.index === "number" &&
+    saved.index >= 0 &&
+    saved.index < saved.serieSize &&
+    Array.isArray(saved.perOp) &&
+    saved.perOp.length === saved.serieSize &&
+    typeof saved.opsFingerprint === "string" &&
+    saved.perOp.every(
+      (op) =>
+        typeof op?.done === "boolean" &&
+        Array.isArray(op?.entries?.result) &&
+        op.entries.result.every((v) => v === null || typeof v === "string") &&
+        Array.isArray(op?.entries?.carries) &&
+        op.entries.carries.every((v) => v === null || typeof v === "string"),
+    ) &&
+    // La régénération doit reproduire exactement les opérations d'origine —
+    // sinon les chiffres écrits appartiennent à d'autres calculs.
+    fingerprintOps(
+      safeGenerateSerie(
+        resolvePalierForFamille(famille, saved.palierId),
+        saved.seed,
+        saved.serieSize,
+      ),
+    ) === saved.opsFingerprint
+  );
 }

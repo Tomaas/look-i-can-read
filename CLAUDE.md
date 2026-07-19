@@ -31,7 +31,9 @@ yes → don't.
   layout geometry, palier ladder, énoncé templates, calm-wording scan).
 - `bun run db:migrate` — apply migrations to the remote Turso db (run once on
   setup / after schema changes). `db:generate` creates a new migration from
-  schema edits; `db:push` is also available for quick dev sync to remote.
+  schema edits; `db:push` is also available for quick dev sync to remote —
+  but it syncs SCHEMA only and never runs DATA migrations (e.g. 0010): any
+  release whose migration rewrites rows must go through `db:migrate`.
 - `bun run deploy` — `docker compose up -d --build` (see Nitro bullet; needs
   `.env.production` + optionally `.env` for build-time `VITE_*` args).
 - Releases: 4-digit `VERSION` + `CHANGELOG.md` (French, Keep-a-Changelog

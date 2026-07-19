@@ -3,8 +3,10 @@ import { Home, Printer } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PrintableOperationsSheet } from "~/components/printable-operations";
 import { Button } from "~/components/ui/button";
+import { cn } from "~/lib/cn";
 import {
   clampSerieSize,
+  FAMILLE_NOMS,
   FAMILLES,
   type FamilleSetting,
   type GeneratedOperation,
@@ -40,11 +42,11 @@ export const Route = createFileRoute("/parents/calcul")({
 
 const FICHE_SIZE = 6;
 
-const FAMILLE_LABELS: Record<Operation, string> = {
-  addition: "Additions",
-  soustraction: "Soustractions",
-  multiplication: "Multiplications",
-};
+/** Libellés de cartes dérivés de l'unique mapping lib (maintainability). */
+function familleLabel(op: Operation): string {
+  const nom = FAMILLE_NOMS[op];
+  return nom.charAt(0).toUpperCase() + nom.slice(1);
+}
 
 /** Réglage local d'une carte : activée + palier (toujours de la famille). */
 type CardState = Record<Operation, { active: boolean; palier: string }>;
@@ -72,11 +74,61 @@ function cardStateFrom(familles: FamilleSetting[] | undefined): CardState {
 function ParentsCalculPage() {
   const router = useRouter();
   const { settings, heroName, doudouName } = Route.useLoaderData();
+
+  if (!settings) {
+    // Red-team RT2 : un échec de chargement ne doit JAMAIS se présenter
+    // comme un formulaire éditable (toutes familles décochées) — un parent
+    // qui « répare » écraserait les vrais réglages avec des défauts.
+    return <SettingsUnavailable />;
+  }
+
+  return (
+    <ParentsCalculForm
+      doudouName={doudouName}
+      heroName={heroName}
+      onSaved={() => router.invalidate()}
+      settings={settings}
+    />
+  );
+}
+
+function SettingsUnavailable() {
+  return (
+    <div className="mx-auto w-full max-w-3xl space-y-8">
+      <Button
+        className="gap-2 text-lg text-muted-foreground"
+        nativeButton={false}
+        render={<Link to="/parents" />}
+        variant="ghost"
+      >
+        <Home className="size-5" />
+        Espace parent
+      </Button>
+      <h1 className="font-bold text-3xl">Les calculs</h1>
+      <p className="text-muted-foreground">
+        Réglages indisponibles pour le moment — recharge la page dans un
+        instant. Rien n'a été modifié.
+      </p>
+    </div>
+  );
+}
+
+function ParentsCalculForm({
+  settings,
+  heroName,
+  doudouName,
+  onSaved,
+}: {
+  settings: NonNullable<ReturnType<typeof Route.useLoaderData>["settings"]>;
+  heroName: string | null;
+  doudouName: string | null;
+  onSaved: () => Promise<void>;
+}) {
   const [cards, setCards] = useState<CardState>(() =>
-    cardStateFrom(settings?.familles),
+    cardStateFrom(settings.familles),
   );
   const [serieSize, setSerieSize] = useState(
-    clampSerieSize(settings?.serieSize),
+    clampSerieSize(settings.serieSize),
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -84,9 +136,9 @@ function ParentsCalculPage() {
     GeneratedOperation[] | null
   >(null);
 
-  const savedCards = cardStateFrom(settings?.familles);
+  const savedCards = cardStateFrom(settings.familles);
   const dirty =
-    serieSize !== clampSerieSize(settings?.serieSize) ||
+    serieSize !== clampSerieSize(settings.serieSize) ||
     FAMILLES.some(
       (op) =>
         cards[op].active !== savedCards[op].active ||
@@ -132,7 +184,7 @@ function ParentsCalculPage() {
         setSaveError(result.error);
         return;
       }
-      await router.invalidate();
+      await onSaved();
     } catch {
       // Réseau en panne : message calme côté parent, le formulaire reste dirty.
       setSaveError("Enregistrement impossible pour le moment — réessaie.");
@@ -182,7 +234,14 @@ function ParentsCalculPage() {
           return (
             <li className="space-y-3 rounded-2xl border bg-card p-4" key={op}>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <label className="flex cursor-pointer items-center gap-3">
+                <label
+                  className={cn(
+                    // Toute la rangée est la cible (≥44px, design review) ;
+                    // le curseur ne promet un clic que si le contrôle répond.
+                    "flex min-h-11 items-center gap-3",
+                    !lastActive && "cursor-pointer",
+                  )}
+                >
                   <input
                     checked={card.active}
                     className="size-4 accent-primary"
@@ -191,7 +250,7 @@ function ParentsCalculPage() {
                     type="checkbox"
                   />
                   <span className="font-semibold text-lg">
-                    {FAMILLE_LABELS[op]}
+                    {familleLabel(op)}
                   </span>
                 </label>
                 {card.active ? (
@@ -270,7 +329,9 @@ function ParentsCalculPage() {
           {saving ? "Enregistrement…" : "Enregistrer"}
         </Button>
         {saveError ? (
-          <p className="text-muted-foreground text-sm">{saveError}</p>
+          // Distinct des textes d'aide passifs (design review F11) : un échec
+          // d'enregistrement doit se voir — calme, mais pas camouflé.
+          <p className="font-medium text-foreground text-sm">{saveError}</p>
         ) : null}
       </div>
 

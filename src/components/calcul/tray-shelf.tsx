@@ -24,7 +24,7 @@
 
 import { palette } from "~/config/style";
 import { cn } from "~/lib/cn";
-import type { Operation } from "~/lib/operations";
+import { FAMILLE_NOMS, type Operation } from "~/lib/operations";
 
 export interface TrayInfo {
   op: Operation;
@@ -32,16 +32,17 @@ export interface TrayInfo {
   sorti: boolean;
 }
 
+// Le décalage « sorti » : ces DEUX classes portent le même 18px — le plateau
+// descend d'autant que la rangée réserve, la planche ne bouge jamais.
+// (Littéraux Tailwind obligatoires : le scanner JIT ne voit pas une
+// interpolation — modifier les deux ensemble.)
+const SORTI_SHIFT_CLASS = "translate-y-[18px]";
+const SORTI_RESERVE_CLASS = "pb-[18px]";
+
 const SIGNES: Record<Operation, string> = {
   addition: "+",
   soustraction: "−",
   multiplication: "×",
-};
-
-const FAMILLE_NOMS: Record<Operation, string> = {
-  addition: "additions",
-  soustraction: "soustractions",
-  multiplication: "multiplications",
 };
 
 /** Gabarits FIXES, sans nombres ; variante sans doudou écrite (D-3A/F8). */
@@ -210,7 +211,12 @@ export function TrayShelf({
           les 18px du décalage « sorti » sont réservés (pb) pour que la
           planche ne bouge pas selon l'état. */}
       <div className="w-full max-sm:hidden">
-        <div className="flex flex-nowrap items-end justify-center gap-6 pb-[18px]">
+        <div
+          className={cn(
+            "flex flex-nowrap items-end justify-center gap-6",
+            SORTI_RESERVE_CLASS,
+          )}
+        >
           {trays.map((tray) => (
             <Tray
               doudouName={doudouName}
@@ -227,7 +233,7 @@ export function TrayShelf({
       <div className="flex w-full flex-col items-center gap-8 sm:hidden">
         {trays.map((tray) => (
           <div className="flex w-full flex-col items-center" key={tray.op}>
-            <div className="pb-[18px]">
+            <div className={SORTI_RESERVE_CLASS}>
               <Tray
                 doudouName={doudouName}
                 heroName={heroName}
@@ -264,9 +270,12 @@ function Tray({
         // rounded-2xl, focus ring existant.
         "flex min-h-40 w-[clamp(160px,28vw,240px)] shrink flex-col items-center justify-between gap-2 rounded-2xl border bg-card px-4 py-4",
         "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-        "transition-transform duration-300 motion-reduce:transition-none",
+        // Retour au pointeur (design review : la seule surface interactive
+        // sans hover de l'app) — une ombre douce, pas une suggestion.
+        "hover:shadow-sm",
+        "transition duration-300 motion-reduce:transition-none",
         // « Sorti » : décalage + ombre douce UNIQUEMENT (D-1A/F3).
-        tray.sorti && "translate-y-[18px] shadow-md",
+        tray.sorti && cn(SORTI_SHIFT_CLASS, "shadow-md"),
       )}
       onClick={() => onTake(tray.op)}
       type="button"

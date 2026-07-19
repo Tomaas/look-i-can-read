@@ -136,6 +136,20 @@ export function paliersByFamille(op: Operation): Palier[] {
 }
 
 /**
+ * Le palier appartient-il à la famille ? Prédicat pur du refine zod de
+ * sauvegarde (T7) — un réglage incohérent est REFUSÉ à l'écriture plutôt que
+ * « réparé » en silence à la lecture (un palier qui change dans le dos du
+ * parent est interdit par la philosophie du palier manuel).
+ */
+export function isPalierOfFamille(
+  op: Operation,
+  id: string | null | undefined,
+): boolean {
+  const palier = id ? palierById(id) : undefined;
+  return palier !== undefined && palier.constraints.op === op;
+}
+
+/**
  * Palier effectif AU SEIN d'une famille : id inconnu, null, ou appartenant à
  * une autre famille (ligne DB éditée à la main, cache périmé) → premier
  * palier de la famille. Même contrat que resolvePalier : jamais d'erreur.
