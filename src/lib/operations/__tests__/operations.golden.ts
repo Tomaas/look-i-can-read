@@ -17,23 +17,34 @@
  */
 
 import {
+  bridgeLegacySerie,
   countBorrows,
   countCarries,
   countMultCarries,
+  DEFAULT_PALIER_ID,
   DEFAULT_SERIE_SIZE,
   enonceFor,
+  FAMILLES,
+  familleOfPalier,
   generateOperation,
   generateSerie,
   layoutOperation,
+  LEGACY_SERIE_STATE_KEY,
   MAX_RESULT,
   MAX_SERIE_SIZE,
   MIN_SERIE_SIZE,
   matchesQuota,
+  normalizeFamilySettings,
   PALIERS,
   palierById,
+  paliersByFamille,
   RANK_COLORS,
   RANK_LABELS,
   resolvePalier,
+  resolvePalierForFamille,
+  serieStorageKeyOf,
+  settingsFromRows,
+  skillKeyOf,
   UnsatisfiableConstraintError,
 } from "~/lib/operations";
 
@@ -555,6 +566,154 @@ check(
     "énoncé multiplication: gabarit paniers, sans compagnon",
     multPhrase.includes("paniers") && !multPhrase.includes("Doudou"),
     multPhrase,
+  );
+}
+
+/* ------------------- Familles & réglages (étagère, 1B/3A) ------------------ */
+{
+  check(
+    "FAMILLES: ordre canonique addition, soustraction, multiplication",
+    FAMILLES.length === 3 &&
+      FAMILLES[0] === "addition" &&
+      FAMILLES[1] === "soustraction" &&
+      FAMILLES[2] === "multiplication",
+  );
+  check(
+    "paliersByFamille: découpage 3/2/2 des 7 paliers",
+    paliersByFamille("addition").length === 3 &&
+      paliersByFamille("soustraction").length === 2 &&
+      paliersByFamille("multiplication").length === 2,
+  );
+  check(
+    "paliersByFamille: chaque palier appartient bien à sa famille",
+    FAMILLES.every((op) =>
+      paliersByFamille(op).every((p) => p.constraints.op === op),
+    ),
+  );
+  check(
+    "resolvePalierForFamille: id connu de la famille → lui-même",
+    resolvePalierForFamille("soustraction", "sous-emprunt").id ===
+      "sous-emprunt",
+  );
+  check(
+    "resolvePalierForFamille: id inconnu → premier palier de la famille",
+    resolvePalierForFamille("multiplication", "fantome").id ===
+      "mult-1-chiffre",
+  );
+  check(
+    "resolvePalierForFamille: id d'une AUTRE famille → réparé (jamais d'erreur)",
+    resolvePalierForFamille("addition", "sous-emprunt").id ===
+      "add-sans-retenue",
+  );
+  check(
+    "resolvePalierForFamille: null → premier palier de la famille",
+    resolvePalierForFamille("soustraction", null).id === "sous-sans-emprunt",
+  );
+  check(
+    "familleOfPalier: les 7 paliers pointent leur famille, inconnu → addition",
+    familleOfPalier("add-retenue") === "addition" &&
+      familleOfPalier("sous-sans-emprunt") === "soustraction" &&
+      familleOfPalier("mult-abstraite") === "multiplication" &&
+      familleOfPalier("fantome") === "addition" &&
+      familleOfPalier(null) === "addition",
+  );
+
+  // settingsFromRows — les cas de bord tranchés en review (3A).
+  const vide = settingsFromRows([]);
+  check(
+    "settingsFromRows: table vide → addition, premier palier, activée",
+    vide.familles.length === 1 &&
+      vide.familles[0].op === "addition" &&
+      vide.familles[0].palier === DEFAULT_PALIER_ID &&
+      vide.serieSize === DEFAULT_SERIE_SIZE,
+  );
+  const troisRows = [
+    { skill: skillKeyOf("multiplication"), palier: "mult-abstraite", serieSize: 5 },
+    { skill: skillKeyOf("addition"), palier: "add-retenue", serieSize: 4 },
+    { skill: skillKeyOf("soustraction"), palier: "sous-emprunt", serieSize: 6 },
+  ];
+  const trois = settingsFromRows(troisRows);
+  check(
+    "settingsFromRows: 3 familles, ré-émises dans l'ordre canonique",
+    trois.familles.map((f) => f.op).join(",") ===
+      "addition,soustraction,multiplication",
+  );
+  check(
+    "settingsFromRows: serieSize lue sur la 1re ligne canonique (addition)",
+    trois.serieSize === 4,
+  );
+  const sale = settingsFromRows([
+    { skill: "calcul-pose", palier: "add-retenue", serieSize: 3 },
+    { skill: "exotique", palier: "add-retenue", serieSize: 3 },
+    { skill: skillKeyOf("soustraction"), palier: "mult-abstraite", serieSize: 99 },
+  ]);
+  check(
+    "settingsFromRows: legacy non migrée et clé exotique IGNORÉES",
+    sale.familles.length === 1 && sale.familles[0].op === "soustraction",
+  );
+  check(
+    "settingsFromRows: palier d'une autre famille réparé + serieSize clampée",
+    sale.familles[0].palier === "sous-sans-emprunt" &&
+      sale.serieSize === MAX_SERIE_SIZE,
+  );
+
+  // normalizeFamilySettings — le cache appareil ne crashe jamais l'enfant.
+  const garbage = normalizeFamilySettings({ palier: "add-retenue" });
+  check(
+    "normalizeFamilySettings: ancien format de cache → défauts sûrs",
+    garbage.familles.length === 1 && garbage.familles[0].op === "addition",
+  );
+  const normal = normalizeFamilySettings({
+    serieSize: 2,
+    familles: [
+      { op: "multiplication", palier: "mult-1-chiffre" },
+      { op: "multiplication", palier: "mult-1-chiffre" },
+      { op: "addition", palier: "fantome" },
+      { op: "licorne", palier: "add-retenue" },
+    ],
+  });
+  check(
+    "normalizeFamilySettings: dédup + ordre canonique + paliers réparés",
+    normal.serieSize === 2 &&
+      normal.familles.map((f) => `${f.op}:${f.palier}`).join(",") ===
+        "addition:add-sans-retenue,multiplication:mult-1-chiffre",
+  );
+
+  // bridgeLegacySerie — RÉGRESSION CRITIQUE (2A/T4) : la série d'avant la
+  // mise à jour survit, enrichie de sa famille dérivée du palier.
+  const legacy = {
+    palierId: "sous-emprunt",
+    serieSize: 3,
+    seed: 42,
+    index: 1,
+    opsFingerprint: "soustraction:52:27",
+    perOp: [{ entries: { result: ["5"], carries: [null] }, done: false }],
+  };
+  const bridged = bridgeLegacySerie(legacy);
+  check(
+    "pont legacy: famille dérivée du palierId, état intact + champ famille",
+    bridged !== null &&
+      bridged.famille === "soustraction" &&
+      bridged.state.famille === "soustraction" &&
+      bridged.state.seed === 42 &&
+      bridged.state.index === 1,
+  );
+  check(
+    "pont legacy: un champ famille déjà présent est respecté",
+    bridgeLegacySerie({ ...legacy, famille: "addition" })?.famille ===
+      "addition",
+  );
+  check(
+    "pont legacy: une valeur méconnaissable → null (pas de fantôme)",
+    bridgeLegacySerie(null) === null &&
+      bridgeLegacySerie({ seed: 1 }) === null &&
+      bridgeLegacySerie("calcul") === null,
+  );
+  check(
+    "clés de rangement: une par famille + préfixe skill stable",
+    serieStorageKeyOf("addition") === "calcul:serie:addition" &&
+      LEGACY_SERIE_STATE_KEY === "calcul:serie" &&
+      skillKeyOf("soustraction") === "calcul-pose:soustraction",
   );
 }
 
