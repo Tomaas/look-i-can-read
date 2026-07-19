@@ -13,7 +13,10 @@
       "!!**/build",
       "!!**/data",
       "!!**/.gstack",
-      "!!**/.claude/worktrees",
+      // Ancré à la racine de la config (pas **/) : le checkout principal
+      // exclut ses worktrees imbriqués, mais un worktree (dont la config vit
+      // à SA racine) peut toujours se linter lui-même.
+      "!!.claude/worktrees",
       "!!**/routeTree.gen.ts"
     ]
   },
