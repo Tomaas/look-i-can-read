@@ -213,8 +213,8 @@ it was — each tray remembers its own (kept on the device).
   that family's palier (and mirrored on-device so the workshop shrugs off a
   network hiccup).
 - **Tests**: `bun run test` runs golden assertion scripts (prompt identity,
-  coherence validators, media store, reading aids, posed operations) — plain
-  Bun, no test runner needed.
+  coherence validators, media store, media data route, reading aids, posed
+  operations) — plain Bun, no test runner needed.
 
 ## License
 
