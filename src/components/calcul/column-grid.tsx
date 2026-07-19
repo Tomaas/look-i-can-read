@@ -1,3 +1,4 @@
+import { useDroppable } from "@dnd-kit/core";
 import { cn } from "~/lib/cn";
 import type { OperationLayout } from "~/lib/operations";
 
@@ -12,8 +13,9 @@ import type { OperationLayout } from "~/lib/operations";
  * the child's, and the child compares line by line.
  *
  * Cells are tap-to-select (large touch targets); digits come from the soft
- * numpad. Carry cells are optional scratch space, exactly like the little
- * pencil "1" on paper.
+ * numpad, tapped into the selected cell or dragged straight onto a cell
+ * (each writable cell is a dnd-kit drop target). Carry cells are optional
+ * scratch space, exactly like the little pencil "1" on paper.
  */
 
 export interface GridEntries {
@@ -68,23 +70,12 @@ export function ColumnGrid({
             key={`carry-${col}-${layout.expectedDigits.length}`}
           >
             {slot && !isSolution ? (
-              // Touch target ≥ 44px for small fingers (p-2 hit slop around
-              // the small visual box, negative margin keeps the layout).
-              <button
-                className="-m-2 p-2"
-                onClick={() => onSelect?.({ row: "carry", col })}
-                type="button"
-              >
-                <span
-                  className={cn(
-                    "flex h-6 w-8 items-center justify-center rounded-lg border border-muted-foreground/30 border-dashed text-muted-foreground text-sm",
-                    isSelected({ row: "carry", col }) &&
-                      "border-2 border-primary border-solid",
-                  )}
-                >
-                  {entries?.carries[col] ?? ""}
-                </span>
-              </button>
+              <CarryCell
+                col={col}
+                onSelect={onSelect}
+                selected={isSelected({ row: "carry", col })}
+                value={entries?.carries[col] ?? ""}
+              />
             ) : null}
           </span>
         ))}
@@ -124,22 +115,92 @@ export function ColumnGrid({
               {expectedDigit}
             </span>
           ) : (
-            <button
-              className={cn(
-                cellBase,
-                "border border-muted-foreground/40 focus-visible:outline-2 focus-visible:outline-primary/60",
-                isSelected({ row: "result", col }) &&
-                  "border-2 border-primary bg-primary/5",
-              )}
+            <ResultCell
+              cellBase={cellBase}
+              col={col}
               key={`res-${col}-${expectedDigit}`}
-              onClick={() => onSelect?.({ row: "result", col })}
-              type="button"
-            >
-              {entries?.result[col] ?? ""}
-            </button>
+              onSelect={onSelect}
+              selected={isSelected({ row: "result", col })}
+              value={entries?.result[col] ?? ""}
+            />
           ),
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * A writable result cell: tap-to-select AND drop target for a dragged digit.
+ * The isOver highlight reuses the selection style — landing a digit and
+ * choosing a cell are the same gentle emphasis, never a new signal.
+ */
+function ResultCell({
+  cellBase,
+  col,
+  onSelect,
+  selected,
+  value,
+}: {
+  cellBase: string;
+  col: number;
+  onSelect?: (cell: CellRef) => void;
+  selected: boolean;
+  value: string;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    data: { cell: { row: "result", col } satisfies CellRef },
+    id: `drop-result-${col}`,
+  });
+  return (
+    <button
+      className={cn(
+        cellBase,
+        "border border-muted-foreground/40 focus-visible:outline-2 focus-visible:outline-primary/60",
+        (selected || isOver) && "border-2 border-primary bg-primary/5",
+      )}
+      onClick={() => onSelect?.({ row: "result", col })}
+      ref={setNodeRef}
+      type="button"
+    >
+      {value}
+    </button>
+  );
+}
+
+function CarryCell({
+  col,
+  onSelect,
+  selected,
+  value,
+}: {
+  col: number;
+  onSelect?: (cell: CellRef) => void;
+  selected: boolean;
+  value: string;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    data: { cell: { row: "carry", col } satisfies CellRef },
+    id: `drop-carry-${col}`,
+  });
+  return (
+    // Touch target ≥ 44px for small fingers: 24px box + 2×10px vertical slop
+    // = 44px tall, 48px wide (negative margins keep the visual layout). The
+    // slop also enlarges the droppable rect registered via setNodeRef.
+    <button
+      className="-mx-2 -my-2.5 px-2 py-2.5"
+      onClick={() => onSelect?.({ row: "carry", col })}
+      ref={setNodeRef}
+      type="button"
+    >
+      <span
+        className={cn(
+          "flex h-6 w-8 items-center justify-center rounded-lg border border-muted-foreground/30 border-dashed text-muted-foreground text-sm",
+          (selected || isOver) && "border-2 border-primary border-solid",
+        )}
+      >
+        {value}
+      </span>
+    </button>
   );
 }

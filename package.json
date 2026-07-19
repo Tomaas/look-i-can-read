@@ -1,10 +1,10 @@
 {
   "name": "look-i-can-read",
-  "version": "0.2.0.0",
+  "version": "0.2.1.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --port 3009",
+    "dev": "vite --port 3009 --host",
     "build": "vite build",
     "start": "PORT=3009 node .output/server/index.mjs",
     "deploy": "docker compose up -d --build",
@@ -27,6 +27,7 @@
     "@ai-sdk/anthropic": "^3.0.58",
     "@ai-sdk/google": "^3.0.83",
     "@base-ui/react": "^1.2.0",
+    "@dnd-kit/core": "^6.3.1",
     "@libsql/client": "^0.17.4",
     "@tanstack/react-router": "^1.170.16",
     "@tanstack/react-start": "^1.168.26",

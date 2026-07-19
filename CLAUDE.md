@@ -145,7 +145,10 @@ yes → don't.
   purely DESCRIPTIVE: the parent picks the palier at /parents/calcul — NO
   automatic progression, no comfort score, no evaluation of the child (the
   calm constraint applies in full). `/calcul` runs the "série qui se range":
-  free writing on a soft numpad (everything inks like pencil, never red),
+  free writing on a soft numpad — tap into the selected cell or drag the
+  digit tile straight onto a grid cell (`@dnd-kit/core`: draggable keys,
+  droppable cells, DragOverlay ghost, forgiving drop for small fingers;
+  everything inks like pencil, never red),
   self-comparison with the solved operation, localStorage resume
   (shape-guarded; storage failure degrades silently — the child never sees an
   error). Server functions in `src/server/math-functions.ts` read/write

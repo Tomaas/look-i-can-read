@@ -9,7 +9,7 @@
 
 ### Tranche 5 — le geste timbres à l'écran
 **Priority:** P2
-**Contexte :** `stamp-engine.ts` (machine à états pure : place/unplace/exchange/ink, `isColumnReady`, 4 rangs) + `stamp-board.tsx` (`@dnd-kit/react` épinglé — décision eng-review 1B — ou tap-pour-poser selon l'observation), échange 10→1 avec la retenue écrite pendant le geste, encrage gaté par colonne résolue aux paliers avec matériel, fondu du matériel attaché au palier (les types `Fondu`/`Rank` sont déjà réservés dans `src/lib/operations/types.ts`). Golden tests sur l'engine.
+**Contexte :** `stamp-engine.ts` (machine à états pure : place/unplace/exchange/ink, `isColumnReady`, 4 rangs) + `stamp-board.tsx` (`@dnd-kit/react` épinglé — décision eng-review 1B — ou tap-pour-poser selon l'observation), échange 10→1 avec la retenue écrite pendant le geste, encrage gaté par colonne résolue aux paliers avec matériel, fondu du matériel attaché au palier (les types `Fondu`/`Rank` sont déjà réservés dans `src/lib/operations/types.ts`). Golden tests sur l'engine. NB : le glisser-déposer du pavé (v0.2.1.0) utilise déjà `@dnd-kit/core` — revalider le choix `@dnd-kit/react` de la décision 1B avant de commencer, pour ne pas embarquer deux paquets dnd-kit.
 **Depends on:** l'assignment ci-dessus (GO/NO-GO école).
 
 ### Tranche 6 — soustraction et multiplication au matériel
