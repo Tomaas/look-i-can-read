@@ -28,8 +28,8 @@ import {
   familleOfPalier,
   generateOperation,
   generateSerie,
-  layoutOperation,
   LEGACY_SERIE_STATE_KEY,
+  layoutOperation,
   MAX_RESULT,
   MAX_SERIE_SIZE,
   MIN_SERIE_SIZE,
@@ -628,7 +628,11 @@ check(
       vide.serieSize === DEFAULT_SERIE_SIZE,
   );
   const troisRows = [
-    { skill: skillKeyOf("multiplication"), palier: "mult-abstraite", serieSize: 5 },
+    {
+      skill: skillKeyOf("multiplication"),
+      palier: "mult-abstraite",
+      serieSize: 5,
+    },
     { skill: skillKeyOf("addition"), palier: "add-retenue", serieSize: 4 },
     { skill: skillKeyOf("soustraction"), palier: "sous-emprunt", serieSize: 6 },
   ];
@@ -645,7 +649,11 @@ check(
   const sale = settingsFromRows([
     { skill: "calcul-pose", palier: "add-retenue", serieSize: 3 },
     { skill: "exotique", palier: "add-retenue", serieSize: 3 },
-    { skill: skillKeyOf("soustraction"), palier: "mult-abstraite", serieSize: 99 },
+    {
+      skill: skillKeyOf("soustraction"),
+      palier: "mult-abstraite",
+      serieSize: 99,
+    },
   ]);
   check(
     "settingsFromRows: legacy non migrée et clé exotique IGNORÉES",

@@ -23,17 +23,24 @@ import {
   DIGIT_TILE_CLASSES,
   SoftNumpad,
 } from "~/components/calcul/soft-numpad";
+import { type TrayInfo, TrayShelf } from "~/components/calcul/tray-shelf";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/cn";
 import {
-  clampSerieSize,
+  bridgeLegacySerie,
   enonceFor,
+  FAMILLES,
   type GeneratedOperation,
   generateSerie,
+  LEGACY_SERIE_STATE_KEY,
   layoutOperation,
   newSerieSeed,
+  normalizeFamilySettings,
+  type Operation,
   type Palier,
   resolvePalier,
+  resolvePalierForFamille,
+  serieStorageKeyOf,
 } from "~/lib/operations";
 import { listDoudousFn } from "~/server/doudous-functions";
 import { listHeroesFn } from "~/server/heroes-functions";
@@ -72,7 +79,10 @@ export const Route = createFileRoute("/calcul/")({
 });
 
 const SETTINGS_CACHE_KEY = "calcul:settings";
-const SERIE_STATE_KEY = "calcul:serie";
+// La série en cours vit sous UNE clé PAR FAMILLE (serieStorageKeyOf, décision
+// 2A révisée : chaque plateau se souvient d'où il en était — rien n'est
+// jamais rangé dans le dos de l'enfant). L'ancienne clé unique
+// LEGACY_SERIE_STATE_KEY est migrée une fois par le pont (bridgeLegacySerie).
 
 // 8px of travel before a drag starts: a plain tap stays a click. Hoisted so
 // dnd-kit's useSensor memo keeps a stable options identity across renders.
@@ -110,6 +120,7 @@ function pencilAdvance(cell: CellRef): CellRef {
 }
 
 interface SerieState {
+  famille: Operation;
   palierId: string;
   serieSize: number;
   seed: number;
@@ -170,16 +181,21 @@ function writeJson(key: string, value: unknown) {
 
 /**
  * Shape guard for the resumed série: a corrupted or older-format cache must
- * fall back to a fresh série, never crash the child-facing page.
+ * fall back to a fresh série, never crash the child-facing page. The
+ * « sorti » tray state uses THIS exact predicate (design-review D-3A/F5) —
+ * never « the key exists » — so a sorti tray always resumes for real.
  */
 function isResumableSerie(
   saved: SerieState | null,
-  settings: MathSettings,
+  famille: Operation,
+  palierId: string,
+  serieSize: number,
 ): saved is SerieState {
   return (
     saved !== null &&
-    saved.palierId === settings.palier &&
-    saved.serieSize === settings.serieSize &&
+    saved.famille === famille &&
+    saved.palierId === palierId &&
+    saved.serieSize === serieSize &&
     typeof saved.seed === "number" &&
     typeof saved.index === "number" &&
     saved.index >= 0 &&
@@ -199,12 +215,42 @@ function isResumableSerie(
     // sinon les chiffres écrits appartiennent à d'autres calculs.
     fingerprintOps(
       safeGenerateSerie(
-        resolvePalier(saved.palierId),
+        resolvePalierForFamille(famille, saved.palierId),
         saved.seed,
         saved.serieSize,
       ),
     ) === saved.opsFingerprint
   );
+}
+
+/**
+ * L'état « sorti » d'un plateau + reprise : lit la clé de la famille, valide
+ * avec le prédicat complet, PURGE silencieusement une clé non reprenable
+ * (palier changé par le parent, cache d'un autre format — l'éducatrice a
+ * réorganisé l'étagère, exception assumée de la prémisse 4).
+ */
+function readResumableSerie(
+  famille: Operation,
+  palierId: string,
+  serieSize: number,
+): SerieState | null {
+  const key = serieStorageKeyOf(famille);
+  const saved = readJson<SerieState>(key);
+  if (saved === null) {
+    return null;
+  }
+  if (
+    isResumableSerie(saved, famille, palierId, serieSize) &&
+    saved.index < saved.serieSize
+  ) {
+    return saved;
+  }
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    // Storage unavailable — reading already failed softly anyway.
+  }
+  return null;
 }
 
 /**
@@ -219,9 +265,21 @@ function isResumableSerie(
  * appears alongside for the child to compare. The stamp-game manipulation
  * (tranche 5) arrives after the school confirms the material.
  */
+/**
+ * Les trois temps de l'atelier : l'étagère (le choix), la série (le travail),
+ * le moment « rangé » (la transition de fin, D-2A — jamais une destination).
+ * Phase en état local, pas de route : le back matériel sort de l'atelier
+ * (écart assumé D-8B), la flèche in-app fait le trajet fin.
+ */
+type Phase =
+  | { kind: "shelf" }
+  | { kind: "serie"; famille: Operation }
+  | { kind: "tidied"; famille: Operation };
+
 function CalculWorkshopPage() {
   const { settings: dbSettings, heroName, doudouName } = Route.useLoaderData();
   const [settings, setSettings] = useState<MathSettings | null>(null);
+  const [phase, setPhase] = useState<Phase>({ kind: "shelf" });
   const [serie, setSerie] = useState<SerieState | null>(null);
   const [selected, setSelected] = useState<CellRef | null>(null);
   // Digit currently being dragged from the numpad (drives the DragOverlay).
@@ -238,41 +296,81 @@ function CalculWorkshopPage() {
   const sensors = useSensors(useSensor(PointerSensor, POINTER_ACTIVATION));
 
   // Settings: DB when reachable (and cache it), else device cache, else
-  // defaults. NORMALIZED whatever the source — a hand-edited cache or DB row
-  // must never feed the generator an unbounded serieSize or a ghost palier.
+  // defaults. NORMALIZED whatever the source (normalizeFamilySettings, pure
+  // et golden-testée) — un cache édité ou un vieux format ne crashe jamais
+  // la page enfant. Même effet : le pont de clé legacy (une seule fois) et
+  // la purge des clés orphelines des familles désactivées (D-3A/F9).
   useEffect(() => {
-    const raw = dbSettings ?? readJson<MathSettings>(SETTINGS_CACHE_KEY);
-    const normalized: MathSettings = {
-      palier: resolvePalier(raw?.palier).id,
-      serieSize: clampSerieSize(raw?.serieSize),
-    };
+    // Pont 2A/T4 : la série d'AVANT l'étagère est re-rangée sous la clé de
+    // sa famille (dérivée de son palier) — jamais écrasante, puis l'ancienne
+    // clé disparaît. Le shape-guard normal validera comme d'habitude.
+    const legacy = bridgeLegacySerie(readJson<unknown>(LEGACY_SERIE_STATE_KEY));
+    if (
+      legacy &&
+      readJson<unknown>(serieStorageKeyOf(legacy.famille)) === null
+    ) {
+      writeJson(serieStorageKeyOf(legacy.famille), legacy.state);
+    }
+    try {
+      window.localStorage.removeItem(LEGACY_SERIE_STATE_KEY);
+    } catch {
+      // Storage unavailable — nothing to migrate anyway.
+    }
+
+    const normalized = normalizeFamilySettings(
+      dbSettings ?? readJson<unknown>(SETTINGS_CACHE_KEY),
+    );
     if (dbSettings) {
       writeJson(SETTINGS_CACHE_KEY, normalized);
+    }
+    for (const op of FAMILLES) {
+      if (!normalized.familles.some((f) => f.op === op)) {
+        try {
+          window.localStorage.removeItem(serieStorageKeyOf(op));
+        } catch {
+          // Storage unavailable — the ghost key is unreadable anyway.
+        }
+      }
     }
     setSettings(normalized);
   }, [dbSettings]);
 
-  // Série: resume the in-progress one if it matches the current settings,
-  // else start fresh. Resuming is silent — nothing lost, nothing signaled.
-  useEffect(() => {
-    if (!settings) {
-      return;
-    }
-    const saved = readJson<SerieState>(SERIE_STATE_KEY);
-    if (isResumableSerie(saved, settings)) {
-      setSerie(saved);
-      return;
-    }
-    setSerie(freshSerie(settings));
-  }, [settings]);
-
+  // Persistance : chaque frappe est sauvegardée sous la clé de SA famille —
+  // reposer le plateau ou fermer l'onglet ne perd jamais rien.
   useEffect(() => {
     if (serie) {
-      writeJson(SERIE_STATE_KEY, serie);
+      writeJson(serieStorageKeyOf(serie.famille), serie);
     }
   }, [serie]);
 
-  const palier = resolvePalier(serie?.palierId);
+  // Fin de série (D-2A) : le moment « rangé » est une TRANSITION vers
+  // l'étagère (où le plateau est visiblement rangé), pas une destination.
+  const finished =
+    phase.kind === "serie" && serie !== null && serie.index >= serie.serieSize;
+  useEffect(() => {
+    if (finished && serie) {
+      setPhase({ kind: "tidied", famille: serie.famille });
+    }
+  }, [finished, serie]);
+  useEffect(() => {
+    if (phase.kind !== "tidied") {
+      return;
+    }
+    const timer = setTimeout(() => {
+      try {
+        window.localStorage.removeItem(serieStorageKeyOf(phase.famille));
+      } catch {
+        // Storage unavailable — la série finie ne reviendra pas non plus.
+      }
+      setSerie(null);
+      setPhase({ kind: "shelf" });
+    }, 1600);
+    return () => clearTimeout(timer);
+  }, [phase]);
+
+  const palier = serie
+    ? resolvePalierForFamille(serie.famille, serie.palierId)
+    : resolvePalier(null);
   // Deps = the values that drive generation only (seed/size/palier) — the
   // serie OBJECT changes identity on every digit tap and must not retrigger
   // the rejection sampling.
@@ -286,12 +384,67 @@ function CalculWorkshopPage() {
     [serieSeed, serieSize, palier],
   );
 
-  if (!settings || !serie) {
+  /** Prendre un plateau : reprise exacte si la série est reprenable, sinon
+      série fraîche au palier parental de CETTE famille. */
+  function takeTray(op: Operation) {
+    if (!settings) {
+      return;
+    }
+    const reglage = settings.familles.find((f) => f.op === op);
+    const palierForOp = resolvePalierForFamille(op, reglage?.palier);
+    const saved = readResumableSerie(op, palierForOp.id, settings.serieSize);
+    setSelected(null);
+    setSerie(saved ?? freshSerie(op, palierForOp, settings.serieSize));
+    setPhase({ kind: "serie", famille: op });
+  }
+
+  /** « Reposer le plateau » (T2/D-4A) : retour à l'étagère, sans perte —
+      la série est sauvegardée à chaque frappe. */
+  function reposerPlateau() {
+    setSelected(null);
+    setSerie(null);
+    setPhase({ kind: "shelf" });
+  }
+
+  if (!settings) {
     // First client render (hydration-safe): the calm background, nothing else.
+    // L'étagère n'apparaît qu'une fois settings + localStorage résolus côté
+    // client, en fondu d'ensemble — jamais de plateau qui saute (D-3A/F6).
     return <div className="min-h-[80vh]" />;
   }
 
-  const finished = serie.index >= serie.serieSize;
+  if (phase.kind === "shelf") {
+    const trays: TrayInfo[] = settings.familles.map((f) => ({
+      op: f.op,
+      sorti:
+        readResumableSerie(
+          f.op,
+          resolvePalierForFamille(f.op, f.palier).id,
+          settings.serieSize,
+        ) !== null,
+    }));
+    return (
+      <WorkshopShell arrow={{ kind: "accueil" }}>
+        <FadeIn>
+          <TrayShelf
+            doudouName={doudouName}
+            heroName={heroName}
+            onTake={takeTray}
+            trays={trays}
+          />
+        </FadeIn>
+      </WorkshopShell>
+    );
+  }
+
+  if (phase.kind === "tidied" || !serie) {
+    return (
+      <WorkshopShell arrow={{ kind: "accueil" }}>
+        <TidiedMoment />
+      </WorkshopShell>
+    );
+  }
+
   const operation = finished ? null : operations[serie.index];
   const layout = operation ? layoutOperation(operation) : null;
   const current = finished ? null : serie.perOp[serie.index];
@@ -404,24 +557,18 @@ function CalculWorkshopPage() {
     setSerie((prev) => (prev ? { ...prev, index: prev.index + 1 } : prev));
   }
 
-  function openNewSerie() {
-    if (!settings) {
-      return;
-    }
-    setSelected(null);
-    setSerie(freshSerie(settings));
-  }
-
   if (finished || !(operation && layout && current)) {
+    // Fin de série (ou série vide sur palier cassé — dégradation calme) :
+    // le moment « rangé », puis l'effet ci-dessus ramène à l'étagère.
     return (
-      <WorkshopShell>
-        <WorkshopTidied onNewSerie={openNewSerie} />
+      <WorkshopShell arrow={{ kind: "accueil" }}>
+        <TidiedMoment />
       </WorkshopShell>
     );
   }
 
   return (
-    <WorkshopShell>
+    <WorkshopShell arrow={{ kind: "reposer", onReposer: reposerPlateau }}>
       {/* No tray/progress row (review decision 3B): the series is bounded but
           never counted in front of the child — the end simply arrives, like
           the end of a story. */}
@@ -500,61 +647,102 @@ function CalculWorkshopPage() {
   );
 }
 
-/** Common frame: the calm page with just a back arrow to the shelf. */
-function WorkshopShell({ children }: { children: React.ReactNode }) {
+/**
+ * Common frame — la flèche à deux niveaux (T2/D-4A), libellés IMPOSÉS :
+ * deux « étagères » coexistent dans l'app (l'accueil à deux portes et
+ * l'étagère de plateaux), les noms ne se recyclent pas. Zone tactile ≥44px.
+ */
+type ShellArrow =
+  | { kind: "accueil" }
+  | { kind: "reposer"; onReposer: () => void };
+
+function WorkshopShell({
+  arrow,
+  children,
+}: {
+  arrow: ShellArrow;
+  children: React.ReactNode;
+}) {
   return (
     <div className="mx-auto flex min-h-[80vh] w-full max-w-3xl flex-col items-center gap-8 py-6">
       <div className="w-full">
-        <Button
-          aria-label="Retour à l'étagère"
-          className="gap-2 text-lg text-muted-foreground"
-          nativeButton={false}
-          render={<Link aria-label="Retour à l'étagère" to="/" />}
-          variant="ghost"
-        >
-          <ArrowLeft className="size-5" />
-        </Button>
+        {arrow.kind === "accueil" ? (
+          <Button
+            aria-label="Retour à l'accueil"
+            className="min-h-11 min-w-11 gap-2 text-lg text-muted-foreground"
+            nativeButton={false}
+            render={<Link aria-label="Retour à l'accueil" to="/" />}
+            variant="ghost"
+          >
+            <ArrowLeft className="size-5" />
+          </Button>
+        ) : (
+          <Button
+            aria-label="Reposer le plateau"
+            className="min-h-11 min-w-11 gap-2 text-lg text-muted-foreground"
+            onClick={arrow.onReposer}
+            variant="ghost"
+          >
+            <ArrowLeft className="size-5" />
+          </Button>
+        )}
       </div>
       {children}
     </div>
   );
 }
 
-/** The gentle end state (T4-A): the workshop tidied itself, nothing pushes. */
-function WorkshopTidied({ onNewSerie }: { onNewSerie: () => void }) {
+/**
+ * Le moment « rangé » (T4-A, révisé D-2A) : une TRANSITION, pas une
+ * destination — 🌿 respire un instant, puis l'effet ramène à l'étagère où le
+ * plateau est visiblement rangé. Aucun bouton : rien ne presse, rien ne
+ * court-circuite le geste de choix.
+ */
+function TidiedMoment() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-10 text-center">
-      <p aria-hidden="true" className="text-6xl">
-        🌿
-      </p>
-      <p className="text-2xl text-muted-foreground">L'atelier est rangé.</p>
-      <div className="flex flex-col items-center gap-3">
-        <Button
-          className="gap-2 text-muted-foreground text-xl"
-          nativeButton={false}
-          render={<Link to="/" />}
-          variant="ghost"
-        >
-          Retour à l'étagère
-        </Button>
-        <Button
-          className="gap-2 text-muted-foreground text-xl"
-          onClick={onNewSerie}
-          variant="ghost"
-        >
-          Ouvrir une nouvelle série
-        </Button>
+    <FadeIn>
+      <div className="flex flex-1 flex-col items-center justify-center gap-10 text-center">
+        <p aria-hidden="true" className="text-6xl">
+          🌿
+        </p>
+        <p className="text-2xl text-muted-foreground">L'atelier est rangé.</p>
       </div>
+    </FadeIn>
+  );
+}
+
+/**
+ * Apparition en fondu d'ensemble (D-3A/F6) — dégrade en apparition
+ * instantanée sous prefers-reduced-motion (jamais un écran resté invisible).
+ */
+function FadeIn({ children }: { children: React.ReactNode }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    setVisible(true);
+  }, []);
+  return (
+    <div
+      className={cn(
+        "flex w-full flex-1 flex-col transition-opacity duration-300 motion-reduce:transition-none",
+        visible ? "opacity-100" : "opacity-0 motion-reduce:opacity-100",
+      )}
+    >
+      {children}
     </div>
   );
 }
 
-function freshSerie(settings: MathSettings): SerieState {
-  const palier = resolvePalier(settings.palier);
+function freshSerie(
+  famille: Operation,
+  palier: Palier,
+  serieSize: number,
+): SerieState {
+  // Le seed naît à la PRISE du plateau (T1 : plus de seed pré-engagé).
   const seed = newSerieSeed();
-  const size = clampSerieSize(settings.serieSize);
+  const size = serieSize;
   const ops = safeGenerateSerie(palier, seed, size);
   return {
+    famille,
     palierId: palier.id,
     serieSize: size,
     seed,

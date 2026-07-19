@@ -169,10 +169,9 @@ function ParentsCalculPage() {
       <div className="no-print space-y-2">
         <h1 className="font-bold text-3xl">Les calculs</h1>
         <p className="text-muted-foreground">
-          Prépare l'étagère — comme l'éducatrice décide des présentations,
-          c'est toi qui choisis les familles d'opérations disponibles et leur
-          palier. L'enfant choisit son plateau ; rien de tout cela ne lui est
-          montré.
+          Prépare l'étagère — comme l'éducatrice décide des présentations, c'est
+          toi qui choisis les familles d'opérations disponibles et leur palier.
+          L'enfant choisit son plateau ; rien de tout cela ne lui est montré.
         </p>
       </div>
 
@@ -181,10 +180,7 @@ function ParentsCalculPage() {
           const card = cards[op];
           const lastActive = card.active && activeCount === 1;
           return (
-            <li
-              className="space-y-3 rounded-2xl border bg-card p-4"
-              key={op}
-            >
+            <li className="space-y-3 rounded-2xl border bg-card p-4" key={op}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <label className="flex cursor-pointer items-center gap-3">
                   <input

@@ -15,8 +15,8 @@
 import {
   clampSerieSize,
   DEFAULT_SERIE_SIZE,
-  familleOfPalier,
   FAMILLES,
+  familleOfPalier,
   paliersByFamille,
   resolvePalierForFamille,
 } from "~/lib/operations/progression";
@@ -57,9 +57,7 @@ export interface MathSkillRowLike {
 export function defaultFamilySettings(): FamilySettings {
   return {
     serieSize: DEFAULT_SERIE_SIZE,
-    familles: [
-      { op: "addition", palier: paliersByFamille("addition")[0].id },
-    ],
+    familles: [{ op: "addition", palier: paliersByFamille("addition")[0].id }],
   };
 }
 
@@ -117,8 +115,7 @@ export function normalizeFamilySettings(value: unknown): FamilySettings {
     if (!entry) {
       continue;
     }
-    const palier =
-      typeof entry.palier === "string" ? entry.palier : undefined;
+    const palier = typeof entry.palier === "string" ? entry.palier : undefined;
     familles.push({ op, palier: resolvePalierForFamille(op, palier).id });
   }
   if (familles.length === 0) {

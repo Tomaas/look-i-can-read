@@ -34,15 +34,16 @@ export {
   LEGACY_SERIE_STATE_KEY,
   type MathSkillRowLike,
   normalizeFamilySettings,
+  SKILL_KEY_PREFIX,
   serieStorageKeyOf,
   settingsFromRows,
-  SKILL_KEY_PREFIX,
   skillKeyOf,
 } from "~/lib/operations/settings";
 export type {
   Fondu,
   GeneratedOperation,
   GenerationConstraints,
+  Operation,
   Palier,
   Quota,
   Rank,
