@@ -266,9 +266,7 @@
       "indexes": {
         "math_skills_skill_idx": {
           "name": "math_skills_skill_idx",
-          "columns": [
-            "skill"
-          ],
+          "columns": ["skill"],
           "isUnique": true
         }
       },
@@ -620,10 +618,7 @@
       "indexes": {
         "story_segments_story_idx": {
           "name": "story_segments_story_idx",
-          "columns": [
-            "story_id",
-            "idx"
-          ],
+          "columns": ["story_id", "idx"],
           "isUnique": true
         }
       },
@@ -632,12 +627,8 @@
           "name": "story_segments_story_id_stories_id_fk",
           "tableFrom": "story_segments",
           "tableTo": "stories",
-          "columnsFrom": [
-            "story_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["story_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
