@@ -4,6 +4,28 @@ Toutes les évolutions notables de l'app, une version par livraison.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/) adapté, versions
 4 chiffres `MAJOR.MINOR.PATCH.MICRO` (fichier `VERSION`).
 
+## [0.3.1.0] - 2026-07-20
+
+### Changed
+
+- Les illustrations annoncent désormais leurs dimensions à la page : plus de
+  petit saut de mise en page pendant qu'une image de la bibliothèque, d'une
+  histoire ou d'un livret imprimé finit de charger.
+- Grand ménage de printemps du code avec l'adoption des presets ultracite
+  (Biome) : imports, attributs et clés triés partout, réécritures plus
+  explicites (comparaisons null/undefined précises, expressions régulières
+  hoistées, `+= 1`) — sans aucun changement de comportement, les suites
+  golden le garantissent.
+- L'ordre des champs des schémas d'histoire envoyés au modèle (titre puis
+  récit puis choix) est maintenant verrouillé par un test : une future passe
+  de formatage ne pourra plus le réordonner en silence.
+
+### Fixed
+
+- Le tri automatique des clés avait déplacé des commentaires de section
+  (variables d'environnement, schéma de la base) sous les mauvaises entrées ;
+  les groupes sémantiques sont restaurés et protégés.
+
 ## [0.3.0.0] - 2026-07-20
 
 ### Added
