@@ -57,6 +57,7 @@
     "tailwindcss": "^4.3.2",
     "tw-animate-css": "^1.3.7",
     "typescript": "^6.0.3",
+    "ultracite": "^7.9.4",
     "vite": "^8.1.0",
     "vite-tsconfig-paths": "^6.1.1"
   }

@@ -1,9 +1,15 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
   "root": true,
+  // Presets opinionnés ultracite (core + react + tanstack) ; les réglages
+  // locaux ci-dessous gardent la priorité sur les presets.
+  "extends": [
+    "ultracite/biome/core",
+    "ultracite/biome/react",
+    "ultracite/biome/tanstack"
+  ],
   "files": {
     "includes": [
-      "**",
       "!!**/node_modules",
       "!!**/.tanstack",
       "!!**/.output",
@@ -56,7 +62,11 @@
         "noNestedComponentDefinitions": "off"
       },
       "performance": {
-        "noNamespaceImport": "off"
+        "noNamespaceImport": "off",
+        // Handlers fléchés inline = idiome React 19 ; aucun souci de perf
+        // mesurable à l'échelle de l'app, et réécrire ~90 handlers (dont le
+        // dnd du pavé numérique) serait du churn risqué sans bénéfice.
+        "noJsxPropsBind": "off"
       },
       "security": {
         "noDangerouslySetInnerHtml": "off"
@@ -81,6 +91,48 @@
       "quoteStyle": "double"
     }
   },
+  "overrides": [
+    {
+      // Générateur seedé (mulberry32) : le bitwise EST l'algorithme, et la
+      // reproductibilité (palier, seed) → série identique en dépend.
+      "includes": ["src/lib/operations/**"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noBitwiseOperators": "off"
+          }
+        }
+      }
+    },
+    {
+      // Façades publiques des modules purs — la frontière de module est
+      // voulue (cf. CLAUDE.md), pas un barrel accidentel.
+      "includes": [
+        "src/lib/operations/index.ts",
+        "src/lib/reading-aids/index.ts"
+      ],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    },
+    {
+      // Routes TanStack Start : les noms (data.$.tsx, préfixe "-") sont
+      // imposés par le framework ; le preset tanstack d'ultracite ne couvre
+      // que **/routes/**, pas notre src/app/**.
+      "includes": ["src/app/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useFilenamingConvention": "off"
+          }
+        }
+      }
+    }
+  ],
   "css": {
     "parser": {
       "cssModules": true,
