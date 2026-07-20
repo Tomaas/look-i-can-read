@@ -4,12 +4,11 @@ import { Button } from "~/components/ui/button";
 import { PickerGrid, type PickerItem } from "./picker-grid";
 
 interface MultiPickStepProps {
-  title: string;
   items: PickerItem[];
-  /** The items picked so far (ids). */
-  selectedIds: string[];
-  /** Toggle one item in/out of the selection. */
-  onToggle: (id: string) => void;
+  /** When true (REQUIRED steps), "suite" is disabled until ≥1 is picked, so the
+   * child can't advance with an empty required selection. Stays calm — the
+   * button is simply not yet active, no error, no nudge. */
+  minOne?: boolean;
   /** Advance to the next step with the current selection. */
   onContinue: () => void;
   /** Pick one (or a couple) at random ("au hasard"). */
@@ -17,12 +16,13 @@ interface MultiPickStepProps {
   /** Optional "skip" path (e.g. "sans doudou"): clears the selection AND
    * advances in one tap. Omitted for REQUIRED steps (heroes/elements). */
   onSkip?: () => void;
-  skipLabel?: string;
+  /** Toggle one item in/out of the selection. */
+  onToggle: (id: string) => void;
+  /** The items picked so far (ids). */
+  selectedIds: string[];
   skipIcon?: ReactNode;
-  /** When true (REQUIRED steps), "suite" is disabled until ≥1 is picked, so the
-   * child can't advance with an empty required selection. Stays calm — the
-   * button is simply not yet active, no error, no nudge. */
-  minOne?: boolean;
+  skipLabel?: string;
+  title: string;
 }
 
 /**

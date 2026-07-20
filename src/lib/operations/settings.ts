@@ -34,8 +34,8 @@ import type {
  */
 export const FAMILLE_NOMS: Record<Operation, string> = {
   addition: "additions",
-  soustraction: "soustractions",
   multiplication: "multiplications",
+  soustraction: "soustractions",
 };
 
 /** Préfixe des clés de la table math_skills (une ligne par famille). */
@@ -58,22 +58,22 @@ export interface FamilleSetting {
  * familles activées, dans l'ordre canonique — jamais vide.
  */
 export interface FamilySettings {
-  serieSize: number;
   familles: FamilleSetting[];
+  serieSize: number;
 }
 
 /** La forme minimale d'une ligne math_skills dont ce module a besoin. */
 export interface MathSkillRowLike {
-  skill: string;
   palier: string;
   serieSize: number;
+  skill: string;
 }
 
 /** Table vide (install neuve) → « addition, premier palier, activée ». */
 export function defaultFamilySettings(): FamilySettings {
   return {
-    serieSize: DEFAULT_SERIE_SIZE,
     familles: [{ op: "addition", palier: paliersByFamille("addition")[0].id }],
+    serieSize: DEFAULT_SERIE_SIZE,
   };
 }
 
@@ -84,7 +84,7 @@ export function defaultFamilySettings(): FamilySettings {
  * clampée ; ligne au skill inconnu (legacy pas migrée, clé exotique) ignorée.
  */
 export function settingsFromRows(
-  rows: readonly MathSkillRowLike[],
+  rows: readonly MathSkillRowLike[]
 ): FamilySettings {
   const familles: FamilleSetting[] = [];
   let serieSize: number | null = null;
@@ -101,7 +101,7 @@ export function settingsFromRows(
   if (familles.length === 0) {
     return defaultFamilySettings();
   }
-  return { serieSize: serieSize ?? DEFAULT_SERIE_SIZE, familles };
+  return { familles, serieSize: serieSize ?? DEFAULT_SERIE_SIZE };
 }
 
 function isOperation(value: unknown): value is Operation {
@@ -124,9 +124,7 @@ export function normalizeFamilySettings(value: unknown): FamilySettings {
   for (const op of FAMILLES) {
     const entry = rawFamilles.find(
       (f: unknown) =>
-        typeof f === "object" &&
-        f !== null &&
-        (f as { op?: unknown }).op === op,
+        typeof f === "object" && f !== null && (f as { op?: unknown }).op === op
     ) as { palier?: unknown } | undefined;
     if (!entry) {
       continue;
@@ -143,7 +141,7 @@ export function normalizeFamilySettings(value: unknown): FamilySettings {
       serieSize: clampSerieSize(raw?.serieSize),
     };
   }
-  return { serieSize: clampSerieSize(raw?.serieSize), familles };
+  return { familles, serieSize: clampSerieSize(raw?.serieSize) };
 }
 
 /** Clé localStorage de la série en cours d'une famille (une par plateau). */
@@ -163,7 +161,7 @@ export const LEGACY_SERIE_STATE_KEY = "calcul:serie";
  * il refuse seulement ce qui n'a même pas la forme d'un état de série.
  */
 export function bridgeLegacySerie(
-  saved: unknown,
+  saved: unknown
 ): { famille: Operation; state: Record<string, unknown> } | null {
   if (typeof saved !== "object" || saved === null) {
     return null;
@@ -182,8 +180,8 @@ export function bridgeLegacySerie(
 
 /** La grille écrite d'une opération (même forme que GridEntries côté UI). */
 export interface SerieEntriesLike {
-  result: (string | null)[];
   carries: (string | null)[];
+  result: (string | null)[];
 }
 
 /**
@@ -195,12 +193,12 @@ export interface SerieEntriesLike {
  */
 export interface SerieStateLike {
   famille: Operation;
-  palierId: string;
-  serieSize: number;
-  seed: number;
   index: number;
   opsFingerprint: string;
+  palierId: string;
   perOp: { entries: SerieEntriesLike; done: boolean }[];
+  seed: number;
+  serieSize: number;
 }
 
 export function fingerprintOps(ops: readonly GeneratedOperation[]): string {
@@ -216,7 +214,7 @@ export function fingerprintOps(ops: readonly GeneratedOperation[]): string {
 export function safeGenerateSerie(
   palier: Palier,
   seed: number,
-  size: number,
+  size: number
 ): GeneratedOperation[] {
   try {
     return generateSerie(palier.constraints, seed, size);
@@ -225,7 +223,7 @@ export function safeGenerateSerie(
       return generateSerie(
         resolvePalierForFamille("addition", null).constraints,
         seed,
-        size,
+        size
       );
     } catch {
       return [];
@@ -244,7 +242,7 @@ export function isResumableSerie(
   saved: SerieStateLike | null,
   famille: Operation,
   palierId: string,
-  serieSize: number,
+  serieSize: number
 ): saved is SerieStateLike {
   return (
     saved !== null &&
@@ -264,7 +262,7 @@ export function isResumableSerie(
         Array.isArray(op?.entries?.result) &&
         op.entries.result.every((v) => v === null || typeof v === "string") &&
         Array.isArray(op?.entries?.carries) &&
-        op.entries.carries.every((v) => v === null || typeof v === "string"),
+        op.entries.carries.every((v) => v === null || typeof v === "string")
     ) &&
     // La régénération doit reproduire exactement les opérations d'origine —
     // sinon les chiffres écrits appartiennent à d'autres calculs.
@@ -272,8 +270,8 @@ export function isResumableSerie(
       safeGenerateSerie(
         resolvePalierForFamille(famille, saved.palierId),
         saved.seed,
-        saved.serieSize,
-      ),
+        saved.serieSize
+      )
     ) === saved.opsFingerprint
   );
 }

@@ -6,6 +6,7 @@ import { getDynamicStoryFn } from "~/server/dynamic-functions";
 import { getFlagsFn } from "~/server/functions";
 
 export const Route = createFileRoute("/aventure/$id")({
+  component: AventureStoryPage,
   loader: async ({ params }) => {
     const [data, flags] = await Promise.all([
       getDynamicStoryFn({ data: params.id }),
@@ -16,7 +17,6 @@ export const Route = createFileRoute("/aventure/$id")({
     }
     return { ...data, flags };
   },
-  component: AventureStoryPage,
 });
 
 function AventureStoryPage() {
@@ -31,7 +31,7 @@ function AventureStoryPage() {
   // final one (no choices). A mid-play story (last complete beat still offers
   // choices, or a pending placeholder trails) stays live.
   const hasPending = segments.some((s) => s.status !== "complete");
-  const readOnly = !hasPending && last != null && last.choices == null;
+  const readOnly = !hasPending && last !== undefined && last.choices === null;
 
   return (
     <div className="space-y-8">

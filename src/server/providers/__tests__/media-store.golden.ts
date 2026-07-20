@@ -22,7 +22,7 @@ function check(name: string, ok: boolean, detail?: string) {
   if (ok) {
     console.log(`✓ ${name}`);
   } else {
-    failures++;
+    failures += 1;
     console.error(`✗ ${name}${detail ? `\n  ${detail}` : ""}`);
   }
 }
@@ -35,7 +35,7 @@ check(
   "blobHostFromToken lowercases the derived host",
   blobHostFromToken(MIXED_CASE_TOKEN) ===
     "storeabc123xyz.public.blob.vercel-storage.com",
-  JSON.stringify(blobHostFromToken(MIXED_CASE_TOKEN)),
+  JSON.stringify(blobHostFromToken(MIXED_CASE_TOKEN))
 );
 
 // The end-to-end guarantee: the mixed-case store's own blob URL is ACCEPTED by
@@ -43,18 +43,18 @@ check(
 {
   const storeHost = blobHostFromToken(MIXED_CASE_TOKEN);
   const url = new URL(
-    "https://StoreAbc123XYZ.public.blob.vercel-storage.com/img/beat0.png",
+    "https://StoreAbc123XYZ.public.blob.vercel-storage.com/img/beat0.png"
   );
   check(
     "mixed-case store id → its own blob URL passes the allowlist compare",
     url.hostname === storeHost,
-    `hostname=${url.hostname} storeHost=${storeHost}`,
+    `hostname=${url.hostname} storeHost=${storeHost}`
   );
 }
 
 check(
   "a malformed token (no store-id segment) → null",
-  blobHostFromToken("vercel_blob_rw") === null,
+  blobHostFromToken("vercel_blob_rw") === null
 );
 
 if (failures > 0) {

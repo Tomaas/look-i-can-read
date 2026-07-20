@@ -9,53 +9,53 @@
  * `emoji` is the fallback avatar shown on the picker button (no images yet).
  */
 export interface Character {
-  id: string;
-  name: string;
-  emoji: string;
   description: string;
+  emoji: string;
+  id: string;
   // Optional appearance detail injected into image prompts (classic + dynamic)
   // so every illustration of this hero looks consistent.
   imageHint?: string;
   isDefault?: boolean;
+  name: string;
 }
 
 export const characters: Character[] = [
   {
-    id: "jules",
-    name: "Jules",
-    emoji: "🦊",
     description:
       "Jules, un petit garçon de 5 ans, curieux, gentil et malin. Il adore les animaux, construire des cabanes et regarder les étoiles.",
+    emoji: "🦊",
+    id: "jules",
     // Fixed visual anchors (age, hair, clothes) keep the character recognizable
     // across independently-generated illustrations.
     imageHint:
       "Jules est un petit garçon de 5 ans, cheveux bruns courts, yeux marron, pull bleu et pantalon beige.",
     isDefault: true,
+    name: "Jules",
   },
   {
+    description: "Mona, la grande sœur de Jules, gentille et courageuse.",
+    emoji: "🐻",
     id: "mona",
     name: "Mona",
-    emoji: "🐻",
-    description: "Mona, la grande sœur de Jules, gentille et courageuse.",
   },
   {
+    description: "Zoé, une copine de Jules, joyeuse et pleine d'idées.",
+    emoji: "🦋",
     id: "zoe",
     name: "Zoé",
-    emoji: "🦋",
-    description: "Zoé, une copine de Jules, joyeuse et pleine d'idées.",
   },
   {
+    description: "Nino, un copain de Jules, rigolo et plein d'énergie.",
+    emoji: "🦁",
     id: "nino",
     name: "Nino",
-    emoji: "🦁",
-    description: "Nino, un copain de Jules, rigolo et plein d'énergie.",
   },
   {
-    id: "surprise",
-    name: "Pixel",
-    emoji: "🐉",
     description:
       "Pixel, un gentil petit dragon merveilleux, curieux et qui adore aider. (C'est le héros « surprise ».)",
+    emoji: "🐉",
+    id: "surprise",
+    name: "Pixel",
   },
 ];
 
@@ -90,11 +90,11 @@ export const legacyHeroes: Array<{
   promptHint: string;
   imageHint: string;
 }> = characters.map((c) => ({
-  id: c.id,
-  label: c.name,
   emoji: c.emoji,
-  promptHint: c.description,
+  id: c.id,
   imageHint: c.imageHint ?? DEFAULT_HERO_IMAGE_HINT,
+  label: c.name,
+  promptHint: c.description,
 }));
 
 /** Legacy hero (DB shape) by id, for the frozen-context config fallback. */

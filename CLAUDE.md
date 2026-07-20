@@ -21,11 +21,17 @@ yes → don't.
 - `bun run dev` — dev server on port 3009
 - `bun run build` / `bun run start` — clean local run (start uses PORT=3009)
 - `bun run check-types` — tsc
-- `bun run lint` / `bun run lint:fix` — Biome
+- `bun run lint` / `bun run lint:fix` — Biome, extending the ultracite
+  presets (core + react + tanstack); the deliberate opt-outs (jsx handlers,
+  bitwise in the seeded generator, module façades, route filenames) are
+  documented inline in `biome.jsonc` and win over the presets.
 - `bun run test` — golden assertion scripts (plain bun, no vitest):
   `test:golden` pins prompt identity; `test:coherence` pins the safety/structure
-  validators, the anti-"doux" repetition guard, the landing decrescendo and the
-  prompt builders; `test:media` pins the media-store path rules;
+  validators, the anti-"doux" repetition guard, the landing decrescendo, the
+  prompt builders and the zod schema key order (key order IS the JSON property
+  order sent to the model — a formatting pass must not reorder it);
+  `test:media` pins the media-store path rules;
+  `test:data-route` pins the `/data/$` media-serving route;
   `test:reading-aids` pins the silent-letter/liaison annotator;
   `test:operations` pins the posed-operations module (seeded generator,
   layout geometry, palier ladder, énoncé templates, calm-wording scan).

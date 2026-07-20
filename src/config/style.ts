@@ -11,10 +11,10 @@ export const imageStyleSuffix = [
 ].join(" ");
 
 export const palette = {
+  accent: "#A9C9A4",
   background: "#FBF6EC",
   ink: "#5A4636",
   primary: "#D89A5B",
-  accent: "#A9C9A4",
 } as const;
 
 export const fonts = {

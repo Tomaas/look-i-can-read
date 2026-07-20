@@ -49,7 +49,7 @@ function HomePage() {
       </div>
 
       <Button
-        className="gap-2 text-xl text-muted-foreground"
+        className="gap-2 text-muted-foreground text-xl"
         nativeButton={false}
         render={<Link to="/bibliotheque" />}
         variant="ghost"

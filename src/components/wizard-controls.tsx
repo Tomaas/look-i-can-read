@@ -18,6 +18,7 @@ export function WizardControls({ onBack, onRestart }: WizardControlsProps) {
   function handleRestart() {
     // A light confirm so an accidental tap doesn't wipe the picks. Calm wording,
     // no stakes. (window.confirm matches the parent pages' delete confirms.)
+    // biome-ignore lint/suspicious/noAlert: confirm() volontairement minimal — garde anti-tap accidentel, pas d'UI modale à maintenir.
     if (window.confirm("On recommence depuis le début ?")) {
       onRestart();
     }

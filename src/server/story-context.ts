@@ -42,26 +42,26 @@ import type {
  *    snapshot columns, so the config-by-id fallback IS needed — codex #3.)
  */
 export interface FrozenStoryContext {
-  // Resolved heroes, frozen — heroes[0] is the PRIMARY (named-hard) hero. Never
-  // empty for a well-formed story (creation hard-fails on an empty resolve);
-  // callers still treat an empty array gracefully.
-  heroes: HeroContext[];
-  // Resolved place fields, frozen. `promptHint` may be "" if neither snapshot
-  // nor a legacy-config id resolves (a deleted custom place on a pre-snapshot
-  // row) — callers already treat an empty hint as "omit the scene line".
-  place: { label: string; promptHint: string };
-  // Resolved surprise elements, frozen. Like heroes: snapshot array → config
-  // fallback by id as a one-element array → empty.
-  elements: ElementContext[];
   // Resolved doudous, frozen — EMPTY when the child chose no doudou. Callers
   // inject the prompt/image hints for each. Prefers the multi-select array
   // snapshot; falls back to the singular columns for single-doudou-era stories.
   doudous: DoudouContext[];
+  // Resolved surprise elements, frozen. Like heroes: snapshot array → config
+  // fallback by id as a one-element array → empty.
+  elements: ElementContext[];
+  // Resolved heroes, frozen — heroes[0] is the PRIMARY (named-hard) hero. Never
+  // empty for a well-formed story (creation hard-fails on an empty resolve);
+  // callers still treat an empty array gracefully.
+  heroes: HeroContext[];
   // The story's frozen outfit (heroes' wardrobe), or null. Not editable and not
   // snapshotted per-entity — it is a single story-level column (like the
   // visual world), so it needs no fallback: null on older rows / arc soft-fail
   // / safety drop, in which case callers omit the outfit line.
   outfit: string | null;
+  // Resolved place fields, frozen. `promptHint` may be "" if neither snapshot
+  // nor a legacy-config id resolves (a deleted custom place on a pre-snapshot
+  // row) — callers already treat an empty hint as "omit the scene line".
+  place: { label: string; promptHint: string };
 }
 
 export function getFrozenStoryPromptContext(story: Story): FrozenStoryContext {
@@ -76,16 +76,16 @@ export function getFrozenStoryPromptContext(story: Story): FrozenStoryContext {
   let doudous: DoudouContext[];
   if (story.doudouSnapshots && story.doudouSnapshots.length > 0) {
     doudous = story.doudouSnapshots.map((d) => ({
+      imageHint: d.imageHint ?? "",
       label: d.label ?? "",
       promptHint: d.promptHint ?? "",
-      imageHint: d.imageHint ?? "",
     }));
   } else if (story.doudouPromptHint) {
     doudous = [
       {
+        imageHint: story.doudouImageHint ?? "",
         label: story.doudouLabel ?? "",
         promptHint: story.doudouPromptHint,
-        imageHint: story.doudouImageHint ?? "",
       },
     ];
   } else {
@@ -98,18 +98,18 @@ export function getFrozenStoryPromptContext(story: Story): FrozenStoryContext {
   let heroes: HeroContext[];
   if (story.heroSnapshots && story.heroSnapshots.length > 0) {
     heroes = story.heroSnapshots.map((h) => ({
+      imageHint: h.imageHint ?? "",
       label: h.label ?? "",
       promptHint: h.promptHint ?? "",
-      imageHint: h.imageHint ?? "",
     }));
   } else {
     const legacy = findLegacyHero(story.heroId);
     heroes = legacy
       ? [
           {
+            imageHint: legacy.imageHint,
             label: legacy.label,
             promptHint: legacy.promptHint,
-            imageHint: legacy.imageHint,
           },
         ]
       : [];
@@ -130,10 +130,10 @@ export function getFrozenStoryPromptContext(story: Story): FrozenStoryContext {
   }
 
   return {
-    heroes,
-    place: { label, promptHint },
-    elements,
     doudous,
+    elements,
+    heroes,
     outfit: story.outfit ?? null,
+    place: { label, promptHint },
   };
 }

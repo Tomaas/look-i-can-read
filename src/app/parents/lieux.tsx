@@ -12,8 +12,8 @@ import {
 } from "~/server/places-functions";
 
 export const Route = createFileRoute("/parents/lieux")({
-  loader: () => listPlacesFn(),
   component: ParentsLieuxPage,
+  loader: () => listPlacesFn(),
 });
 
 /**
@@ -38,8 +38,9 @@ function ParentsLieuxPage() {
 
   async function handleDelete(id: string) {
     if (
+      // biome-ignore lint/suspicious/noAlert: confirm() volontairement minimal — garde anti-tap accidentel, pas d'UI modale à maintenir.
       !window.confirm(
-        "Supprimer ce lieu ? Les histoires déjà créées ne changeront pas.",
+        "Supprimer ce lieu ? Les histoires déjà créées ne changeront pas."
       )
     ) {
       return;

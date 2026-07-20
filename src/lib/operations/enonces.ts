@@ -15,10 +15,10 @@ import { mulberry32 } from "~/lib/operations/generator";
 import type { GeneratedOperation } from "~/lib/operations/types";
 
 export interface EnonceEntities {
-  /** Prénom du héros (obligatoire — l'enfant de la famille). */
-  hero: string;
   /** Nom du doudou, s'il existe. */
   doudou?: string;
+  /** Prénom du héros (obligatoire — l'enfant de la famille). */
+  hero: string;
 }
 
 /** Objets calmes et dénombrables, au pluriel (on en manipule toujours ≥ 2). */
@@ -44,16 +44,15 @@ function pick<T>(rand: () => number, items: readonly T[]): T {
  * Le compagnon (doudou) n'apparaît que s'il est fourni.
  */
 /** Décorrèle le PRNG des énoncés du flux du générateur (même seed d'op). */
-const ENONCE_SEED_SALT = 0x5f3759df;
+const ENONCE_SEED_SALT = 0x5f_37_59_df;
 
 export function enonceFor(
   op: GeneratedOperation,
-  entities: EnonceEntities,
+  entities: EnonceEntities
 ): string {
   const rand = mulberry32(op.seed ^ ENONCE_SEED_SALT);
   const objet = pick(rand, OBJETS);
-  const hero = entities.hero;
-  const compagnon = entities.doudou;
+  const { hero, doudou: compagnon } = entities;
 
   if (op.op === "addition") {
     return compagnon && rand() < 0.5

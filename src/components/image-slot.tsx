@@ -1,10 +1,22 @@
 import { useState } from "react";
 import { cn } from "~/lib/cn";
+import {
+  GENERATED_IMAGE_HEIGHT,
+  GENERATED_IMAGE_WIDTH,
+} from "~/lib/generated-image";
 import type { ImageStatus } from "~/server/providers/types";
 
 interface ImageSlotProps {
   imagePath: string | null;
   imageStatus: ImageStatus;
+  /**
+   * Optional re-generation handler for the FAILED state only. When provided, the
+   * "no drawing today" placeholder offers a calm "Réessayer" button that calls
+   * this and re-attempts the one image. Omitted → no button (e.g. images off, or
+   * a surface where retry doesn't apply). The slot owns its own gentle
+   * loading/failure copy so callers stay simple.
+   */
+  onRetry?: () => Promise<void>;
   /** Emoji shown in the calm OFF/"skipped" placeholder — 🌼 (classic) or 🪶
    * (dynamic beat), so each surface keeps its existing motif. */
   placeholderEmoji: string;
@@ -14,14 +26,6 @@ interface ImageSlotProps {
   /** Classic story view keeps the picture sticky through a long read; the
    * dynamic beat does not. */
   sticky?: boolean;
-  /**
-   * Optional re-generation handler for the FAILED state only. When provided, the
-   * "no drawing today" placeholder offers a calm "Réessayer" button that calls
-   * this and re-attempts the one image. Omitted → no button (e.g. images off, or
-   * a surface where retry doesn't apply). The slot owns its own gentle
-   * loading/failure copy so callers stay simple.
-   */
-  onRetry?: () => Promise<void>;
 }
 
 /**
@@ -129,7 +133,15 @@ export function ImageSlot({
 }: ImageSlotProps) {
   function inner() {
     if (imagePath) {
-      return <img alt="" className="size-full object-cover" src={imagePath} />;
+      return (
+        <img
+          alt=""
+          className="size-full object-cover"
+          height={GENERATED_IMAGE_HEIGHT}
+          src={imagePath}
+          width={GENERATED_IMAGE_WIDTH}
+        />
+      );
     }
     if (imageStatus === "failed") {
       return <FailedState onRetry={onRetry} />;
@@ -146,7 +158,7 @@ export function ImageSlot({
     <div
       className={cn(
         "aspect-[4/3] w-full overflow-hidden rounded-3xl bg-accent/40",
-        sticky && "lg:sticky lg:top-10",
+        sticky && "lg:sticky lg:top-10"
       )}
       data-image-status={imageStatus}
     >

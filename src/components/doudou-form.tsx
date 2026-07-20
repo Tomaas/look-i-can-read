@@ -6,18 +6,18 @@ import { Textarea } from "~/components/ui/textarea";
 import type { DbDoudou } from "~/server/db/schema";
 
 export interface DoudouFormValues {
-  label: string;
   emoji?: string;
-  imagePath?: string;
-  promptHint: string;
   imageHint: string;
+  imagePath?: string;
+  label: string;
+  promptHint: string;
 }
 
 interface DoudouFormProps {
   // Undefined = a new doudou; a row = editing it.
   initial?: DbDoudou;
-  onSubmit: (values: DoudouFormValues) => void | Promise<void>;
   onCancel: () => void;
+  onSubmit: (values: DoudouFormValues) => void | Promise<void>;
 }
 
 // Match the place form's sizing so the two parent tools read identically.
@@ -51,11 +51,11 @@ export function DoudouForm({ initial, onSubmit, onCancel }: DoudouFormProps) {
     setSubmitting(true);
     try {
       await onSubmit({
-        label: label.trim(),
         emoji: emoji.trim() || undefined,
-        imagePath: imagePath.trim() || undefined,
-        promptHint: promptHint.trim(),
         imageHint: imageHint.trim(),
+        imagePath: imagePath.trim() || undefined,
+        label: label.trim(),
+        promptHint: promptHint.trim(),
       });
     } finally {
       setSubmitting(false);

@@ -12,8 +12,8 @@ import {
 } from "~/server/doudous-functions";
 
 export const Route = createFileRoute("/parents/doudous")({
-  loader: () => listDoudousFn(),
   component: ParentsDoudousPage,
+  loader: () => listDoudousFn(),
 });
 
 /**
@@ -36,8 +36,9 @@ function ParentsDoudousPage() {
 
   async function handleDelete(id: string) {
     if (
+      // biome-ignore lint/suspicious/noAlert: confirm() volontairement minimal — garde anti-tap accidentel, pas d'UI modale à maintenir.
       !window.confirm(
-        "Retirer ce doudou ? Les histoires déjà créées ne changeront pas.",
+        "Retirer ce doudou ? Les histoires déjà créées ne changeront pas."
       )
     ) {
       return;

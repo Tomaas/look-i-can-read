@@ -4,16 +4,16 @@ import type { PickerItem } from "./picker-grid";
 
 interface DoudouMultiStepProps {
   items: PickerItem[];
-  /** The doudous picked so far (ids). Empty = "sans doudou". */
-  selectedIds: string[];
-  /** Toggle one doudou in/out of the selection. */
-  onToggle: (id: string) => void;
   /** Advance to the next step with the current selection (may be empty). */
   onContinue: () => void;
-  /** Clear the whole selection AND advance ("sans doudou" — one definitive tap). */
-  onSkip: () => void;
   /** Pick one or a couple at random ("au hasard"). */
   onRandom: () => void;
+  /** Clear the whole selection AND advance ("sans doudou" — one definitive tap). */
+  onSkip: () => void;
+  /** Toggle one doudou in/out of the selection. */
+  onToggle: (id: string) => void;
+  /** The doudous picked so far (ids). Empty = "sans doudou". */
+  selectedIds: string[];
 }
 
 /**

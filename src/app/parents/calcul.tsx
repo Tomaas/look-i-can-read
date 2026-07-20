@@ -23,6 +23,7 @@ import { listHeroesFn } from "~/server/heroes-functions";
 import { getMathSettingsFn, saveMathSettingsFn } from "~/server/math-functions";
 
 export const Route = createFileRoute("/parents/calcul")({
+  component: ParentsCalculPage,
   loader: async () => {
     // Settings has server-side DEFAULTS — a DB hiccup shouldn't kill the
     // whole parent page any more than the heroes/doudous lists do.
@@ -32,12 +33,11 @@ export const Route = createFileRoute("/parents/calcul")({
       listDoudousFn().catch(() => []),
     ]);
     return {
-      settings,
-      heroName: heroes[0]?.label ?? null,
       doudouName: doudous[0]?.label ?? null,
+      heroName: heroes[0]?.label ?? null,
+      settings,
     };
   },
-  component: ParentsCalculPage,
 });
 
 const FICHE_SIZE = 6;
@@ -125,10 +125,10 @@ function ParentsCalculForm({
   onSaved: () => Promise<void>;
 }) {
   const [cards, setCards] = useState<CardState>(() =>
-    cardStateFrom(settings.familles),
+    cardStateFrom(settings.familles)
   );
   const [serieSize, setSerieSize] = useState(
-    clampSerieSize(settings.serieSize),
+    clampSerieSize(settings.serieSize)
   );
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -144,7 +144,7 @@ function ParentsCalculForm({
     FAMILLES.some(
       (op) =>
         cards[op].active !== savedCards[op].active ||
-        (cards[op].active && cards[op].palier !== savedCards[op].palier),
+        (cards[op].active && cards[op].palier !== savedCards[op].palier)
     );
 
   const activeCount = FAMILLES.filter((op) => cards[op].active).length;
@@ -176,11 +176,11 @@ function ParentsCalculForm({
     try {
       const result = await saveMathSettingsFn({
         data: {
-          serieSize,
           familles: FAMILLES.filter((op) => cards[op].active).map((op) => ({
             op,
             palier: cards[op].palier,
           })),
+          serieSize,
         },
       });
       if (!result.success) {
@@ -196,7 +196,7 @@ function ParentsCalculForm({
       setSaveError(
         saved
           ? "Enregistré — le rechargement a échoué, recharge la page pour vérifier."
-          : "Enregistrement impossible pour le moment — réessaie.",
+          : "Enregistrement impossible pour le moment — réessaie."
       );
     } finally {
       setSaving(false);
@@ -208,7 +208,7 @@ function ParentsCalculForm({
     const operations = generateSerie(
       palier.constraints,
       newSerieSeed(),
-      FICHE_SIZE,
+      FICHE_SIZE
     );
     setFicheOperations(operations);
     // L'impression part de l'effet ci-dessus, après commit + paint.
@@ -249,7 +249,7 @@ function ParentsCalculForm({
                     // Toute la rangée est la cible (≥44px, design review) ;
                     // le curseur ne promet un clic que si le contrôle répond.
                     "flex min-h-11 items-center gap-3",
-                    !lastActive && "cursor-pointer",
+                    !lastActive && "cursor-pointer"
                   )}
                 >
                   <input
@@ -326,7 +326,7 @@ function ParentsCalculForm({
           >
             {Array.from(
               { length: MAX_SERIE_SIZE - MIN_SERIE_SIZE + 1 },
-              (_, i) => MIN_SERIE_SIZE + i,
+              (_, i) => MIN_SERIE_SIZE + i
             ).map((n) => (
               <option key={n} value={n}>
                 {n}
@@ -356,7 +356,7 @@ function ParentsCalculForm({
         <PrintableOperationsSheet
           entities={
             heroName
-              ? { hero: heroName, doudou: doudouName ?? undefined }
+              ? { doudou: doudouName ?? undefined, hero: heroName }
               : undefined
           }
           operations={ficheOperations}

@@ -20,7 +20,7 @@ export function WritingAnimation({ message }: { message?: string }) {
         {message ?? "L'histoire s'écrit…"}
       </p>
 
-      <div className="flex gap-3" aria-hidden="true">
+      <div aria-hidden="true" className="flex gap-3">
         {[0, 1, 2].map((i) => (
           <span
             className="size-4 rounded-full bg-primary"

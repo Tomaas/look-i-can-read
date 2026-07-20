@@ -35,15 +35,15 @@ function persist(key: string, enabled: boolean) {
 
 /** Just the two display flags — what the text renderers consume. */
 export interface ReadingAidsFlags {
-  /** Fade the lettres muettes. ON on the server and until hydration. */
-  showSilent: boolean;
   /** Draw the liaison arcs. ON on the server and until hydration. */
   showLiaisons: boolean;
+  /** Fade the lettres muettes. ON on the server and until hydration. */
+  showSilent: boolean;
 }
 
 export interface UseReadingAids extends ReadingAidsFlags {
-  toggleSilent: () => void;
   toggleLiaisons: () => void;
+  toggleSilent: () => void;
 }
 
 export function useReadingAids(): UseReadingAids {
@@ -71,5 +71,5 @@ export function useReadingAids(): UseReadingAids {
     });
   };
 
-  return { showSilent, showLiaisons, toggleSilent, toggleLiaisons };
+  return { showLiaisons, showSilent, toggleLiaisons, toggleSilent };
 }

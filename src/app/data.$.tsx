@@ -36,9 +36,9 @@ export const Route = createFileRoute("/data/$")({
         }
         return new Response(Buffer.from(bytes), {
           headers: {
-            "content-type": contentTypeFor(webPath),
-            "content-length": String(bytes.byteLength),
             "cache-control": "public, max-age=31536000, immutable",
+            "content-length": String(bytes.byteLength),
+            "content-type": contentTypeFor(webPath),
           },
         });
       },

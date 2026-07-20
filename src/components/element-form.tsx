@@ -6,17 +6,17 @@ import { Textarea } from "~/components/ui/textarea";
 import type { DbElement } from "~/server/db/schema";
 
 export interface ElementFormValues {
-  label: string;
   emoji?: string;
   imagePath?: string;
+  label: string;
   promptHint: string;
 }
 
 interface ElementFormProps {
   // Undefined = a new element; a row = editing it.
   initial?: DbElement;
-  onSubmit: (values: ElementFormValues) => void | Promise<void>;
   onCancel: () => void;
+  onSubmit: (values: ElementFormValues) => void | Promise<void>;
 }
 
 // Match the place form's sizing so the parent tools read identically.
@@ -46,9 +46,9 @@ export function ElementForm({ initial, onSubmit, onCancel }: ElementFormProps) {
     setSubmitting(true);
     try {
       await onSubmit({
-        label: label.trim(),
         emoji: emoji.trim() || undefined,
         imagePath: imagePath.trim() || undefined,
+        label: label.trim(),
         promptHint: promptHint.trim(),
       });
     } finally {

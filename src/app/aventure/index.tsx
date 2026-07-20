@@ -59,13 +59,13 @@ export const Route = createFileRoute("/aventure/")({
     } catch {
       // fall through to config fallbacks
     }
-    return { heroItems, elementItems, placeItems, doudouItems };
+    return { doudouItems, elementItems, heroItems, placeItems };
   },
 });
 
 // Config heroes mapped to the picker shape, used as the loader fallback.
 function legacyHeroConfig() {
-  return characters.map((c) => ({ id: c.id, label: c.name, emoji: c.emoji }));
+  return characters.map((c) => ({ emoji: c.emoji, id: c.id, label: c.name }));
 }
 
 type Step =
@@ -94,14 +94,14 @@ function toggleCapped(ids: string[], id: string, cap: number): string[] {
 const STORAGE_KEY = "story-aventure-parcours";
 
 interface ParcoursState {
-  step: Step;
+  customPrompt?: string;
+  // Multi-select + optional — an empty array means the child brought no doudou.
+  doudouIds: string[];
+  elementIds: string[];
   // Heroes + elements are MULTI-select. Heroes are required (≥1, default hero).
   heroIds: string[];
   placeId?: string;
-  elementIds: string[];
-  // Multi-select + optional — an empty array means the child brought no doudou.
-  doudouIds: string[];
-  customPrompt?: string;
+  step: Step;
 }
 
 /** Lift a possibly-legacy single id into a capped array (codex #8). Accepts the
@@ -110,7 +110,7 @@ function liftToArray(
   arr: unknown,
   single: unknown,
   fallback: string[],
-  cap: number,
+  cap: number
 ): string[] {
   let ids: string[] = fallback;
   if (Array.isArray(arr)) {
@@ -123,10 +123,10 @@ function liftToArray(
 
 function readParcours(defaultHeroIds: string[]): ParcoursState {
   const fallback: ParcoursState = {
-    step: "hero",
-    heroIds: defaultHeroIds,
-    elementIds: [],
     doudouIds: [],
+    elementIds: [],
+    heroIds: defaultHeroIds,
+    step: "hero",
   };
   if (typeof window === "undefined") {
     return fallback;
@@ -156,30 +156,30 @@ function readParcours(defaultHeroIds: string[]): ParcoursState {
       parsed.heroIds,
       parsed.heroId,
       defaultHeroIds,
-      HERO_CAP,
+      HERO_CAP
     );
     const elementIds = liftToArray(
       parsed.elementIds,
       parsed.elementId,
       [],
-      ELEMENT_CAP,
+      ELEMENT_CAP
     );
     // Doudou: prefer the array; else a legacy single; else none (no cap).
     let doudouIds: string[] = [];
     if (Array.isArray(parsed.doudouIds)) {
       doudouIds = parsed.doudouIds.filter(
-        (x): x is string => typeof x === "string",
+        (x): x is string => typeof x === "string"
       );
     } else if (parsed.doudouId) {
       doudouIds = [parsed.doudouId];
     }
     return {
-      step,
+      customPrompt: parsed.customPrompt,
+      doudouIds,
+      elementIds,
       heroIds,
       placeId: parsed.placeId,
-      elementIds,
-      doudouIds,
-      customPrompt: parsed.customPrompt,
+      step,
     };
   } catch {
     return fallback;
@@ -242,59 +242,59 @@ function AventurePage() {
     const next = toggleCapped(heroIds, id, HERO_CAP);
     setHeroIds(next);
     writeParcours({
-      step: "hero",
+      doudouIds,
+      elementIds,
       heroIds: next,
       placeId,
-      elementIds,
-      doudouIds,
+      step: "hero",
     });
   }
   function setHeroesPersisted(next: string[]) {
     setHeroIds(next);
     writeParcours({
-      step: "hero",
+      doudouIds,
+      elementIds,
       heroIds: next,
       placeId,
-      elementIds,
-      doudouIds,
+      step: "hero",
     });
   }
   function toggleElement(id: string) {
     const next = toggleCapped(elementIds, id, ELEMENT_CAP);
     setElementIds(next);
     writeParcours({
-      step: "element",
+      doudouIds,
+      elementIds: next,
       heroIds,
       placeId,
-      elementIds: next,
-      doudouIds,
+      step: "element",
     });
   }
   function setElementsPersisted(next: string[]) {
     setElementIds(next);
     writeParcours({
-      step: "element",
+      doudouIds,
+      elementIds: next,
       heroIds,
       placeId,
-      elementIds: next,
-      doudouIds,
+      step: "element",
     });
   }
   function setDoudousPersisted(next: string[]) {
     setDoudouIds(next);
     writeParcours({
-      step: "doudou",
+      doudouIds: next,
+      elementIds,
       heroIds,
       placeId,
-      elementIds,
-      doudouIds: next,
+      step: "doudou",
     });
   }
   function toggleDoudou(id: string) {
     setDoudousPersisted(
       doudouIds.includes(id)
         ? doudouIds.filter((d) => d !== id)
-        : [...doudouIds, id],
+        : [...doudouIds, id]
     );
   }
 
@@ -306,7 +306,7 @@ function AventurePage() {
     const saved = readParcours(defaultHeroIds);
     if (saved.step !== "hero") {
       const validHeroIds = saved.heroIds.filter((id) =>
-        heroItems.some((h) => h.id === id),
+        heroItems.some((h) => h.id === id)
       );
       setStep(saved.step);
       setHeroIds(validHeroIds.length > 0 ? validHeroIds : defaultHeroIds);
@@ -320,33 +320,33 @@ function AventurePage() {
   // resumes exactly where the child was.
   function goToPlace() {
     setStep("place");
-    writeParcours({ step: "place", heroIds, placeId, elementIds, doudouIds });
+    writeParcours({ doudouIds, elementIds, heroIds, placeId, step: "place" });
   }
   function goToElement(pickedPlaceId: string) {
     setPlaceId(pickedPlaceId);
     setStep("element");
     writeParcours({
-      step: "element",
+      doudouIds,
+      elementIds,
       heroIds,
       placeId: pickedPlaceId,
-      elementIds,
-      doudouIds,
+      step: "element",
     });
   }
   function goToDoudou() {
     setStep("doudou");
-    writeParcours({ step: "doudou", heroIds, placeId, elementIds, doudouIds });
+    writeParcours({ doudouIds, elementIds, heroIds, placeId, step: "doudou" });
   }
   // The doudou step advances to the saveur step, with or without doudous.
   function goToExtra(nextDoudouIds: string[]) {
     setDoudouIds(nextDoudouIds);
     setStep("extra");
     writeParcours({
-      step: "extra",
+      doudouIds: nextDoudouIds,
+      elementIds,
       heroIds,
       placeId,
-      elementIds,
-      doudouIds: nextDoudouIds,
+      step: "extra",
     });
   }
 
@@ -355,7 +355,7 @@ function AventurePage() {
   // The Stepper only calls onJump with a reachable step.
   function goToStep(target: WizardStep) {
     setStep(target);
-    writeParcours({ step: target, heroIds, placeId, elementIds, doudouIds });
+    writeParcours({ doudouIds, elementIds, heroIds, placeId, step: target });
   }
   function back() {
     if (step === "writing" || step === "oops") {
@@ -384,15 +384,15 @@ function AventurePage() {
     try {
       const result = await startDynamicStoryFn({
         data: {
+          customPrompt: customPrompt.trim() || undefined,
+          doudouIds,
+          elementIds: elementIds.length > 0 ? elementIds : [elementItems[0].id],
           heroIds,
           placeId: placeId ?? placeItems[0].id,
-          elementIds: elementIds.length > 0 ? elementIds : [elementItems[0].id],
-          doudouIds,
-          customPrompt: customPrompt.trim() || undefined,
         },
       });
       if (result.success) {
-        navigate({ to: "/aventure/$id", params: { id: result.storyId } });
+        navigate({ params: { id: result.storyId }, to: "/aventure/$id" });
         return;
       }
     } catch {
@@ -444,7 +444,7 @@ function AventurePage() {
       <Stepper
         current={step}
         onJump={goToStep}
-        progress={{ heroIds, placeId, elementIds }}
+        progress={{ elementIds, heroIds, placeId }}
       />
       <WizardControls
         onBack={step === "hero" ? undefined : back}

@@ -1,18 +1,18 @@
 import { cn } from "~/lib/cn";
 
 export interface PickerItem {
+  emoji: string;
   id: string;
   label: string;
-  emoji: string;
 }
 
 interface PickerGridProps {
   items: PickerItem[];
+  onSelect: (id: string) => void;
   // Single-select highlight (hero / place / element).
   selectedId?: string;
   // Multi-select highlight (the doudou step): several rings lit at once.
   selectedIds?: string[];
-  onSelect: (id: string) => void;
 }
 
 /**
@@ -39,7 +39,7 @@ export function PickerGrid({
             "hover:-translate-y-0.5 hover:border-primary/50",
             isSelected(item.id)
               ? "border-primary bg-primary/5 shadow-sm"
-              : "border-border",
+              : "border-border"
           )}
           key={item.id}
           onClick={() => onSelect(item.id)}
@@ -50,7 +50,7 @@ export function PickerGrid({
           {selectedIds && isSelected(item.id) ? (
             <span
               aria-hidden="true"
-              className="-top-2 -right-2 absolute flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm shadow-sm"
+              className="absolute -top-2 -right-2 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm shadow-sm"
             >
               ✓
             </span>

@@ -39,7 +39,7 @@ const MAX_CUSTOM_PROMPT_LENGTH = 500;
  * Returns the safe text to inject, or null to inject nothing.
  */
 export function sanitizeCustomPrompt(
-  raw: string | null | undefined,
+  raw: string | null | undefined
 ): string | null {
   if (!raw) {
     return null;
@@ -50,7 +50,7 @@ export function sanitizeCustomPrompt(
   }
   const lower = trimmed.toLowerCase();
   const hasForbidden = [...FORBIDDEN_TERMS, ...CUSTOM_STAKES_TERMS].some((t) =>
-    lower.includes(t),
+    lower.includes(t)
   );
   return hasForbidden ? null : trimmed;
 }

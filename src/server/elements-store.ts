@@ -38,12 +38,12 @@ export async function seedElementsIfNeeded(): Promise<void> {
     .insert(dbElements)
     .values(
       legacyElements.map((e, i) => ({
+        emoji: e.emoji,
         id: e.id,
         label: e.label,
-        emoji: e.emoji,
         promptHint: e.promptHint,
         sort: i,
-      })),
+      }))
     )
     .onConflictDoNothing()
     .run();
@@ -55,7 +55,7 @@ export async function seedElementsIfNeeded(): Promise<void> {
  * empty input. The caller HARD-FAILS on an empty result (codex #2).
  */
 export async function resolveElementsForCreation(
-  elementIds: string[],
+  elementIds: string[]
 ): Promise<ResolvedElement[]> {
   const uniqueIds = [...new Set(elementIds)];
   if (uniqueIds.length === 0) {

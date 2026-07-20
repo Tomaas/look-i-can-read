@@ -20,7 +20,7 @@ import {
 export class UnsatisfiableConstraintError extends Error {
   constructor(constraints: GenerationConstraints, attempts: number) {
     super(
-      `Contrainte insatisfaisable après ${attempts} essais: ${JSON.stringify(constraints)}`,
+      `Contrainte insatisfaisable après ${attempts} essais: ${JSON.stringify(constraints)}`
     );
     this.name = "UnsatisfiableConstraintError";
   }
@@ -32,10 +32,10 @@ const MAX_ATTEMPTS = 500;
 export function mulberry32(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
-    state = (state + 0x6d2b79f5) | 0;
+    state = (state + 0x6d_2b_79_f5) | 0;
     let t = Math.imul(state ^ (state >>> 15), 1 | state);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    t ^= t + Math.imul(t ^ (t >>> 7), 61 | t);
+    return ((t ^ (t >>> 14)) >>> 0) / 4_294_967_296;
   };
 }
 
@@ -77,7 +77,7 @@ export function countMultCarries(a: number, b: number): number {
     const prod = (x % 10) * b + carry;
     carry = Math.floor(prod / 10);
     if (carry > 0) {
-      carries++;
+      carries += 1;
     }
     x = Math.floor(x / 10);
   }
@@ -107,7 +107,7 @@ export function countBorrows(a: number, b: number): number {
 }
 
 /** Seed maximal (31 bits) — les seeds vivent dans [0, MAX_SEED]. */
-export const MAX_SEED = 2147483647;
+export const MAX_SEED = 2_147_483_647;
 
 /** Seed de série fraîche, dérivée de l'horloge (seul point non déterministe). */
 export function newSerieSeed(): number {
@@ -129,7 +129,7 @@ type Candidate = Omit<GeneratedOperation, "seed"> | null;
 function tryAddition(
   a: number,
   b: number,
-  c: GenerationConstraints,
+  c: GenerationConstraints
 ): Candidate {
   const expected = a + b;
   if (expected > MAX_RESULT) {
@@ -139,13 +139,13 @@ function tryAddition(
   if (!matchesQuota(c.carries, carries)) {
     return null;
   }
-  return { op: "addition", a, b, expected, carries };
+  return { a, b, carries, expected, op: "addition" };
 }
 
 function trySoustraction(
   a: number,
   b: number,
-  c: GenerationConstraints,
+  c: GenerationConstraints
 ): Candidate {
   // Le diminuende est toujours le plus grand : jamais de résultat négatif.
   const [top, bottom] = a >= b ? [a, b] : [b, a];
@@ -157,18 +157,18 @@ function trySoustraction(
     return null;
   }
   return {
-    op: "soustraction",
     a: top,
     b: bottom,
-    expected: top - bottom,
     carries: borrows,
+    expected: top - bottom,
+    op: "soustraction",
   };
 }
 
 function tryMultiplication(
   a: number,
   b: number,
-  c: GenerationConstraints,
+  c: GenerationConstraints
 ): Candidate {
   // v1 : b à 1 chiffre imposé par les paliers ; ×1 n'apprend rien à poser.
   const expected = a * b;
@@ -179,13 +179,13 @@ function tryMultiplication(
   if (!matchesQuota(c.carries, carries)) {
     return null;
   }
-  return { op: "multiplication", a, b, expected, carries };
+  return { a, b, carries, expected, op: "multiplication" };
 }
 
 const TRY_BY_OP = {
   addition: tryAddition,
-  soustraction: trySoustraction,
   multiplication: tryMultiplication,
+  soustraction: trySoustraction,
 } as const;
 
 /**
@@ -195,20 +195,20 @@ const TRY_BY_OP = {
  */
 export function generateOperation(
   constraints: GenerationConstraints,
-  seed: number,
+  seed: number
 ): GeneratedOperation {
   const rand = mulberry32(seed);
   const tryOp = TRY_BY_OP[constraints.op];
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     const aDigits = intInRange(
       rand,
       constraints.aDigits.min,
-      constraints.aDigits.max,
+      constraints.aDigits.max
     );
     const bDigits = intInRange(
       rand,
       constraints.bDigits.min,
-      constraints.bDigits.max,
+      constraints.bDigits.max
     );
     const a = numberWithDigits(rand, aDigits);
     const b = numberWithDigits(rand, bDigits);
@@ -227,10 +227,10 @@ export function generateOperation(
 export function generateSerie(
   constraints: GenerationConstraints,
   serieSeed: number,
-  count: number,
+  count: number
 ): GeneratedOperation[] {
   const ops: GeneratedOperation[] = [];
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < count; i += 1) {
     ops.push(generateOperation(constraints, (serieSeed * 31 + i * 7919) >>> 0));
   }
   return ops;

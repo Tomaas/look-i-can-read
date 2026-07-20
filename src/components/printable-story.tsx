@@ -1,4 +1,8 @@
 import { appConfig } from "~/config/app";
+import {
+  GENERATED_IMAGE_HEIGHT,
+  GENERATED_IMAGE_WIDTH,
+} from "~/lib/generated-image";
 import type { ReadingAidsFlags } from "~/lib/use-reading-aids";
 import type { StorySegment } from "~/server/db/schema";
 import { isRenderableImagePath } from "~/server/providers/types";
@@ -53,8 +57,10 @@ export function PrintableDynamicStory({
               <img
                 alt=""
                 className="w-full rounded-lg"
+                height={GENERATED_IMAGE_HEIGHT}
                 src={segment.imagePath}
                 style={{ maxHeight: "80mm", objectFit: "cover" }}
+                width={GENERATED_IMAGE_WIDTH}
               />
             ) : null}
             <div

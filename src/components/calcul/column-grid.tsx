@@ -19,15 +19,15 @@ import type { OperationLayout } from "~/lib/operations";
  */
 
 export interface GridEntries {
+  carries: (string | null)[];
   /** One entry per numeric column, left to right. null = still empty. */
   result: (string | null)[];
-  carries: (string | null)[];
 }
 
 export function emptyEntries(layout: OperationLayout): GridEntries {
   return {
-    result: layout.expectedDigits.map(() => null),
     carries: layout.carrySlots.map(() => null),
+    result: layout.expectedDigits.map(() => null),
   };
 }
 
@@ -52,18 +52,18 @@ export function ColumnGrid({
   const cellBase =
     "flex size-12 items-center justify-center rounded-xl text-2xl sm:size-14 sm:text-3xl";
   const isSelected = (cell: CellRef) =>
-    selected != null && selected.row === cell.row && selected.col === cell.col;
+    selected?.row === cell.row && selected?.col === cell.col;
 
   return (
     <div
       className={cn(
         "inline-flex flex-col items-center gap-1 rounded-3xl border bg-card p-5",
-        isSolution && "opacity-80",
+        isSolution && "opacity-80"
       )}
     >
       {/* Carry scratch row — small, optional, never required. */}
       <div className="flex gap-1.5">
-        <span className="size-12 sm:size-14" aria-hidden="true" />
+        <span aria-hidden="true" className="size-12 sm:size-14" />
         {layout.carrySlots.map((slot, col) => (
           <span
             className="flex size-12 items-start justify-center sm:size-14"
@@ -73,7 +73,7 @@ export function ColumnGrid({
               <CarryCell
                 col={col}
                 onSelect={onSelect}
-                selected={isSelected({ row: "carry", col })}
+                selected={isSelected({ col, row: "carry" })}
                 value={entries?.carries[col] ?? ""}
               />
             ) : null}
@@ -83,7 +83,7 @@ export function ColumnGrid({
 
       {/* Operand rows — printed ink, nothing to touch. */}
       <div className="flex gap-1.5">
-        <span className={cellBase} aria-hidden="true" />
+        <span aria-hidden="true" className={cellBase} />
         {layout.operandRows[0].map((digit, col) => (
           <span className={cellBase} key={`a-${col}-${digit}`}>
             {digit}
@@ -105,7 +105,7 @@ export function ColumnGrid({
 
       {/* Result row — the child's line (or the solution's, muted). */}
       <div className="flex gap-1.5">
-        <span className={cellBase} aria-hidden="true" />
+        <span aria-hidden="true" className={cellBase} />
         {layout.expectedDigits.map((expectedDigit, col) =>
           isSolution ? (
             <span
@@ -120,10 +120,10 @@ export function ColumnGrid({
               col={col}
               key={`res-${col}-${expectedDigit}`}
               onSelect={onSelect}
-              selected={isSelected({ row: "result", col })}
+              selected={isSelected({ col, row: "result" })}
               value={entries?.result[col] ?? ""}
             />
-          ),
+          )
         )}
       </div>
     </div>
@@ -149,7 +149,7 @@ function ResultCell({
   value: string;
 }) {
   const { isOver, setNodeRef } = useDroppable({
-    data: { cell: { row: "result", col } satisfies CellRef },
+    data: { cell: { col, row: "result" } satisfies CellRef },
     id: `drop-result-${col}`,
   });
   return (
@@ -157,9 +157,9 @@ function ResultCell({
       className={cn(
         cellBase,
         "border border-muted-foreground/40 focus-visible:outline-2 focus-visible:outline-primary/60",
-        (selected || isOver) && "border-2 border-primary bg-primary/5",
+        (selected || isOver) && "border-2 border-primary bg-primary/5"
       )}
-      onClick={() => onSelect?.({ row: "result", col })}
+      onClick={() => onSelect?.({ col, row: "result" })}
       ref={setNodeRef}
       type="button"
     >
@@ -180,7 +180,7 @@ function CarryCell({
   value: string;
 }) {
   const { isOver, setNodeRef } = useDroppable({
-    data: { cell: { row: "carry", col } satisfies CellRef },
+    data: { cell: { col, row: "carry" } satisfies CellRef },
     id: `drop-carry-${col}`,
   });
   return (
@@ -189,14 +189,14 @@ function CarryCell({
     // slop also enlarges the droppable rect registered via setNodeRef.
     <button
       className="-mx-2 -my-2.5 px-2 py-2.5"
-      onClick={() => onSelect?.({ row: "carry", col })}
+      onClick={() => onSelect?.({ col, row: "carry" })}
       ref={setNodeRef}
       type="button"
     >
       <span
         className={cn(
           "flex h-6 w-8 items-center justify-center rounded-lg border border-muted-foreground/30 border-dashed text-muted-foreground text-sm",
-          (selected || isOver) && "border-2 border-primary border-solid",
+          (selected || isOver) && "border-2 border-primary border-solid"
         )}
       >
         {value}

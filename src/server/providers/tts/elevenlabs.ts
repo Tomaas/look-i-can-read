@@ -20,14 +20,14 @@ export const elevenLabsTtsProvider: TtsProvider = {
     const res = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${VOICE_ID}`,
       {
-        method: "POST",
+        body: JSON.stringify({ model_id: MODEL_ID, text }),
         headers: {
-          "xi-api-key": serverEnv.elevenLabsApiKey,
-          "content-type": "application/json",
           accept: "audio/mpeg",
+          "content-type": "application/json",
+          "xi-api-key": serverEnv.elevenLabsApiKey,
         },
-        body: JSON.stringify({ text, model_id: MODEL_ID }),
-      },
+        method: "POST",
+      }
     );
 
     if (!res.ok) {

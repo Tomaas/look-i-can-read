@@ -24,18 +24,18 @@ import { ReadingFontToggle } from "./reading-font-toggle";
 import { WritingAnimation } from "./writing-animation";
 
 interface DynamicStoryPlayerProps {
-  storyId: string;
-  title: string;
-  /** All segments known so far, in order (idx ascending). */
-  initialSegments: StorySegment[];
   imageEnabled: boolean;
   /** Env default image model (public flag) — seeds the parent-picker hook. */
   imageModel: string;
+  /** All segments known so far, in order (idx ascending). */
+  initialSegments: StorySegment[];
   /**
    * Read-only replay (from the library): the path is fixed, never offer
    * choices, just show every beat in order.
    */
   readOnly?: boolean;
+  storyId: string;
+  title: string;
 }
 
 /** Two large, equal-weight choice buttons. Neither is styled as "correct". */
@@ -114,7 +114,7 @@ function ReplaySegmentImage({
   const stored = resolveStoredImagePath(segment.imagePath);
   const [imagePath, setImagePath] = useState<string | null>(stored.imagePath);
   const [imageStatus, setImageStatus] = useState<ImageStatus>(
-    stored.imageStatus,
+    stored.imageStatus
   );
 
   useEffect(() => {
@@ -128,7 +128,7 @@ function ReplaySegmentImage({
     }
     let cancelled = false;
     generateSegmentImageFn({
-      data: { storyId, idx: segment.idx, imageModel },
+      data: { idx: segment.idx, imageModel, storyId },
     }).then((result) => {
       if (cancelled) {
         return;
@@ -151,7 +151,7 @@ function ReplaySegmentImage({
     imageEnabled && imageStatus === "failed"
       ? async () => {
           const result = await retrySegmentImageFn({
-            data: { storyId, idx: segment.idx, imageModel },
+            data: { idx: segment.idx, imageModel, storyId },
           });
           setImageStatus(result.imageStatus);
           if (result.imagePath) {
@@ -286,12 +286,12 @@ function LiveBeat({
     imagePath: revealedPath,
     imageStatus: revealedStatus,
   } = useImageReveal({
-    imageEnabled,
-    initialPath: segment.imagePath ?? null,
     fetchImage: () =>
       generateSegmentImageFn({
-        data: { storyId, idx: segment.idx, imageModel },
+        data: { idx: segment.idx, imageModel, storyId },
       }),
+    imageEnabled,
+    initialPath: segment.imagePath ?? null,
     resetKey: segment.id,
   });
 
@@ -322,7 +322,7 @@ function LiveBeat({
     imageEnabled && imageStatus === "failed"
       ? async () => {
           const result = await retrySegmentImageFn({
-            data: { storyId, idx: segment.idx, imageModel },
+            data: { idx: segment.idx, imageModel, storyId },
           });
           setRetried({
             imagePath: result.imagePath,
@@ -383,7 +383,7 @@ export function DynamicStoryPlayer({
   // independently toggleable, persisted per-device.
   const { showSilent, showLiaisons, toggleSilent, toggleLiaisons } =
     useReadingAids();
-  const aids: ReadingAidsFlags = { showSilent, showLiaisons };
+  const aids: ReadingAidsFlags = { showLiaisons, showSilent };
   // Whether the current live beat's image reveal has resolved — choices + the
   // closing actions appear only then, so text + image + choices reveal together.
   const [beatRevealed, setBeatRevealed] = useState(false);
@@ -400,8 +400,9 @@ export function DynamicStoryPlayer({
   const current = completeSegments.at(-1);
   // In live play, the last complete beat with non-null choices awaits a choice.
   const awaitingChoice =
-    !readOnly && current != null && current.choices != null;
-  const isFinal = !pendingSeg && current != null && current.choices == null;
+    !readOnly && current !== undefined && current.choices !== null;
+  const isFinal =
+    !pendingSeg && current !== undefined && current.choices === null;
 
   // Resume an interrupted beat on mount (reopened a half-finished story): the
   // backend left a placeholder with the pending choice — re-send it. Idempotent,
@@ -425,7 +426,7 @@ export function DynamicStoryPlayer({
     setFailed(false);
     try {
       const result = await continueDynamicStoryFn({
-        data: { storyId, choiceId },
+        data: { choiceId, storyId },
       });
       if (result.success) {
         // Prior segments are never lost; append (or replace if it re-returns).
@@ -439,7 +440,7 @@ export function DynamicStoryPlayer({
     } catch (err) {
       console.error(
         "[stories] beat continuation failed, will soft-retry:",
-        err,
+        err
       );
       // Fall through to the soft retry below.
     }

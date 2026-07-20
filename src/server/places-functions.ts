@@ -18,13 +18,13 @@ export const listPlacesFn = createServerFn({ method: "GET" }).handler(
       .from(places)
       .where(isNull(places.deletedAt))
       .orderBy(asc(places.sort), asc(places.createdAt));
-  },
+  }
 );
 
 const upsertSchema = z.object({
-  label: z.string().trim().min(1, "Un nom est nécessaire."),
   emoji: z.string().trim().max(8).optional(),
   imagePath: z.string().trim().optional(),
+  label: z.string().trim().min(1, "Un nom est nécessaire."),
   promptHint: z.string().trim().min(1, "Une description est nécessaire."),
   sort: z.number().int().optional(),
 });
@@ -39,14 +39,14 @@ export const createPlaceFn = createServerFn({ method: "POST" })
     const [place] = await db
       .insert(places)
       .values({
-        label: data.label,
         emoji: data.emoji || null,
         imagePath: data.imagePath || null,
+        label: data.label,
         promptHint: data.promptHint,
         sort: data.sort ?? 999,
       })
       .returning();
-    return { success: true, place };
+    return { place, success: true };
   });
 
 export const updatePlaceFn = createServerFn({ method: "POST" })
@@ -55,18 +55,18 @@ export const updatePlaceFn = createServerFn({ method: "POST" })
     const [place] = await db
       .update(places)
       .set({
-        label: data.label,
         emoji: data.emoji || null,
         imagePath: data.imagePath || null,
+        label: data.label,
         promptHint: data.promptHint,
         ...(data.sort === undefined ? {} : { sort: data.sort }),
       })
       .where(and(eq(places.id, data.id), isNull(places.deletedAt)))
       .returning();
     if (!place) {
-      return { success: false, error: "Lieu introuvable." };
+      return { error: "Lieu introuvable.", success: false };
     }
-    return { success: true, place };
+    return { place, success: true };
   });
 
 /**

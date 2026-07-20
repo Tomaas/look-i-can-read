@@ -41,8 +41,8 @@ const SORTI_RESERVE_CLASS = "pb-[18px]";
 
 const SIGNES: Record<Operation, string> = {
   addition: "+",
-  soustraction: "−",
   multiplication: "×",
+  soustraction: "−",
 };
 
 /** Gabarits FIXES, sans nombres ; variante sans doudou écrite (D-3A/F8). */
@@ -178,8 +178,8 @@ function PaniersScene() {
 
 const SCENES: Record<Operation, () => React.ReactNode> = {
   addition: MarronsScene,
-  soustraction: DoudouScene,
   multiplication: PaniersScene,
+  soustraction: DoudouScene,
 };
 
 /* -------------------------------- Étagère -------------------------------- */
@@ -214,7 +214,7 @@ export function TrayShelf({
         <div
           className={cn(
             "flex flex-nowrap items-end justify-center gap-6",
-            SORTI_RESERVE_CLASS,
+            SORTI_RESERVE_CLASS
           )}
         >
           {trays.map((tray) => (
@@ -275,7 +275,7 @@ function Tray({
         "hover:shadow-sm",
         "transition duration-300 motion-reduce:transition-none",
         // « Sorti » : décalage + ombre douce UNIQUEMENT (D-1A/F3).
-        tray.sorti && cn(SORTI_SHIFT_CLASS, "shadow-md"),
+        tray.sorti && cn(SORTI_SHIFT_CLASS, "shadow-md")
       )}
       onClick={() => onTake(tray.op)}
       type="button"
@@ -285,7 +285,7 @@ function Tray({
         <Scene />
       </span>
       {heroName ? (
-        <span aria-hidden="true" className="text-muted-foreground text-base">
+        <span aria-hidden="true" className="text-base text-muted-foreground">
           {phraseFor(tray.op, heroName, doudouName)}
         </span>
       ) : null}

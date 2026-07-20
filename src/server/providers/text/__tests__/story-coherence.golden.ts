@@ -21,6 +21,7 @@
  */
 
 import {
+  ARC_SCHEMA,
   BEAT_SCHEMA,
   buildPrompt,
   buildSystem,
@@ -38,11 +39,11 @@ import type { DynamicBeat, GenerateBeatInput } from "~/server/providers/types";
 let failures = 0;
 let checks = 0;
 function check(name: string, ok: boolean, detail?: string) {
-  checks++;
+  checks += 1;
   if (ok) {
     console.log(`✓ ${name}`);
   } else {
-    failures++;
+    failures += 1;
     console.error(`✗ ${name}${detail ? `\n  ${detail}` : ""}`);
   }
 }
@@ -52,48 +53,48 @@ const HERO_NAME = "Jules";
 
 function cleanBeat(overrides: Partial<DynamicBeat> = {}): DynamicBeat {
   return {
+    choices: ["Suivre le sentier", "Regarder le ruisseau"],
+    isFinal: false,
     paragraphs: [
       "Jules marche vers le grand chêne.",
       "Puis il ramasse une jolie feuille.",
     ],
-    choices: ["Suivre le sentier", "Regarder le ruisseau"],
-    isFinal: false,
     sceneHint: "Jules sous un grand chêne, au matin.",
     ...overrides,
   };
 }
 
 function beatInput(
-  overrides: Partial<GenerateBeatInput> = {},
+  overrides: Partial<GenerateBeatInput> = {}
 ): GenerateBeatInput {
   return {
+    doudous: [],
+    elements: [{ label: "une clé magique", promptHint: "une clé magique" }],
     heroes: [
       {
+        imageHint: "un petit garçon aux cheveux blonds",
         label: HERO_NAME,
         promptHint: "Jules, un petit garçon curieux et malin.",
-        imageHint: "un petit garçon aux cheveux blonds",
       },
     ],
+    history: [],
+    lang: "fr",
+    mustEnd: false,
     place: {
+      emoji: "🌲",
       id: "foret",
       label: "la forêt",
-      emoji: "🌲",
       promptHint: "dans une forêt paisible et lumineuse",
     },
-    elements: [{ label: "une clé magique", promptHint: "une clé magique" }],
-    lang: "fr",
-    doudous: [],
-    history: [],
-    mustEnd: false,
     ...overrides,
   };
 }
 
 const HISTORY = [
   {
-    paragraphs: ["Jules trouve une clé dorée.", "Alors il sourit."],
-    offered: ["Ouvrir la porte", "Suivre le papillon"] as [string, string],
     chosenLabel: "Ouvrir la porte",
+    offered: ["Ouvrir la porte", "Suivre le papillon"] as [string, string],
+    paragraphs: ["Jules trouve une clé dorée.", "Alors il sourit."],
   },
 ];
 
@@ -103,43 +104,43 @@ const HISTORY_WITH_SCENE = [{ ...HISTORY[0], sceneHint: SCENE }];
 // ── 1-3: softnessTicCount ────────────────────────────────────────────────────
 check(
   "tic: plain text without softness words counts 0",
-  softnessTicCount("Jules regarde la lune tranquille.") === 0,
+  softnessTicCount("Jules regarde la lune tranquille.") === 0
 );
 check(
   "tic: doux / douce / douces / doucement each counted (4 total)",
   softnessTicCount(
-    "Un pont doux, une nuit douce, des mousses douces, il avance doucement.",
-  ) === 4,
+    "Un pont doux, une nuit douce, des mousses douces, il avance doucement."
+  ) === 4
 );
 check(
   "tic: word-boundary safe (Douze douceurs au redoux = 0) and case-insensitive (DOUX = 1)",
   softnessTicCount("Douze douceurs au redoux.") === 0 &&
-    softnessTicCount("Un nuage DOUX.") === 1,
+    softnessTicCount("Un nuage DOUX.") === 1
 );
 
 // ── 4-8: safetyProblems (sceneHint now scanned) ──────────────────────────────
 check(
   "safety: clean beat with clean sceneHint has zero problems",
   safetyProblems(cleanBeat(), HERO_NAME).length === 0,
-  JSON.stringify(safetyProblems(cleanBeat(), HERO_NAME)),
+  JSON.stringify(safetyProblems(cleanBeat(), HERO_NAME))
 );
 check(
   "safety: forbidden term ONLY in sceneHint is caught (drives the image)",
   safetyProblems(
     cleanBeat({ sceneHint: "Un monstre près du chêne." }),
-    HERO_NAME,
-  ).some((p) => p.includes("Mots interdits")),
+    HERO_NAME
+  ).some((p) => p.includes("Mots interdits"))
 );
 check(
   "safety: stakes term ONLY in sceneHint is caught",
   safetyProblems(
     cleanBeat({ sceneHint: "Bravo, une belle clairière." }),
-    HERO_NAME,
-  ).some((p) => p.includes("enjeu")),
+    HERO_NAME
+  ).some((p) => p.includes("enjeu"))
 );
 check(
   "safety: undefined sceneHint does not crash and stays clean",
-  safetyProblems(cleanBeat({ sceneHint: undefined }), HERO_NAME).length === 0,
+  safetyProblems(cleanBeat({ sceneHint: undefined }), HERO_NAME).length === 0
 );
 check(
   "safety: hero named only in sceneHint still fails the named-hero rule (paragraphs-only)",
@@ -148,8 +149,8 @@ check(
       paragraphs: ["Il marche vers le grand chêne."],
       sceneHint: "Jules sous le chêne.",
     }),
-    HERO_NAME,
-  ).some((p) => p.includes("prénom")),
+    HERO_NAME
+  ).some((p) => p.includes("prénom"))
 );
 
 // ── 9-11: structureProblems anti-tic nudge ───────────────────────────────────
@@ -158,27 +159,27 @@ check(
   !structureProblems(
     cleanBeat({ paragraphs: ["Jules caresse le tissu doux."] }),
     false,
-    false,
-  ).some((p) => p.includes("doux / douce / doucement")),
+    false
+  ).some((p) => p.includes("doux / douce / doucement"))
 );
 check(
   "structure: two softness words (paragraph + choice label) trigger the nudge with the count",
   structureProblems(
     cleanBeat({
-      paragraphs: ["Jules caresse le tissu doux."],
       choices: ["Avancer doucement", "Regarder le ruisseau"],
+      paragraphs: ["Jules caresse le tissu doux."],
     }),
     false,
-    false,
-  ).some((p) => p.includes("(2 fois)")),
+    false
+  ).some((p) => p.includes("(2 fois)"))
 );
 check(
   "structure: softness words in sceneHint alone do NOT trigger the tic nudge (text-only scope)",
   !structureProblems(
     cleanBeat({ sceneHint: "Une mousse douce et un coussin doux." }),
     false,
-    false,
-  ).some((p) => p.includes("doux / douce / doucement")),
+    false
+  ).some((p) => p.includes("doux / douce / doucement"))
 );
 
 // ── Landing decrescendo: sentence-count nudge (NON-fatal, landing only) ──────
@@ -191,8 +192,8 @@ check(
   structureProblems(
     cleanBeat({ paragraphs: FOUR_SENTENCES }),
     false,
-    true,
-  ).some((p) => p.includes("raccourcis ce bout")),
+    true
+  ).some((p) => p.includes("raccourcis ce bout"))
 );
 check(
   "structure: landing beat with 3 sentences is tolerated (retry only at 4+)",
@@ -204,16 +205,16 @@ check(
       ],
     }),
     false,
-    true,
-  ).some((p) => p.includes("raccourcis ce bout")),
+    true
+  ).some((p) => p.includes("raccourcis ce bout"))
 );
 check(
   "structure: NON-landing beat with 4 sentences gets no decrescendo nudge",
   !structureProblems(
     cleanBeat({ paragraphs: FOUR_SENTENCES }),
     false,
-    false,
-  ).some((p) => p.includes("raccourcis ce bout")),
+    false
+  ).some((p) => p.includes("raccourcis ce bout"))
 );
 
 // ── isLanding predicate + per-phase schemas ──────────────────────────────────
@@ -221,21 +222,23 @@ check(
   "landing: mustEnd → landing; last 2 choices (with history) → landing",
   isLanding(beatInput({ history: HISTORY, mustEnd: true })) &&
     isLanding(beatInput({ history: HISTORY, remainingChoices: 2 })) &&
-    isLanding(beatInput({ history: HISTORY, remainingChoices: 1 })),
+    isLanding(beatInput({ history: HISTORY, remainingChoices: 1 }))
 );
 check(
   "landing: early beats and the opening beat are NOT landing",
-  !isLanding(beatInput({ history: HISTORY, remainingChoices: 3 })) &&
-    !isLanding(beatInput({ history: HISTORY })) &&
-    !isLanding(beatInput({ remainingChoices: 1 })),
+  !(
+    isLanding(beatInput({ history: HISTORY, remainingChoices: 3 })) ||
+    isLanding(beatInput({ history: HISTORY })) ||
+    isLanding(beatInput({ remainingChoices: 1 }))
+  )
 );
 check(
   "landing schema caps paragraphs at 2; normal schema still allows 3",
   (() => {
     const three = {
-      paragraphs: ["Un premier pas.", "Un deuxième pas.", "Un troisième pas."],
       choices: null,
       isFinal: true,
+      paragraphs: ["Un premier pas.", "Un deuxième pas.", "Un troisième pas."],
       sceneHint: "Jules sous le chêne.",
     };
     const two = { ...three, paragraphs: three.paragraphs.slice(0, 2) };
@@ -244,7 +247,7 @@ check(
       LANDING_BEAT_SCHEMA.safeParse(two).success &&
       BEAT_SCHEMA.safeParse(three).success
     );
-  })(),
+  })()
 );
 
 // ── 12-17: buildPrompt — story arc + countdown ───────────────────────────────
@@ -253,86 +256,86 @@ const ARC =
 check(
   "prompt: storyArc injected with the secret 'Fil de l'histoire' preamble",
   (() => {
-    const p = buildPrompt(beatInput({ storyArc: ARC, history: HISTORY }));
+    const p = buildPrompt(beatInput({ history: HISTORY, storyArc: ARC }));
     return p.includes("Fil de l'histoire (secret") && p.includes(ARC);
-  })(),
+  })()
 );
 check(
   "prompt: no storyArc → no 'Fil de l'histoire' block",
-  !buildPrompt(beatInput({ history: HISTORY })).includes("Fil de l'histoire"),
+  !buildPrompt(beatInput({ history: HISTORY })).includes("Fil de l'histoire")
 );
 check(
   "prompt: remainingChoices=2 → 'Il ne reste que 2 choix' countdown",
   buildPrompt(beatInput({ history: HISTORY, remainingChoices: 2 })).includes(
-    "Il ne reste que 2 choix",
-  ),
+    "Il ne reste que 2 choix"
+  )
 );
 check(
   "prompt: remainingChoices=1 → 'La fin est proche' announcement",
   buildPrompt(beatInput({ history: HISTORY, remainingChoices: 1 })).includes(
-    "La fin est proche",
-  ),
+    "La fin est proche"
+  )
 );
 check(
   "prompt: remainingChoices=3 or undefined → no countdown line",
   (() => {
     const p3 = buildPrompt(
-      beatInput({ history: HISTORY, remainingChoices: 3 }),
+      beatInput({ history: HISTORY, remainingChoices: 3 })
     );
     const pU = buildPrompt(beatInput({ history: HISTORY }));
     const has = (s: string) =>
       s.includes("La fin est proche") || s.includes("Il ne reste que");
-    return !has(p3) && !has(pU);
-  })(),
+    return !(has(p3) || has(pU));
+  })()
 );
 check(
   "prompt: mustEnd wins — final instructions, no countdown even at remaining=0",
   (() => {
     const p = buildPrompt(
-      beatInput({ history: HISTORY, mustEnd: true, remainingChoices: 0 }),
+      beatInput({ history: HISTORY, mustEnd: true, remainingChoices: 0 })
     );
     return (
       p.includes("C'est le DERNIER bout") &&
       !p.includes("La fin est proche") &&
       !p.includes("Il ne reste que")
     );
-  })(),
+  })()
 );
 check(
   "prompt: opening beat (empty history) → 'TOUT PREMIER bout', countdown never rendered",
   (() => {
     const p = buildPrompt(beatInput({ remainingChoices: 1 }));
     return p.includes("TOUT PREMIER bout") && !p.includes("La fin est proche");
-  })(),
+  })()
 );
 
 // ── buildPrompt — decrescendo brevity lines on the landing beats ─────────────
 check(
   "prompt: remainingChoices=2 countdown also asks for a shorter beat",
   buildPrompt(beatInput({ history: HISTORY, remainingChoices: 2 })).includes(
-    "L'histoire atterrit : écris un bout un peu plus court (2 phrases).",
-  ),
+    "L'histoire atterrit : écris un bout un peu plus court (2 phrases)."
+  )
 );
 check(
   "prompt: remainingChoices=1 announcement asks for 2 phrases seulement",
   buildPrompt(beatInput({ history: HISTORY, remainingChoices: 1 })).includes(
-    "2 phrases seulement",
-  ),
+    "2 phrases seulement"
+  )
 );
 check(
   "prompt: mustEnd final block asks the last page to stay very short",
   buildPrompt(beatInput({ history: HISTORY, mustEnd: true })).includes(
-    "Reste très court : 2 phrases simples",
-  ),
+    "Reste très court : 2 phrases simples"
+  )
 );
 check(
   "prompt: opening beat gets NO brevity line",
   (() => {
     const p = buildPrompt(beatInput({ remainingChoices: 1 }));
-    return (
-      !p.includes("2 phrases seulement") && !p.includes("L'histoire atterrit")
+    return !(
+      p.includes("2 phrases seulement") || p.includes("L'histoire atterrit")
     );
-  })(),
+  })()
 );
 
 // ── buildPrompt — sceneHint continuity (prior scenes rendered) ───────────────
@@ -344,11 +347,11 @@ check(
     const iScene = p.indexOf(`  → scène : « ${SCENE} »`);
     const iChoices = p.indexOf("  → choix proposés :");
     return iBeat >= 0 && iScene > iBeat && iChoices > iScene;
-  })(),
+  })()
 );
 check(
   "prompt: history entry WITHOUT sceneHint (older segment) omits the scène line",
-  !buildPrompt(beatInput({ history: HISTORY })).includes("→ scène"),
+  !buildPrompt(beatInput({ history: HISTORY })).includes("→ scène")
 );
 
 // ── buildSystem — new clauses present ────────────────────────────────────────
@@ -361,7 +364,7 @@ check(
       s.includes("VARIE les mots du réconfort") &&
       s.includes("Fil de l'histoire")
     );
-  })(),
+  })()
 );
 check(
   "system: sceneHint CONTINUITÉ clause (same time/light unless the story moved; decor follows the story)",
@@ -372,7 +375,7 @@ check(
       s.includes("MÊME") &&
       s.includes("changer de lieu ou de moment")
     );
-  })(),
+  })()
 );
 
 // ── 19-20: coerceBeat — sceneHint carried / unsafe sceneHint rejected ────────
@@ -384,7 +387,7 @@ check(
     const salvaged = coerceBeat(
       cleanBeat({ isFinal: false }),
       HERO_NAME,
-      false,
+      false
     );
     if (!(final && salvaged)) {
       return false;
@@ -395,15 +398,15 @@ check(
       final.sceneHint === src.sceneHint &&
       salvaged.sceneHint === src.sceneHint
     );
-  })(),
+  })()
 );
 check(
   "coerce: a scary sceneHint makes the beat un-coercible (returns null)",
   coerceBeat(
     cleanBeat({ sceneHint: "Un monstre dans la clairière." }),
     HERO_NAME,
-    true,
-  ) === null,
+    true
+  ) === null
 );
 
 // ── scanForbidden — the outfit / arc safety-scan primitive ───────────────────
@@ -413,20 +416,20 @@ check(
 check(
   "scanForbidden: a clean wardrobe sentence is safe (null)",
   scanForbidden(
-    "Jules en pull bleu et pantalon beige ; Mona en veste verte",
-  ) === null,
+    "Jules en pull bleu et pantalon beige ; Mona en veste verte"
+  ) === null
 );
 check(
   "scanForbidden: a still-forbidden term is caught (couteau kept after épée removal)",
-  scanForbidden("Jules tient un couteau") === "couteau",
+  scanForbidden("Jules tient un couteau") === "couteau"
 );
 check(
   "scanForbidden: a stakes term is caught too (same list as arc/visualWorld)",
-  scanForbidden("Bravo, la belle tenue !") !== null,
+  scanForbidden("Bravo, la belle tenue !") !== null
 );
 check(
   "scanForbidden: over-blocks by design (substring): 'charme' matches 'arme'",
-  scanForbidden("un pull plein de charme") === "arme",
+  scanForbidden("un pull plein de charme") === "arme"
 );
 
 // ── outfit safety ISOLATION (SEV-1): a dirty outfit nulls ONLY itself ─────────
@@ -436,7 +439,7 @@ check(
 check(
   "safeOutfitOrNull: a clean wardrobe is kept verbatim",
   safeOutfitOrNull("Jules en pull bleu ; Léa en robe jaune") ===
-    "Jules en pull bleu ; Léa en robe jaune",
+    "Jules en pull bleu ; Léa en robe jaune"
 );
 check("safeOutfitOrNull: empty → null", safeOutfitOrNull("") === null);
 check(
@@ -448,7 +451,25 @@ check(
     // The arc/visualWorld scan must NOT see the outfit (survives → null hit).
     const arcHit = scanForbidden(`${arc}\n${visualWorld}`);
     return arcHit === null && safeOutfitOrNull(outfit) === null;
-  })(),
+  })()
+);
+
+// L'ordre des clés zod EST l'ordre des propriétés du schéma JSON envoyé au
+// modèle (le récit d'abord) — un tri de formatage ne doit jamais le réordonner.
+check(
+  "schéma beat : ordre des propriétés épinglé (title → paragraphs → choices → isFinal → sceneHint)",
+  JSON.stringify(Object.keys(BEAT_SCHEMA.shape)) ===
+    JSON.stringify(["title", "paragraphs", "choices", "isFinal", "sceneHint"])
+);
+check(
+  "schéma beat (landing) : même ordre de propriétés",
+  JSON.stringify(Object.keys(LANDING_BEAT_SCHEMA.shape)) ===
+    JSON.stringify(["title", "paragraphs", "choices", "isFinal", "sceneHint"])
+);
+check(
+  "schéma arc : ordre des propriétés épinglé (arc → visualWorld → outfit)",
+  JSON.stringify(Object.keys(ARC_SCHEMA.shape)) ===
+    JSON.stringify(["arc", "visualWorld", "outfit"])
 );
 
 if (failures > 0) {
@@ -456,5 +477,5 @@ if (failures > 0) {
   process.exit(1);
 }
 console.log(
-  `\nCOHERENCE OK: ${checks} checks passed (validators + prompt builders).`,
+  `\nCOHERENCE OK: ${checks} checks passed (validators + prompt builders).`
 );

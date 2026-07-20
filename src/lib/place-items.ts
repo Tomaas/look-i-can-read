@@ -2,9 +2,9 @@ import type { PickerItem } from "~/components/picker-grid";
 
 /** Minimal shape both a DB place and a config place satisfy. */
 interface PlaceLike {
+  emoji?: string | null;
   id: string;
   label: string;
-  emoji?: string | null;
 }
 
 /**
@@ -13,8 +13,8 @@ interface PlaceLike {
  */
 export function toPlaceItems(places: PlaceLike[]): PickerItem[] {
   return places.map((p) => ({
+    emoji: p.emoji || "📍",
     id: p.id,
     label: p.label,
-    emoji: p.emoji || "📍",
   }));
 }

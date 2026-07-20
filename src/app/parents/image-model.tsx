@@ -7,10 +7,10 @@ import { getFlagsFn } from "~/server/functions";
 import { ImageTestPlayground } from "./components/-image-test-playground";
 
 export const Route = createFileRoute("/parents/image-model")({
+  component: ParentsImageModelPage,
   // Only the env default model (a public flag) is needed — the choice itself
   // lives in localStorage, there is no DB-backed state here.
   loader: () => getFlagsFn(),
-  component: ParentsImageModelPage,
 });
 
 /**

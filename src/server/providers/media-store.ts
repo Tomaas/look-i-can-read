@@ -21,12 +21,12 @@ import { serverEnv } from "~/env";
 const MEDIA_DIR = resolve(serverEnv.dataDir, "media");
 
 const CONTENT_TYPES: Record<string, string> = {
-  png: "image/png",
-  jpg: "image/jpeg",
   jpeg: "image/jpeg",
-  webp: "image/webp",
+  jpg: "image/jpeg",
   mp3: "audio/mpeg",
+  png: "image/png",
   wav: "audio/wav",
+  webp: "image/webp",
 };
 
 // Exported for the /data/$ disk-serve route, which needs the same mapping to
@@ -62,12 +62,12 @@ function storeIdFromToken(token: string): string {
 function withTimeout<T>(
   promise: Promise<T>,
   ms: number,
-  label: string,
+  label: string
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(
       () => reject(new Error(`${label} timed out after ${ms}ms`)),
-      ms,
+      ms
     );
     promise.then(
       (value) => {
@@ -77,14 +77,14 @@ function withTimeout<T>(
       (err) => {
         clearTimeout(timer);
         reject(err);
-      },
+      }
     );
   });
 }
 
 export async function saveMedia(
   filename: string,
-  bytes: Uint8Array,
+  bytes: Uint8Array
 ): Promise<string> {
   // Cloud path: Vercel Blob. Filenames are nanoid-unique, so we never overwrite
   // an existing key (Blob public URLs are cached ~1mo — overwriting is unsafe).
@@ -113,12 +113,12 @@ export async function saveMedia(
         method: "PUT",
       }),
       BLOB_UPLOAD_TIMEOUT_MS,
-      "Vercel Blob upload",
+      "Vercel Blob upload"
     );
     if (!response.ok) {
       const detail = await response.text().catch(() => "");
       throw new Error(
-        `Vercel Blob upload failed: ${response.status} ${response.statusText} ${detail}`.trim(),
+        `Vercel Blob upload failed: ${response.status} ${response.statusText} ${detail}`.trim()
       );
     }
     // SDK returns { url, downloadUrl, pathname, contentType, … }; we need `url`.
@@ -177,7 +177,7 @@ export function blobHostFromToken(token: string): string | null {
  * filenames are ever written to the DB).
  */
 export async function readStoredMediaBytes(
-  webPath: string,
+  webPath: string
 ): Promise<Uint8Array | null> {
   if (!webPath.startsWith(MEDIA_WEB_PREFIX)) {
     return null;
@@ -186,5 +186,5 @@ export async function readStoredMediaBytes(
   if (!full.startsWith(MEDIA_DIR + sep)) {
     return null;
   }
-  return readFile(full);
+  return await readFile(full);
 }

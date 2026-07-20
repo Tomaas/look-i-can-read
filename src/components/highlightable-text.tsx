@@ -22,6 +22,9 @@ import {
   type WordToken,
 } from "~/lib/reading-aids";
 
+// Split into alternating word / whitespace tokens, keeping separators.
+const WHITESPACE_SPLIT = /(\s+)/;
+
 const WHITESPACE = /^\s+$/;
 
 type RenderGroup =
@@ -61,11 +64,11 @@ function toRenderGroups(text: string, withChains: boolean): RenderGroup[] {
         gap = tokens.at(j + 1);
         next = tokens.at(j + 2);
       }
-      groups.push({ kind: "chain", tokens: chain, key });
+      groups.push({ key, kind: "chain", tokens: chain });
       i = j + 1;
     } else {
-      groups.push({ kind: "single", token: start, key });
-      i++;
+      groups.push({ key, kind: "single", token: start });
+      i += 1;
     }
   }
   return groups;
@@ -88,7 +91,7 @@ function AidedWord({
   const keyed: { run: (typeof word.runs)[number]; key: string }[] = [];
   let offset = 0;
   for (const run of word.runs) {
-    keyed.push({ run, key: `${offset}:${run.text}` });
+    keyed.push({ key: `${offset}:${run.text}`, run });
     offset += run.text.length;
   }
   return (
@@ -100,7 +103,7 @@ function AidedWord({
           </span>
         ) : (
           <span key={key}>{run.text}</span>
-        ),
+        )
       )}
     </span>
   );
@@ -120,7 +123,7 @@ function AidedGroup({
     const keyed: { token: AnnotatedToken; key: string }[] = [];
     let offset = 0;
     for (const token of group.tokens) {
-      keyed.push({ token, key: `${offset}:${token.text}` });
+      keyed.push({ key: `${offset}:${token.text}`, token });
       offset += token.text.length;
     }
     return (
@@ -132,7 +135,7 @@ function AidedGroup({
             </span>
           ) : (
             <AidedWord key={key} showSilent={showSilent} word={token} />
-          ),
+          )
         )}
       </span>
     );
@@ -165,7 +168,7 @@ function HighlightableText({
   // replays/re-renders never re-run the rules pipeline.
   const groups = useMemo(
     () => (aidsOn ? toRenderGroups(text, showLiaisons) : null),
-    [aidsOn, showLiaisons, text],
+    [aidsOn, showLiaisons, text]
   );
 
   if (groups) {
@@ -188,9 +191,9 @@ function HighlightableText({
   // plain paragraph. The token list is derived synchronously from immutable
   // text and never reorders, so a position-based key is stable.
   const tokens = text
-    .split(/(\s+)/)
+    .split(WHITESPACE_SPLIT)
     .filter((token) => token.length > 0)
-    .map((token, position) => ({ token, key: `${position}:${token}` }));
+    .map((token, position) => ({ key: `${position}:${token}`, token }));
   return (
     <>
       {tokens.map(({ token, key }) =>
@@ -201,7 +204,7 @@ function HighlightableText({
           <span className="story-word" key={key}>
             {token}
           </span>
-        ),
+        )
       )}
     </>
   );

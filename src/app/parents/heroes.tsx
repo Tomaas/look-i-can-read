@@ -12,8 +12,8 @@ import {
 } from "~/server/heroes-functions";
 
 export const Route = createFileRoute("/parents/heroes")({
-  loader: () => listHeroesFn(),
   component: ParentsHeroesPage,
+  loader: () => listHeroesFn(),
 });
 
 /**
@@ -36,8 +36,9 @@ function ParentsHeroesPage() {
 
   async function handleDelete(id: string) {
     if (
+      // biome-ignore lint/suspicious/noAlert: confirm() volontairement minimal — garde anti-tap accidentel, pas d'UI modale à maintenir.
       !window.confirm(
-        "Retirer ce héros ? Les histoires déjà créées ne changeront pas.",
+        "Retirer ce héros ? Les histoires déjà créées ne changeront pas."
       )
     ) {
       return;

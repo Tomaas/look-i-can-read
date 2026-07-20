@@ -2,9 +2,9 @@ import type { PickerItem } from "~/components/picker-grid";
 
 /** Minimal shape both a DB doudou and a config doudou satisfy. */
 interface DoudouLike {
+  emoji?: string | null;
   id: string;
   label: string;
-  emoji?: string | null;
 }
 
 /**
@@ -13,9 +13,9 @@ interface DoudouLike {
  */
 export function toDoudouItems(doudous: DoudouLike[]): PickerItem[] {
   return doudous.map((d) => ({
+    emoji: d.emoji || "🧸",
     id: d.id,
     label: d.label,
-    emoji: d.emoji || "🧸",
   }));
 }
 

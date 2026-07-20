@@ -40,7 +40,7 @@ export const nanoBananaImageProvider: ImageProvider = {
   async generateImage(
     prompt: string,
     model?: string,
-    referenceImage?: Uint8Array | URL,
+    referenceImage?: Uint8Array | URL
   ): Promise<string> {
     if (!serverEnv.geminiApiKey) {
       throw new Error("GEMINI_API_KEY manquante.");
@@ -50,12 +50,12 @@ export const nanoBananaImageProvider: ImageProvider = {
 
     const providerOptions = {
       google: {
-        responseModalities: ["IMAGE"],
         // Pin a low, display-matched output to cut cost (see header).
         imageConfig: {
-          imageSize: serverEnv.imageResolution,
           aspectRatio: "4:3",
+          imageSize: serverEnv.imageResolution,
         },
+        responseModalities: ["IMAGE"],
       },
     };
 
@@ -68,11 +68,11 @@ export const nanoBananaImageProvider: ImageProvider = {
         ? {
             messages: [
               {
-                role: "user" as const,
                 content: [
-                  { type: "image" as const, image: referenceImage },
-                  { type: "text" as const, text: prompt },
+                  { image: referenceImage, type: "image" as const },
+                  { text: prompt, type: "text" as const },
                 ],
+                role: "user" as const,
               },
             ],
           }
@@ -81,7 +81,7 @@ export const nanoBananaImageProvider: ImageProvider = {
     });
 
     const imageFile = result.files.find((f) =>
-      f.mediaType?.startsWith("image/"),
+      f.mediaType?.startsWith("image/")
     );
     if (!imageFile) {
       throw new Error("Aucune image renvoyée par le générateur d'image.");
@@ -89,18 +89,18 @@ export const nanoBananaImageProvider: ImageProvider = {
 
     const usedModel = model ?? serverEnv.imageModel;
     console.log(
-      `[image-gen] model=${usedModel} ref=${referenceImage ? "yes" : "no"} prompt=${prompt}`,
+      `[image-gen] model=${usedModel} ref=${referenceImage ? "yes" : "no"} prompt=${prompt}`
     );
     try {
       const outTokens = result.usage?.outputTokens;
       const cost =
-        outTokens != null
-          ? outTokens * IMAGE_USD_PER_OUTPUT_TOKEN
-          : IMAGE_USD_PER_IMAGE;
+        outTokens === undefined
+          ? IMAGE_USD_PER_IMAGE
+          : outTokens * IMAGE_USD_PER_OUTPUT_TOKEN;
       const basis =
-        outTokens != null
-          ? `${outTokens} output tokens @ $30/1M`
-          : "flat per-image estimate";
+        outTokens === undefined
+          ? "flat per-image estimate"
+          : `${outTokens} output tokens @ $30/1M`;
       console.log(`[image-gen] cost≈$${cost.toFixed(4)} (${basis})`);
     } catch {
       // Never let cost logging break image generation.

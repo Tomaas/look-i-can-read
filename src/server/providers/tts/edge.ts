@@ -20,7 +20,7 @@ export const edgeTtsProvider: TtsProvider = {
     const tts = new MsEdgeTTS();
     await tts.setMetadata(
       VOICE[lang],
-      OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3,
+      OUTPUT_FORMAT.AUDIO_24KHZ_48KBITRATE_MONO_MP3
     );
 
     // In this version, toFile takes the full destination path (with filename)

@@ -8,9 +8,9 @@ export type Lang = "fr" | "ru";
  * prompt. Undefined = no doudou → nothing injected.
  */
 export interface DoudouContext {
+  imageHint: string;
   label: string;
   promptHint: string;
-  imageHint: string;
 }
 
 /**
@@ -21,9 +21,9 @@ export interface DoudouContext {
  * old single `Character.description`), `imageHint` drives the IMAGE prompt.
  */
 export interface HeroContext {
+  imageHint: string;
   label: string;
   promptHint: string;
-  imageHint: string;
 }
 
 /**
@@ -39,10 +39,10 @@ export interface ElementContext {
 
 /** A prior beat, compacted for conditioning the next one. */
 export interface BeatHistoryEntry {
-  paragraphs: string[];
+  chosenLabel: string;
   // The two labels that were offered, and which one the child picked.
   offered: [string, string];
-  chosenLabel: string;
+  paragraphs: string[];
   // The scene the illustrator was given for this beat. Rendered into the next
   // beat's prompt so the model SEES the prior scenes and keeps the new
   // sceneHint's time-of-day/light/setting continuous instead of jumping from
@@ -51,35 +51,35 @@ export interface BeatHistoryEntry {
 }
 
 export interface GenerateBeatInput {
-  // The chosen heroes (≥1; heroes[0] is the primary, named-hard hero).
-  heroes: HeroContext[];
-  place: Place;
-  // The chosen surprise elements (≥1).
-  elements: ElementContext[];
-  lang: Lang;
+  // Optional, already-sanitized "saveur" frozen on the story; passed into EVERY
+  // beat (incl. continuation/crash-resume) so the flavour persists. Omitted on
+  // corrective retries (see provider) so odd flavour can't cause repeated fails.
+  customPrompt?: string;
   // Optional comforting companions, frozen on the story → passed into EVERY beat
   // (opening / continuation / crash-resume) so they are present throughout.
   // Empty array = no doudou.
   doudous: DoudouContext[];
+  // The chosen surprise elements (≥1).
+  elements: ElementContext[];
+  // The chosen heroes (≥1; heroes[0] is the primary, named-hard hero).
+  heroes: HeroContext[];
   // Ordered prior beats (empty for the opening beat).
   history: BeatHistoryEntry[];
+  lang: Lang;
   // When true, the model MUST end the story now (final beat, no choices).
   mustEnd: boolean;
-  // The hidden "fil rouge" generated at story creation (goal → milestones →
-  // ending image). Injected into every beat prompt so the story advances along
-  // ONE thread and the surprise element pays off. Undefined (old stories / arc
-  // generation soft-failed) → beats generate without it, as before.
-  storyArc?: string;
+  place: Place;
   // How many choices the child still has to make, COUNTING the one this beat
   // itself offers (MAX_CHOICES minus the choices already made). 1 = this beat
   // carries the story's last choice. Lets the prompt announce "la fin approche"
   // on the last 2 beats so the ending lands softly instead of hitting the
   // mustEnd wall. Undefined on the opening beat / for callers that don't track it.
   remainingChoices?: number;
-  // Optional, already-sanitized "saveur" frozen on the story; passed into EVERY
-  // beat (incl. continuation/crash-resume) so the flavour persists. Omitted on
-  // corrective retries (see provider) so odd flavour can't cause repeated fails.
-  customPrompt?: string;
+  // The hidden "fil rouge" generated at story creation (goal → milestones →
+  // ending image). Injected into every beat prompt so the story advances along
+  // ONE thread and the surprise element pays off. Undefined (old stories / arc
+  // generation soft-failed) → beats generate without it, as before.
+  storyArc?: string;
 }
 
 /**
@@ -88,15 +88,15 @@ export interface GenerateBeatInput {
  * exactly two choices.
  */
 export interface DynamicBeat {
-  title?: string; // present on the opening beat; sets the story title
-  paragraphs: string[];
   choices: [string, string] | null;
   isFinal: boolean;
+  paragraphs: string[];
   // Short visual description of THIS beat's scene (for the illustrator prompt):
   // where the action happens right now, so the image can follow the story out
   // of the frozen starting place. Optional so coercion/fallback paths that lack
   // it still yield a valid beat (image falls back to the place hint).
   sceneHint?: string;
+  title?: string; // present on the opening beat; sets the story title
 }
 
 /**
@@ -104,12 +104,12 @@ export interface DynamicBeat {
  * creation: the same frozen context as a beat, minus history/choices.
  */
 export interface GenerateArcInput {
-  heroes: HeroContext[];
-  place: { label: string; promptHint: string };
-  elements: ElementContext[];
-  doudous: DoudouContext[];
-  lang: Lang;
   customPrompt?: string;
+  doudous: DoudouContext[];
+  elements: ElementContext[];
+  heroes: HeroContext[];
+  lang: Lang;
+  place: { label: string; promptHint: string };
 }
 
 /**
@@ -124,18 +124,18 @@ export interface GenerateArcInput {
  */
 export interface StoryArcResult {
   arc: string;
-  visualWorld: string;
   // The heroes' wardrobe for the whole story. Scanned INDEPENDENTLY of arc/
   // visualWorld: a forbidden word here nulls only the outfit (the least-critical
   // note), never the whole arc. Null → no outfit line (image built as before).
   outfit: string | null;
+  visualWorld: string;
 }
 
 /**
  * Dynamic text provider — generates one beat at a time, conditioned on history.
  */
 export interface DynamicTextProvider {
-  generateBeat(input: GenerateBeatInput): Promise<DynamicBeat>;
+  generateBeat: (input: GenerateBeatInput) => Promise<DynamicBeat>;
 }
 
 /**
@@ -149,11 +149,11 @@ export interface ImageProvider {
   // prior illustration of the SAME story, sent alongside the prompt so the
   // model keeps the characters/style consistent across beats. Omitted → pure
   // text-to-image (opening beat, or no prior image available).
-  generateImage(
+  generateImage: (
     prompt: string,
     model?: string,
-    referenceImage?: Uint8Array | URL,
-  ): Promise<string>;
+    referenceImage?: Uint8Array | URL
+  ) => Promise<string>;
 }
 
 /**
@@ -217,7 +217,7 @@ export function resolveStoredImagePath(stored: string | null | undefined): {
 /** True when a stored image path is a real, renderable src (not null, not the
  * terminal failure sentinel). Use at every raw `<img src>` render site. */
 export function isRenderableImagePath(
-  stored: string | null | undefined,
+  stored: string | null | undefined
 ): stored is string {
   return !!stored && stored !== IMAGE_FAILED_SENTINEL;
 }
@@ -227,5 +227,5 @@ export function isRenderableImagePath(
  * Default implementation targets msedge-tts (free French voices).
  */
 export interface TtsProvider {
-  synthesize(text: string, lang: Lang): Promise<string>;
+  synthesize: (text: string, lang: Lang) => Promise<string>;
 }

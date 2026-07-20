@@ -53,15 +53,15 @@ const ELEMENT_CAP = 2;
 const langSchema = z.enum(["fr", "ru"]).default("fr");
 
 const startSchema = z.object({
-  // Heroes REQUIRED + multi-select (≥1, ≤ cap). heroIds[0] is the primary.
-  heroIds: z.array(z.string()).min(1).max(HERO_CAP),
-  placeId: z.string(),
-  // Elements REQUIRED + multi-select (≥1, ≤ cap).
-  elementIds: z.array(z.string()).min(1).max(ELEMENT_CAP),
+  customPrompt: z.string().max(500).optional(),
   // Optional comforting companions (multi-select) — empty/absent = no doudou.
   doudouIds: z.array(z.string()).optional(),
+  // Elements REQUIRED + multi-select (≥1, ≤ cap).
+  elementIds: z.array(z.string()).min(1).max(ELEMENT_CAP),
+  // Heroes REQUIRED + multi-select (≥1, ≤ cap). heroIds[0] is the primary.
+  heroIds: z.array(z.string()).min(1).max(HERO_CAP),
   lang: langSchema.optional(),
-  customPrompt: z.string().max(500).optional(),
+  placeId: z.string(),
 });
 
 export type DynamicStartResult =
@@ -89,9 +89,9 @@ function toHistory(segments: StorySegment[]): BeatHistoryEntry[] {
     }
     const chosen = seg.choices.find((c) => c.id === seg.chosenChoiceId);
     history.push({
-      paragraphs: seg.paragraphs,
-      offered: [seg.choices[0].label, seg.choices[1].label],
       chosenLabel: chosen?.label ?? seg.choices[0].label,
+      offered: [seg.choices[0].label, seg.choices[1].label],
+      paragraphs: seg.paragraphs,
       // The prior beats' scenes condition the next sceneHint (time-of-day/
       // light continuity). Null on older segments → omitted from the prompt.
       sceneHint: seg.sceneHint ?? undefined,
@@ -102,8 +102,8 @@ function toHistory(segments: StorySegment[]): BeatHistoryEntry[] {
 
 function beatToSegmentValues(beat: DynamicBeat) {
   return {
-    paragraphs: beat.paragraphs,
     choices: beat.choices ? toChoices(beat.choices) : null,
+    paragraphs: beat.paragraphs,
     sceneHint: beat.sceneHint ?? null,
     status: "complete" as const,
   };
@@ -126,7 +126,7 @@ export const startDynamicStoryFn = createServerFn({ method: "POST" })
     ]);
     // HARD-FAIL on an empty resolve (codex #2).
     if (heroes.length === 0 || elements.length === 0 || !place) {
-      return { success: false, error: "Choix invalide." };
+      return { error: "Choix invalide.", success: false };
     }
 
     const customPrompt = sanitizeCustomPrompt(data.customPrompt);
@@ -136,126 +136,126 @@ export const startDynamicStoryFn = createServerFn({ method: "POST" })
     // Best-effort: null on failure → the story generates arc-less, as before.
     const arcStartedAt = Date.now();
     console.log("[stories] arc gen START", {
-      lang,
-      heroes: heroes.length,
-      elements: elements.length,
       doudous: doudous.length,
+      elements: elements.length,
+      heroes: heroes.length,
+      lang,
     });
     const arcResult = await generateStoryArc({
-      heroes,
-      place: { label: place.label, promptHint: place.promptHint },
-      elements,
-      doudous,
-      lang,
       customPrompt: customPrompt ?? undefined,
+      doudous,
+      elements,
+      heroes,
+      lang,
+      place: { label: place.label, promptHint: place.promptHint },
     });
     const storyArc = arcResult?.arc ?? null;
     console.log("[stories] arc gen DONE", {
+      hasArc: storyArc !== null,
       ms: Date.now() - arcStartedAt,
-      hasArc: storyArc != null,
-      visualWorld: arcResult?.visualWorld ?? null,
       outfit: arcResult?.outfit ?? null,
+      visualWorld: arcResult?.visualWorld ?? null,
     });
 
     const beatStartedAt = Date.now();
     console.log("[stories] beat gen START", {
-      storyId: null,
       idx: 0,
       lang,
       mustEnd: false,
+      storyId: null,
     });
     let beat: DynamicBeat;
     try {
       beat = await anthropicDynamicProvider.generateBeat({
+        customPrompt: customPrompt ?? undefined,
+        doudous,
+        elements,
         heroes,
+        history: [],
+        lang,
+        mustEnd: false,
         place: {
+          emoji: "",
           id: data.placeId,
           label: place.label,
-          emoji: "",
           promptHint: place.promptHint,
         },
-        elements,
-        lang,
-        doudous,
-        history: [],
-        mustEnd: false,
         storyArc: storyArc ?? undefined,
-        customPrompt: customPrompt ?? undefined,
       });
     } catch {
       // The provider already logged the per-attempt problems.
       console.error("[stories] beat gen FAILED", {
-        storyId: null,
         idx: 0,
         ms: Date.now() - beatStartedAt,
+        storyId: null,
       });
-      return { success: false, error: "On réessaie ?" };
+      return { error: "On réessaie ?", success: false };
     }
     console.log("[stories] beat gen DONE", {
-      storyId: null,
       idx: 0,
       ms: Date.now() - beatStartedAt,
+      storyId: null,
     });
 
     const [story] = await db
       .insert(stories)
       .values({
-        mode: "dynamic",
-        lang,
-        // Mirror the FIRST hero/element id into the NOT NULL legacy columns
-        // (codex #2).
-        heroId: heroes[0].id,
-        placeId: data.placeId,
-        elementId: elements[0].id,
-        title: beat.title?.trim() || appConfig.storyLabel,
-        paragraphs: [],
-        storyArc,
-        // Frozen with the arc (same call): the story's default illustration
-        // ambiance. Null when arc gen soft-failed → image prompts as before.
-        visualWorld: arcResult?.visualWorld ?? null,
-        // Frozen with the arc (same call): the heroes' fixed wardrobe for every
-        // illustration. Null when arc soft-failed / the outfit tripped its own
-        // safety scan → image prompts keep prior clothing behavior.
-        outfit: arcResult?.outfit ?? null,
-        // Freeze the place snapshot + custom prompt so EVERY later beat
-        // (continuation / crash-resume) re-prompts from the same frozen state.
-        placeLabel: place.label,
-        placePromptHint: place.promptHint,
-        // Freeze the hero + element snapshot ARRAYS so EVERY later beat
-        // re-prompts from them (immune to hero/element edits/deletes).
-        heroSnapshots: heroes.map((h) => ({
-          label: h.label,
-          promptHint: h.promptHint,
-          imageHint: h.imageHint,
-        })),
-        elementSnapshots: elements.map((e) => ({
-          label: e.label,
-          promptHint: e.promptHint,
-        })),
+        customPrompt,
+        doudouImageHint: doudous[0]?.imageHint ?? null,
+        doudouLabel: doudous[0]?.label ?? null,
+        doudouPromptHint: doudous[0]?.promptHint ?? null,
         // Freeze the doudou snapshot ARRAY (empty when none chosen) so EVERY
         // later beat (continuation / crash-resume) re-prompts from it. Mirror
         // the FIRST doudou into the singular columns for back-compat readers.
         doudouSnapshots: doudous,
-        doudouLabel: doudous[0]?.label ?? null,
-        doudouPromptHint: doudous[0]?.promptHint ?? null,
-        doudouImageHint: doudous[0]?.imageHint ?? null,
-        customPrompt,
+        elementId: elements[0].id,
+        elementSnapshots: elements.map((e) => ({
+          label: e.label,
+          promptHint: e.promptHint,
+        })),
+        // Mirror the FIRST hero/element id into the NOT NULL legacy columns
+        // (codex #2).
+        heroId: heroes[0].id,
+        // Freeze the hero + element snapshot ARRAYS so EVERY later beat
+        // re-prompts from them (immune to hero/element edits/deletes).
+        heroSnapshots: heroes.map((h) => ({
+          imageHint: h.imageHint,
+          label: h.label,
+          promptHint: h.promptHint,
+        })),
+        lang,
+        mode: "dynamic",
+        // Frozen with the arc (same call): the heroes' fixed wardrobe for every
+        // illustration. Null when arc soft-failed / the outfit tripped its own
+        // safety scan → image prompts keep prior clothing behavior.
+        outfit: arcResult?.outfit ?? null,
+        paragraphs: [],
+        placeId: data.placeId,
+        // Freeze the place snapshot + custom prompt so EVERY later beat
+        // (continuation / crash-resume) re-prompts from the same frozen state.
+        placeLabel: place.label,
+        placePromptHint: place.promptHint,
+        storyArc,
+        title: beat.title?.trim() || appConfig.storyLabel,
+        // Frozen with the arc (same call): the story's default illustration
+        // ambiance. Null when arc gen soft-failed → image prompts as before.
+        visualWorld: arcResult?.visualWorld ?? null,
       })
       .returning();
 
     const [segment] = await db
       .insert(storySegments)
-      .values({ storyId: story.id, idx: 0, ...beatToSegmentValues(beat) })
+      .values({ idx: 0, storyId: story.id, ...beatToSegmentValues(beat) })
       .returning();
 
     // The id only exists post-insert; ties the START/DONE lines above (which
     // logged storyId=null) to the created story for grep-ability.
     console.log("[stories] story created", {
+      hasArc: storyArc !== null,
       storyId: story.id,
       title: story.title,
-      hasArc: storyArc != null,
     });
-    return { success: true, storyId: story.id, segment };
+    return { segment, storyId: story.id, success: true };
   });
 
 /**
@@ -268,7 +268,7 @@ export const startDynamicStoryFn = createServerFn({ method: "POST" })
  *    the 5th choice has been made.
  */
 export const continueDynamicStoryFn = createServerFn({ method: "POST" })
-  .validator(z.object({ storyId: z.string(), choiceId: z.string() }))
+  .validator(z.object({ choiceId: z.string(), storyId: z.string() }))
   .handler(async ({ data }): Promise<DynamicContinueResult> => {
     const segments = await db
       .select()
@@ -277,7 +277,7 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
       .orderBy(asc(storySegments.idx));
 
     if (segments.length === 0) {
-      return { success: false, error: "Histoire introuvable." };
+      return { error: "Histoire introuvable.", success: false };
     }
 
     // The "current" beat is the last COMPLETE segment that offers choices — the
@@ -287,10 +287,10 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
       .reverse()
       .find((s) => s.status === "complete" && s.choices);
     if (!current) {
-      return { success: false, error: "Cette histoire est déjà terminée." };
+      return { error: "Cette histoire est déjà terminée.", success: false };
     }
     if (!current.choices?.some((c) => c.id === data.choiceId)) {
-      return { success: false, error: "Choix invalide." };
+      return { error: "Choix invalide.", success: false };
     }
 
     const nextIdx = current.idx + 1;
@@ -306,15 +306,15 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
         .where(
           and(
             eq(storySegments.storyId, data.storyId),
-            eq(storySegments.idx, nextIdx),
-          ),
+            eq(storySegments.idx, nextIdx)
+          )
         );
       return next;
     };
 
     const preExisting = await findNext();
     if (preExisting && preExisting.status === "complete") {
-      return { success: true, segment: preExisting };
+      return { segment: preExisting, success: true };
     }
 
     // Conditional claim — only sets chosenChoiceId when it's still NULL, so a
@@ -325,8 +325,8 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
       .where(
         and(
           eq(storySegments.id, current.id),
-          isNull(storySegments.chosenChoiceId),
-        ),
+          isNull(storySegments.chosenChoiceId)
+        )
       )
       .run();
 
@@ -336,7 +336,7 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
       .where(eq(stories.id, data.storyId))
       .then((r) => r[0]);
     if (!story) {
-      return { success: false, error: "Histoire introuvable." };
+      return { error: "Histoire introuvable.", success: false };
     }
     // History path: hero/place/element FROZEN from the story's own snapshot (or
     // immutable config fallback) — never the live, editable DB rows. This
@@ -344,13 +344,13 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
     const { heroes, place, elements, doudous } =
       getFrozenStoryPromptContext(story);
     if (heroes.length === 0 || elements.length === 0) {
-      return { success: false, error: "Histoire introuvable." };
+      return { error: "Histoire introuvable.", success: false };
     }
 
     // Count persisted chosen choices (the claim above is now persisted). The
     // 5th choice ends the story: at 5 chosen choices the next beat must be final.
     const chosenCount = segments.filter(
-      (s) => s.id === current.id || s.chosenChoiceId,
+      (s) => s.id === current.id || s.chosenChoiceId
     ).length;
     const mustEnd = chosenCount >= MAX_CHOICES;
 
@@ -363,9 +363,9 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
       await db
         .update(storySegments)
         .set({
-          status: "generating",
-          pendingChoiceId: data.choiceId,
           error: null,
+          pendingChoiceId: data.choiceId,
+          status: "generating",
         })
         .where(eq(storySegments.id, placeholder.id))
         .run();
@@ -373,96 +373,96 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
       const [created] = await db
         .insert(storySegments)
         .values({
-          storyId: data.storyId,
+          choices: null,
           idx: nextIdx,
           paragraphs: [],
-          choices: null,
-          status: "generating",
           pendingChoiceId: data.choiceId,
+          status: "generating",
+          storyId: data.storyId,
         })
         .onConflictDoNothing()
         .returning();
       placeholder = created ?? (await findNext());
     }
     if (!placeholder) {
-      return { success: false, error: "On réessaie ?" };
+      return { error: "On réessaie ?", success: false };
     }
     // Another caller already completed it between our checks.
     if (placeholder.status === "complete") {
-      return { success: true, segment: placeholder };
+      return { segment: placeholder, success: true };
     }
 
     // History reflects the just-made choice on `current`.
     const claimedSegments = segments.map((s) =>
-      s.id === current.id ? { ...s, chosenChoiceId: data.choiceId } : s,
+      s.id === current.id ? { ...s, chosenChoiceId: data.choiceId } : s
     );
 
     const beatStartedAt = Date.now();
     console.log("[stories] beat gen START", {
-      storyId: data.storyId,
       idx: nextIdx,
       mustEnd,
       remainingChoices: Math.max(0, MAX_CHOICES - chosenCount),
+      storyId: data.storyId,
     });
     let beat: DynamicBeat;
     try {
       beat = await anthropicDynamicProvider.generateBeat({
-        heroes,
-        place: {
-          id: story.placeId,
-          label: place.label,
-          emoji: "",
-          promptHint: place.promptHint,
-        },
-        elements,
-        lang: story.lang as "fr" | "ru",
+        // Frozen saveur, re-applied on every beat (continuation can't see the
+        // original parcours state — it must come from the persisted column).
+        customPrompt: sanitizeCustomPrompt(story.customPrompt) ?? undefined,
         // Frozen doudous, re-applied on every beat (continuation can't see the
         // original parcours choice — they come from the story's snapshot).
         doudous,
+        elements,
+        heroes,
         history: toHistory(claimedSegments),
+        lang: story.lang as "fr" | "ru",
         mustEnd,
-        // Frozen fil rouge (null on older stories → arc-less, as before).
-        storyArc: story.storyArc ?? undefined,
+        place: {
+          emoji: "",
+          id: story.placeId,
+          label: place.label,
+          promptHint: place.promptHint,
+        },
         // Choices the child still has to make, COUNTING the one this new beat
         // offers (1 = this beat carries the last choice) — lets the prompt
         // prepare the landing instead of hitting the mustEnd wall.
         remainingChoices: Math.max(0, MAX_CHOICES - chosenCount),
-        // Frozen saveur, re-applied on every beat (continuation can't see the
-        // original parcours state — it must come from the persisted column).
-        customPrompt: sanitizeCustomPrompt(story.customPrompt) ?? undefined,
+        // Frozen fil rouge (null on older stories → arc-less, as before).
+        storyArc: story.storyArc ?? undefined,
       });
     } catch (err) {
       // The provider already logged the per-attempt problems.
       console.error("[stories] beat gen FAILED", {
-        storyId: data.storyId,
         idx: nextIdx,
         ms: Date.now() - beatStartedAt,
+        storyId: data.storyId,
       });
       // Mark the beat errored (recoverable) and soft-fail WITHOUT losing prior
       // segments — the UI retries this beat with the same choice.
       await db
         .update(storySegments)
         .set({
-          status: "error",
           error: err instanceof Error ? err.message : "génération échouée",
+          status: "error",
         })
         .where(eq(storySegments.id, placeholder.id))
         .run();
-      return { success: false, error: "On réessaie ?" };
+      return { error: "On réessaie ?", success: false };
     }
 
     const [segment] = await db
       .update(storySegments)
-      .set({ ...beatToSegmentValues(beat), pendingChoiceId: null, error: null })
+      .set({ ...beatToSegmentValues(beat), error: null, pendingChoiceId: null })
       .where(eq(storySegments.id, placeholder.id))
       .returning();
     console.log("[stories] beat gen DONE", {
-      storyId: data.storyId,
       idx: nextIdx,
-      ms: Date.now() - beatStartedAt,
       isFinal: beat.choices === null,
+      ms: Date.now() - beatStartedAt,
+      storyId: data.storyId,
     });
-    return { success: true, segment };
+    return { segment, success: true };
   });
 
 /** A dynamic story plus its ordered segments (library replay, read-only). */
@@ -484,8 +484,8 @@ export const getDynamicStoryFn = createServerFn({ method: "GET" })
         .from(storySegments)
         .where(eq(storySegments.storyId, storyId))
         .orderBy(asc(storySegments.idx));
-      return { story, segments };
-    },
+      return { segments, story };
+    }
   );
 
 /**
@@ -506,10 +506,10 @@ const inFlightSegmentImages = new Map<string, Promise<ImageResult>>();
 export const generateSegmentImageFn = createServerFn({ method: "POST" })
   .validator(
     z.object({
-      storyId: z.string(),
       idx: z.number(),
       imageModel: z.string().optional(),
-    }),
+      storyId: z.string(),
+    })
   )
   .handler(async ({ data }): Promise<ImageResult> => {
     const startedAt = Date.now();
@@ -517,14 +517,14 @@ export const generateSegmentImageFn = createServerFn({ method: "POST" })
     // on an unknown id); the START log prints the RESOLVED model.
     const model = resolveImageModel(data.imageModel, serverEnv.imageModel);
     console.log("[stories] image gen START", {
-      storyId: data.storyId,
       idx: data.idx,
       model,
       resolution: serverEnv.imageResolution,
+      storyId: data.storyId,
     });
     if (!serverEnv.imageEnabled) {
       console.warn(
-        "[stories] image gen SKIPPED — IMAGE_ENABLED is false (set IMAGE_ENABLED=true to enable)",
+        "[stories] image gen SKIPPED — IMAGE_ENABLED is false (set IMAGE_ENABLED=true to enable)"
       );
       return { imagePath: null, imageStatus: "skipped" };
     }
@@ -542,7 +542,7 @@ export const generateSegmentImageFn = createServerFn({ method: "POST" })
     }
     const run = generateSegmentImage(data.storyId, data.idx, startedAt, model);
     inFlightSegmentImages.set(key, run);
-    return run.finally(() => inFlightSegmentImages.delete(key));
+    return await run.finally(() => inFlightSegmentImages.delete(key));
   });
 
 /**
@@ -558,23 +558,23 @@ export const generateSegmentImageFn = createServerFn({ method: "POST" })
 export const retrySegmentImageFn = createServerFn({ method: "POST" })
   .validator(
     z.object({
-      storyId: z.string(),
       idx: z.number(),
       imageModel: z.string().optional(),
-    }),
+      storyId: z.string(),
+    })
   )
   .handler(async ({ data }): Promise<ImageResult> => {
     const startedAt = Date.now();
     const model = resolveImageModel(data.imageModel, serverEnv.imageModel);
     console.log("[stories] image RETRY START", {
-      storyId: data.storyId,
       idx: data.idx,
       model,
       resolution: serverEnv.imageResolution,
+      storyId: data.storyId,
     });
     if (!serverEnv.imageEnabled) {
       console.warn(
-        "[stories] image retry SKIPPED — IMAGE_ENABLED is false (set IMAGE_ENABLED=true to enable)",
+        "[stories] image retry SKIPPED — IMAGE_ENABLED is false (set IMAGE_ENABLED=true to enable)"
       );
       return { imagePath: null, imageStatus: "skipped" };
     }
@@ -589,7 +589,7 @@ export const retrySegmentImageFn = createServerFn({ method: "POST" })
         "[stories] image retry deduped (already in-flight, server)",
         {
           key,
-        },
+        }
       );
       return existing;
     }
@@ -598,10 +598,10 @@ export const retrySegmentImageFn = createServerFn({ method: "POST" })
       data.idx,
       startedAt,
       model,
-      true,
+      true
     );
     inFlightSegmentImages.set(key, run);
-    return run.finally(() => inFlightSegmentImages.delete(key));
+    return await run.finally(() => inFlightSegmentImages.delete(key));
   });
 
 /**
@@ -633,10 +633,10 @@ const REFERENCE_FETCH_TIMEOUT_MS = 10_000;
 
 async function resolveReferenceImage(
   storyId: string,
-  idx: number,
+  idx: number
 ): Promise<Uint8Array | URL | undefined> {
   if (idx <= 0) {
-    return undefined;
+    return;
   }
   try {
     // Earliest renderable prior image, filtered in SQL: one row, one column.
@@ -648,14 +648,14 @@ async function resolveReferenceImage(
           eq(storySegments.storyId, storyId),
           lt(storySegments.idx, idx),
           isNotNull(storySegments.imagePath),
-          ne(storySegments.imagePath, IMAGE_FAILED_SENTINEL),
-        ),
+          ne(storySegments.imagePath, IMAGE_FAILED_SENTINEL)
+        )
       )
       .orderBy(asc(storySegments.idx))
       .limit(1);
     const path = anchor?.imagePath;
     if (!path) {
-      return undefined;
+      return;
     }
     if (path.startsWith("https://")) {
       const url = new URL(path);
@@ -669,15 +669,15 @@ async function resolveReferenceImage(
         // every reference image). If this fires for our own host, it is a bug.
         console.warn(
           `[stories] reference image REJECTED by host allowlist for story ${storyId} idx=${idx}:` +
-            ` ${url.hostname} not allowed (expected ${storeHost ?? `*${BLOB_HOST_SUFFIX}`}).`,
+            ` ${url.hostname} not allowed (expected ${storeHost ?? `*${BLOB_HOST_SUFFIX}`}).`
         );
-        return undefined;
+        return;
       }
       const res = await fetch(url, {
         signal: AbortSignal.timeout(REFERENCE_FETCH_TIMEOUT_MS),
       });
       if (!res.ok) {
-        return undefined;
+        return;
       }
       return new Uint8Array(await res.arrayBuffer());
     }
@@ -687,9 +687,8 @@ async function resolveReferenceImage(
     // image itself — generate without a reference instead.
     console.warn(
       `[stories] reference image unavailable for story ${storyId} idx=${idx}:`,
-      error instanceof Error ? error.message : String(error),
+      error instanceof Error ? error.message : String(error)
     );
-    return undefined;
   }
 }
 
@@ -704,7 +703,7 @@ async function generateSegmentImage(
   idx: number,
   startedAt: number,
   model: string,
-  force = false,
+  force = false
 ): Promise<ImageResult> {
   const [segment] = await db
     .select()
@@ -793,17 +792,17 @@ async function generateSegmentImage(
     const imagePath = await nanoBananaImageProvider.generateImage(
       prompt,
       model,
-      referenceImage,
+      referenceImage
     );
     await db
       .update(storySegments)
       .set({ imagePath })
       .where(eq(storySegments.id, segment.id));
     console.log("[stories] image gen DONE", {
-      storyId,
       idx,
-      ms: Date.now() - startedAt,
       imagePath,
+      ms: Date.now() - startedAt,
+      storyId,
     });
     return { imagePath, imageStatus: "ready" };
   } catch (error) {
@@ -814,7 +813,7 @@ async function generateSegmentImage(
       `[stories] segment image generation FAILED for story ${storyId} ` +
         `segment idx=${idx} (model=${model}, ` +
         `ms=${Date.now() - startedAt}): ` +
-        (error instanceof Error ? error.message : String(error)),
+        (error instanceof Error ? error.message : String(error))
     );
     // Persist the TERMINAL failure sentinel so this beat's image is settled:
     // future remounts / HMR reloads / reopens read it back as "failed" and never
@@ -828,7 +827,7 @@ async function generateSegmentImage(
     } catch (markError) {
       console.error(
         `[stories] could not persist image-failed sentinel for story ${storyId} segment idx=${idx}:`,
-        markError,
+        markError
       );
     }
     return { imagePath: null, imageStatus: "failed" };
