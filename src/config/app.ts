@@ -2,7 +2,7 @@
  * App-wide branding — the ONE place to personalize the app for your family.
  *
  * Set `VITE_CHILD_NAME=Léa` (in `.env.local` or your host's env vars) and the
- * browser tab, home screen and printed booklet all become "Les histoires de
+ * browser tab, home screen and printed booklet all become "L'atelier de
  * Léa" / "Une histoire de Léa" — no code change, so a public fork stays
  * generic. `VITE_APP_NAME` / `VITE_APP_DESCRIPTION` / `VITE_STORY_LABEL`
  * override the full strings when the derived phrasing doesn't fit. The values
@@ -11,7 +11,7 @@
  */
 
 /**
- * French elision: "de" contracts to "d'" before a vowel sound — "les histoires
+ * French elision: "de" contracts to "d'" before a vowel sound — "l'atelier
  * d'Arsène" but "de Léa". Vowels (accented included) and mute h elide; names
  * where that's wrong (h aspiré, semi-consonant Y like "de Yann") can use the
  * full-string override vars instead.
@@ -26,11 +26,11 @@ export const appConfig = {
   /** Display name: browser tab, home header. */
   name:
     import.meta.env.VITE_APP_NAME ||
-    (childName ? `Les histoires ${withDe(childName)}` : "Petites histoires"),
+    (childName ? `L'atelier ${withDe(childName)}` : "Le petit atelier"),
   /** One-line description (meta description tag). */
   description:
     import.meta.env.VITE_APP_DESCRIPTION ||
-    "Un endroit calme pour inventer des histoires.",
+    "Un endroit calme pour lire, inventer et calculer.",
   /**
    * Discreet footer printed on the A5 booklet, and the fallback story title
    * when the model returns none.

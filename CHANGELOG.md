@@ -4,6 +4,18 @@ Toutes les évolutions notables de l'app, une version par livraison.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/) adapté, versions
 4 chiffres `MAJOR.MINOR.PATCH.MICRO` (fichier `VERSION`).
 
+## [0.2.2.1] - 2026-07-20
+
+### Changed
+
+- L'app s'appelle maintenant « L'atelier d'Arsène » (dérivé du prénom :
+  « L'atelier de Léa » pour un autre foyer, « Le petit atelier » sans prénom) —
+  un nom qui couvre les histoires, les calculs et les prochains plateaux.
+  L'onglet du navigateur et l'écran d'accueil suivent au prochain déploiement ;
+  les livrets imprimés gardent leur pied de page « Une histoire d'Arsène ».
+- La description de l'app devient « Un endroit calme pour lire, inventer et
+  calculer. »
+
 ## [0.2.2.0] - 2026-07-19
 
 ### Changed
