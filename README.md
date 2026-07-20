@@ -34,20 +34,23 @@ moment.
 - **Read-aloud** (optional): free Edge TTS French voices, or ElevenLabs.
 - **Print**: one click → a clean A5 booklet, no headers, no tech noise.
 - **Library**: every kept story is saved and re-readable.
-- **"Poser des calculs" workshop** (`/calcul`): a short series of column
-  operations (additions, subtractions, multiplications) the child writes
-  freely on a soft numpad (tap a key, or drag the digit straight onto a
-  cell), then compares with the solved version — nothing is
+- **"Poser des calculs" workshop** (`/calcul`): the child first takes a tray
+  from a small shelf — one tray per operation family the parent has prepared
+  (additions, subtractions, multiplications), each with its own little fixed
+  scene, never a level number. Then a short series of column operations the
+  child writes freely on a soft numpad (tap a key, or drag the digit straight
+  onto a cell), then compares with the solved version — nothing is
   marked, nothing is scored. Word problems can feature the family's hero and
   doudou ("Arsène range 24 marrons…") — template-based, no AI call, works
   even offline once the page is open.
-- **Parent-chosen level**: the adult picks the palier (7 steps, from
-  carry-free additions to column multiplications) and the series size at
-  `/parents/calcul` — the app never evaluates the child and never
+- **Parent-chosen level**: at `/parents/calcul` the adult decides which
+  operation families are on the shelf and picks each family's own palier
+  (7 steps in all, from carry-free additions to column multiplications),
+  plus the series size — the app never evaluates the child and never
   auto-advances.
 - **Printable operation sheets**: A5 sheets of posed operations to complete
-  in pencil, in the same format as the story booklets, matching the chosen
-  palier.
+  in pencil, in the same format as the story booklets — one sheet per
+  operation family, matching that family's palier.
 
 ## Make it yours
 
@@ -180,11 +183,12 @@ For a story:
 > macOS, pick "Save as PDF" (or your printer's booklet option) — the A5 layout
 > is ready; the print dialog handles booklet pagination.
 
-The **operations workshop** works the same quiet way: a short series of posed
-operations arrives as little trays; the child writes the digits, compares
-with the solved version when ready, and the workshop puts itself away at the
-end of the series. An operation left mid-way resumes exactly where it was
-(kept on the device).
+The **operations workshop** works the same quiet way: the child takes a tray
+from a small shelf (one per operation family the parent has prepared), a
+short series of posed operations begins; the child writes the digits,
+compares with the solved version when ready, and the tray goes back on the
+shelf at the end of the series. A series left mid-way resumes exactly where
+it was — each tray remembers its own (kept on the device).
 
 ## Technical notes
 
@@ -204,12 +208,13 @@ end of the series. An operation left mid-way resumes exactly where it was
 - **The operations module** (`src/lib/operations`) is pure and deterministic:
   a seeded generator (an interrupted series regenerates identically), shared
   screen/print geometry, a descriptive palier ladder, and template word
-  problems — no LLM involved. The parent's palier choice lives in the
-  `math_skills` table (and is mirrored on-device so the workshop shrugs off a
+  problems — no LLM involved. The parent's choices live in the
+  `math_skills` table — one row per activated operation family, carrying
+  that family's palier (and mirrored on-device so the workshop shrugs off a
   network hiccup).
 - **Tests**: `bun run test` runs golden assertion scripts (prompt identity,
-  coherence validators, media store, reading aids, posed operations) — plain
-  Bun, no test runner needed.
+  coherence validators, media store, media data route, reading aids, posed
+  operations) — plain Bun, no test runner needed.
 
 ## License
 

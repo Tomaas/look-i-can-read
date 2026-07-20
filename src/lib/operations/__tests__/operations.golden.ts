@@ -17,23 +17,38 @@
  */
 
 import {
+  bridgeLegacySerie,
   countBorrows,
   countCarries,
   countMultCarries,
+  DEFAULT_PALIER_ID,
   DEFAULT_SERIE_SIZE,
   enonceFor,
+  FAMILLES,
+  familleOfPalier,
+  fingerprintOps,
   generateOperation,
   generateSerie,
+  isPalierOfFamille,
+  isResumableSerie,
+  LEGACY_SERIE_STATE_KEY,
   layoutOperation,
   MAX_RESULT,
   MAX_SERIE_SIZE,
   MIN_SERIE_SIZE,
   matchesQuota,
+  normalizeFamilySettings,
   PALIERS,
   palierById,
+  paliersByFamille,
   RANK_COLORS,
   RANK_LABELS,
   resolvePalier,
+  resolvePalierForFamille,
+  safeGenerateSerie,
+  serieStorageKeyOf,
+  settingsFromRows,
+  skillKeyOf,
   UnsatisfiableConstraintError,
 } from "~/lib/operations";
 
@@ -555,6 +570,273 @@ check(
     "énoncé multiplication: gabarit paniers, sans compagnon",
     multPhrase.includes("paniers") && !multPhrase.includes("Doudou"),
     multPhrase,
+  );
+}
+
+/* ------------------- Familles & réglages (étagère, 1B/3A) ------------------ */
+{
+  check(
+    "FAMILLES: ordre canonique addition, soustraction, multiplication",
+    FAMILLES.length === 3 &&
+      FAMILLES[0] === "addition" &&
+      FAMILLES[1] === "soustraction" &&
+      FAMILLES[2] === "multiplication",
+  );
+  check(
+    "paliersByFamille: découpage 3/2/2 des 7 paliers",
+    paliersByFamille("addition").length === 3 &&
+      paliersByFamille("soustraction").length === 2 &&
+      paliersByFamille("multiplication").length === 2,
+  );
+  check(
+    "paliersByFamille: chaque palier appartient bien à sa famille",
+    FAMILLES.every((op) =>
+      paliersByFamille(op).every((p) => p.constraints.op === op),
+    ),
+  );
+  check(
+    "resolvePalierForFamille: id connu de la famille → lui-même",
+    resolvePalierForFamille("soustraction", "sous-emprunt").id ===
+      "sous-emprunt",
+  );
+  check(
+    "resolvePalierForFamille: id inconnu → premier palier de la famille",
+    resolvePalierForFamille("multiplication", "fantome").id ===
+      "mult-1-chiffre",
+  );
+  check(
+    "resolvePalierForFamille: id d'une AUTRE famille → réparé (jamais d'erreur)",
+    resolvePalierForFamille("addition", "sous-emprunt").id ===
+      "add-sans-retenue",
+  );
+  check(
+    "resolvePalierForFamille: null → premier palier de la famille",
+    resolvePalierForFamille("soustraction", null).id === "sous-sans-emprunt",
+  );
+  check(
+    "familleOfPalier: les 7 paliers pointent leur famille, inconnu → addition",
+    familleOfPalier("add-retenue") === "addition" &&
+      familleOfPalier("sous-sans-emprunt") === "soustraction" &&
+      familleOfPalier("mult-abstraite") === "multiplication" &&
+      familleOfPalier("fantome") === "addition" &&
+      familleOfPalier(null) === "addition",
+  );
+
+  // settingsFromRows — les cas de bord tranchés en review (3A).
+  const vide = settingsFromRows([]);
+  check(
+    "settingsFromRows: table vide → addition, premier palier, activée",
+    vide.familles.length === 1 &&
+      vide.familles[0].op === "addition" &&
+      vide.familles[0].palier === DEFAULT_PALIER_ID &&
+      vide.serieSize === DEFAULT_SERIE_SIZE,
+  );
+  const troisRows = [
+    {
+      skill: skillKeyOf("multiplication"),
+      palier: "mult-abstraite",
+      serieSize: 5,
+    },
+    { skill: skillKeyOf("addition"), palier: "add-retenue", serieSize: 4 },
+    { skill: skillKeyOf("soustraction"), palier: "sous-emprunt", serieSize: 6 },
+  ];
+  const trois = settingsFromRows(troisRows);
+  check(
+    "settingsFromRows: 3 familles, ré-émises dans l'ordre canonique",
+    trois.familles.map((f) => f.op).join(",") ===
+      "addition,soustraction,multiplication",
+  );
+  check(
+    "settingsFromRows: serieSize lue sur la 1re ligne canonique (addition)",
+    trois.serieSize === 4,
+  );
+  const sale = settingsFromRows([
+    { skill: "calcul-pose", palier: "add-retenue", serieSize: 3 },
+    { skill: "exotique", palier: "add-retenue", serieSize: 3 },
+    {
+      skill: skillKeyOf("soustraction"),
+      palier: "mult-abstraite",
+      serieSize: 99,
+    },
+  ]);
+  check(
+    "settingsFromRows: legacy non migrée et clé exotique IGNORÉES",
+    sale.familles.length === 1 && sale.familles[0].op === "soustraction",
+  );
+  check(
+    "settingsFromRows: palier d'une autre famille réparé + serieSize clampée",
+    sale.familles[0].palier === "sous-sans-emprunt" &&
+      sale.serieSize === MAX_SERIE_SIZE,
+  );
+
+  // normalizeFamilySettings — le cache appareil ne crashe jamais l'enfant.
+  const garbage = normalizeFamilySettings({ palier: "add-retenue" });
+  check(
+    "normalizeFamilySettings: ancien format de cache → défauts sûrs",
+    garbage.familles.length === 1 && garbage.familles[0].op === "addition",
+  );
+  const normal = normalizeFamilySettings({
+    serieSize: 2,
+    familles: [
+      { op: "multiplication", palier: "mult-1-chiffre" },
+      { op: "multiplication", palier: "mult-1-chiffre" },
+      { op: "addition", palier: "fantome" },
+      { op: "licorne", palier: "add-retenue" },
+    ],
+  });
+  check(
+    "normalizeFamilySettings: dédup + ordre canonique + paliers réparés",
+    normal.serieSize === 2 &&
+      normal.familles.map((f) => `${f.op}:${f.palier}`).join(",") ===
+        "addition:add-sans-retenue,multiplication:mult-1-chiffre",
+  );
+
+  // bridgeLegacySerie — RÉGRESSION CRITIQUE (2A/T4) : la série d'avant la
+  // mise à jour survit, enrichie de sa famille dérivée du palier.
+  const legacy = {
+    palierId: "sous-emprunt",
+    serieSize: 3,
+    seed: 42,
+    index: 1,
+    opsFingerprint: "soustraction:52:27",
+    perOp: [{ entries: { result: ["5"], carries: [null] }, done: false }],
+  };
+  const bridged = bridgeLegacySerie(legacy);
+  check(
+    "pont legacy: famille dérivée du palierId, état intact + champ famille",
+    bridged !== null &&
+      bridged.famille === "soustraction" &&
+      bridged.state.famille === "soustraction" &&
+      bridged.state.seed === 42 &&
+      bridged.state.index === 1,
+  );
+  check(
+    "pont legacy: un champ famille déjà présent est respecté",
+    bridgeLegacySerie({ ...legacy, famille: "addition" })?.famille ===
+      "addition",
+  );
+  check(
+    "pont legacy: une valeur méconnaissable → null (pas de fantôme)",
+    bridgeLegacySerie(null) === null &&
+      bridgeLegacySerie({ seed: 1 }) === null &&
+      bridgeLegacySerie("calcul") === null,
+  );
+  check(
+    "pont legacy: un champ famille INVALIDE est re-dérivé du palierId",
+    bridgeLegacySerie({ ...legacy, famille: "licorne" })?.famille ===
+      "soustraction",
+  );
+  const nul = normalizeFamilySettings(null);
+  const texte = normalizeFamilySettings("calcul");
+  check(
+    "normalizeFamilySettings: null ou non-objet → défauts sûrs (jamais de crash)",
+    nul.familles.length === 1 &&
+      nul.familles[0].op === "addition" &&
+      nul.serieSize === DEFAULT_SERIE_SIZE &&
+      texte.familles.length === 1 &&
+      texte.familles[0].op === "addition",
+  );
+  const brouillon = normalizeFamilySettings({
+    serieSize: "beaucoup",
+    familles: ["addition", null, 7, { op: "soustraction", palier: 42 }],
+  });
+  check(
+    "normalizeFamilySettings: entrées non-objet filtrées, palier non-string et serieSize sales réparés",
+    brouillon.familles.map((f) => `${f.op}:${f.palier}`).join(",") ===
+      "soustraction:sous-sans-emprunt" &&
+      brouillon.serieSize === DEFAULT_SERIE_SIZE,
+  );
+  check(
+    "clés de rangement: une par famille + préfixe skill stable",
+    serieStorageKeyOf("addition") === "calcul:serie:addition" &&
+      LEGACY_SERIE_STATE_KEY === "calcul:serie" &&
+      skillKeyOf("soustraction") === "calcul-pose:soustraction",
+  );
+
+  // isPalierOfFamille — le prédicat du refine zod (T7) : REFUSE, ne répare pas.
+  check(
+    "isPalierOfFamille: appartient / autre famille / inconnu / null",
+    isPalierOfFamille("soustraction", "sous-emprunt") &&
+      !isPalierOfFamille("addition", "sous-emprunt") &&
+      !isPalierOfFamille("addition", "fantome") &&
+      !isPalierOfFamille("addition", null),
+  );
+
+  // normalizeFamilySettings — la taille de série d'un vieux cache SURVIT
+  // (red-team RT4) même quand aucune famille n'est reconnaissable.
+  const vieuxCache = normalizeFamilySettings({
+    palier: "mult-1-chiffre",
+    serieSize: 5,
+  });
+  check(
+    "normalizeFamilySettings: vieux format → défaut addition MAIS serieSize conservée",
+    vieuxCache.familles.length === 1 &&
+      vieuxCache.familles[0].op === "addition" &&
+      vieuxCache.serieSize === 5,
+  );
+
+  // isResumableSerie — le prédicat de l'état « sorti » (D-3A/F5), désormais
+  // pur et golden-testé : chaque branche de refus.
+  const palierS = resolvePalierForFamille("soustraction", "sous-sans-emprunt");
+  const opsS = safeGenerateSerie(palierS, 77, 2);
+  const resumable = {
+    famille: "soustraction" as const,
+    palierId: palierS.id,
+    serieSize: 2,
+    seed: 77,
+    index: 1,
+    opsFingerprint: fingerprintOps(opsS),
+    perOp: opsS.map(() => ({
+      entries: { result: ["4", null], carries: [null] },
+      done: false,
+    })),
+  };
+  check(
+    "isResumableSerie: une série valide se reprend",
+    isResumableSerie(resumable, "soustraction", palierS.id, 2),
+  );
+  check(
+    "isResumableSerie: autre famille / autre palier / autre taille → refus",
+    !isResumableSerie(resumable, "addition", palierS.id, 2) &&
+      !isResumableSerie(resumable, "soustraction", "sous-emprunt", 2) &&
+      !isResumableSerie(resumable, "soustraction", palierS.id, 3),
+  );
+  check(
+    "isResumableSerie: série FINIE (index === size) → rangée, pas sortie",
+    !isResumableSerie(
+      { ...resumable, index: 2 },
+      "soustraction",
+      palierS.id,
+      2,
+    ),
+  );
+  check(
+    "isResumableSerie: empreinte qui ne régénère pas → série fraîche",
+    !isResumableSerie(
+      { ...resumable, opsFingerprint: "corrompue" },
+      "soustraction",
+      palierS.id,
+      2,
+    ),
+  );
+  check(
+    "isResumableSerie: null et perOp difforme → refus sans crash",
+    !isResumableSerie(null, "soustraction", palierS.id, 2) &&
+      !isResumableSerie(
+        {
+          ...resumable,
+          perOp: [{ entries: { result: [3], carries: [] }, done: false }],
+        } as never,
+        "soustraction",
+        palierS.id,
+        2,
+      ),
+  );
+  check(
+    "safeGenerateSerie: palier valide → série pleine, déterministe",
+    safeGenerateSerie(palierS, 77, 2).length === 2 &&
+      fingerprintOps(safeGenerateSerie(palierS, 77, 2)) ===
+        fingerprintOps(opsS),
   );
 }
 

@@ -4,6 +4,59 @@ Toutes les évolutions notables de l'app, une version par livraison.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/) adapté, versions
 4 chiffres `MAJOR.MINOR.PATCH.MICRO` (fichier `VERSION`).
 
+## [0.3.0.0] - 2026-07-20
+
+### Added
+
+- L'étagère de plateaux : en entrant dans « Poser des calculs », l'enfant
+  choisit désormais lui-même sa famille d'opération — un plateau par famille
+  préparée par le parent, posé sur une planche, avec sa petite scène fixe
+  (des marrons pour les additions, le doudou pour les soustractions, des
+  paniers pour les multiplications), le signe en médaillon et une phrase
+  courte. Une famille non préparée n'apparaît simplement pas.
+- Chaque plateau se souvient de sa série en cours : un plateau « sorti » de
+  la planche se reprend exactement où il en était, même après un détour par
+  un autre plateau — et une série commencée avant cette version est
+  retrouvée elle aussi.
+- La flèche fait maintenant le trajet en deux temps : depuis la série elle
+  « repose le plateau » (retour à l'étagère), depuis l'étagère elle rend à
+  l'accueil. La fin d'une série redevient un instant : 🌿, puis l'étagère
+  réapparaît avec le plateau rangé.
+- Côté parents, la page des calculs se réorganise en une carte par famille
+  d'opérations : activer/désactiver chaque famille, choisir son palier
+  propre, imprimer une fiche A5 par famille. Les conséquences sont dites
+  avant le geste (« Changer le palier range la série en cours »), et au
+  moins une famille reste toujours sur l'étagère.
+- L'étagère s'adapte à l'écran : les plateaux se compriment sans jamais
+  passer sous la planche, s'empilent sur petit écran (chacun avec sa
+  planche), s'annoncent au lecteur d'écran (« Prendre le plateau des
+  additions — série en cours ») et respectent la préférence « réduire les
+  animations ».
+
+### Changed
+
+- Les réglages du calcul vivent désormais par famille d'opérations (la
+  migration 0010 convertit l'ancien réglage unique en préservant le palier
+  choisi — exécuter `bun run db:migrate` avec le déploiement) ; la taille de
+  série reste globale, et celle d'un ancien appareil est conservée.
+- La documentation projet décrit l'étagère de plateaux et son cycle de vie
+  des données (CLAUDE.md, schéma, backlog).
+
+### Fixed
+
+- Une visite hors ligne (ou avant la migration) ne peut plus faire oublier
+  une série en cours : le grand ménage des séries locales n'a lieu que sur
+  des réglages réellement lus en base, et la migration d'une série d'avant
+  l'étagère ne s'efface qu'après vérification de sa nouvelle place.
+- Si les réglages ne se chargent pas, la page parents l'affiche calmement au
+  lieu de présenter un formulaire vide qui aurait pu écraser les vrais
+  réglages en croyant les réparer.
+- Une série au contenu impossible à régénérer se range d'elle-même au lieu
+  de rester sur l'écran « L'atelier est rangé. » ; les messages d'erreur
+  côté parents restent en français calme, sans détail technique.
+- `bun run lint` fonctionne aussi depuis un espace de travail d'agent
+  (l'exclusion Biome des worktrees est ancrée à la racine de la config).
+
 ## [0.2.2.1] - 2026-07-20
 
 ### Changed
