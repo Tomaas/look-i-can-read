@@ -22,6 +22,18 @@
 **Contexte :** Soustraction = seul le diminuende posé, emprunt = échange inverse 1 bleu → 10 verts (variante exacte à confirmer avec l'école) ; multiplication = ligne posée en un geste (« poser encore 48 ») ; spec détaillée de la multiplication à 2 chiffres (produits partiels, décalage) à écrire à ce moment-là.
 **Depends on:** Tranche 5.
 
+## Deploy (Docker/Compose)
+
+### Forwarder les build args de branding dans compose.yml
+**Priority:** P2
+**Contexte :** Le `Dockerfile` déclare les ARGs `VITE_APP_NAME`,
+`VITE_APP_DESCRIPTION` et `VITE_STORY_LABEL` mais `compose.yml` ne forwarde
+que `VITE_CHILD_NAME` — un override posé dans `.env` (le chemin documenté par
+`.env.example` et `src/config/app.ts`) est silencieusement ignoré par
+`bun run deploy`. Gap préexistant relevé par la review adversariale du rename
+« L'atelier » (v0.2.2.1) : 3 lignes d'`args` à ajouter, ou documenter que
+l'override passe par `compose.override.yml`.
+
 ## Design
 
 ### Formaliser un DESIGN.md via /design-consultation
