@@ -69,7 +69,7 @@ yes → don't.
   description for the illustrator).
 - **Branding**: `src/config/app.ts` (display name, booklet footer/fallback
   title) — set `VITE_CHILD_NAME` (build-time Vite var) to derive both
-  ("Les histoires de Léa" / "Une histoire de Léa", with French d'-elision);
+  ("L'atelier de Léa" / "Une histoire de Léa", with French d'-elision);
   `VITE_APP_NAME`, `VITE_APP_DESCRIPTION`, `VITE_STORY_LABEL` override the
   full strings. Sample
   heroes in `src/config/characters.ts` — meant to be replaced by each family
