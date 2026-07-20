@@ -31,6 +31,7 @@ yes → don't.
   prompt builders and the zod schema key order (key order IS the JSON property
   order sent to the model — a formatting pass must not reorder it);
   `test:media` pins the media-store path rules;
+  `test:data-route` pins the `/data/$` media-serving route;
   `test:reading-aids` pins the silent-letter/liaison annotator;
   `test:operations` pins the posed-operations module (seeded generator,
   layout geometry, palier ladder, énoncé templates, calm-wording scan).
