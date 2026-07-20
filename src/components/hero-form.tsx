@@ -6,18 +6,18 @@ import { Textarea } from "~/components/ui/textarea";
 import type { DbHero } from "~/server/db/schema";
 
 export interface HeroFormValues {
-  label: string;
   emoji?: string;
-  imagePath?: string;
-  promptHint: string;
   imageHint: string;
+  imagePath?: string;
+  label: string;
+  promptHint: string;
 }
 
 interface HeroFormProps {
   // Undefined = a new hero; a row = editing it.
   initial?: DbHero;
-  onSubmit: (values: HeroFormValues) => void | Promise<void>;
   onCancel: () => void;
+  onSubmit: (values: HeroFormValues) => void | Promise<void>;
 }
 
 // Match the doudou/place forms' sizing so the parent tools read identically.
@@ -51,11 +51,11 @@ export function HeroForm({ initial, onSubmit, onCancel }: HeroFormProps) {
     setSubmitting(true);
     try {
       await onSubmit({
-        label: label.trim(),
         emoji: emoji.trim() || undefined,
-        imagePath: imagePath.trim() || undefined,
-        promptHint: promptHint.trim(),
         imageHint: imageHint.trim(),
+        imagePath: imagePath.trim() || undefined,
+        label: label.trim(),
+        promptHint: promptHint.trim(),
       });
     } finally {
       setSubmitting(false);

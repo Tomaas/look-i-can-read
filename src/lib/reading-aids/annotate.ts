@@ -10,6 +10,9 @@ import { silentMask } from "./silent-letters";
 import type { AnnotatedToken, LetterRun } from "./types";
 import { endsSentence, parseWord, type WordInfo } from "./word-info";
 
+// Word / whitespace splitter that keeps the separators.
+const WHITESPACE_SPLIT = /(\s+)/;
+
 const WHITESPACE = /^\s+$/;
 
 /** Fold a per-character silent mask into minimal same-state runs. */
@@ -23,11 +26,11 @@ function toRuns(info: WordInfo, mask: boolean[]): LetterRun[] {
     if (prev && prev.silent === silent) {
       prev.text += text;
     } else {
-      runs.push({ text, silent });
+      runs.push({ silent, text });
     }
   };
   push(info.lead, false);
-  for (let i = 0; i < info.core.length; i++) {
+  for (let i = 0; i < info.core.length; i += 1) {
     push(info.core.charAt(i), mask[i] === true);
   }
   push(info.trail, false);
@@ -36,7 +39,9 @@ function toRuns(info: WordInfo, mask: boolean[]): LetterRun[] {
 
 /** Annotate one paragraph. Pure and deterministic — safe to memoize. */
 export function annotateParagraph(text: string): AnnotatedToken[] {
-  const rawTokens = text.split(/(\s+)/).filter((token) => token.length > 0);
+  const rawTokens = text
+    .split(WHITESPACE_SPLIT)
+    .filter((token) => token.length > 0);
 
   // First pass: parse every word with sentence-position tracking (the
   // proper-noun gate needs to know mid-sentence capitals).
@@ -63,7 +68,7 @@ export function annotateParagraph(text: string): AnnotatedToken[] {
 
   // Liaison pass: pairs of adjacent words across a single gap.
   const liaisonAfter: boolean[] = rawTokens.map(() => false);
-  for (let i = 0; i < infos.length; i++) {
+  for (let i = 0; i < infos.length; i += 1) {
     const w1 = infos.at(i);
     if (!w1) {
       continue;
@@ -77,26 +82,26 @@ export function annotateParagraph(text: string): AnnotatedToken[] {
 
   // Silent pass + assembly.
   const tokens: AnnotatedToken[] = [];
-  for (let i = 0; i < rawTokens.length; i++) {
+  for (let i = 0; i < rawTokens.length; i += 1) {
     const info = infos.at(i);
     if (!info) {
       tokens.push({
         kind: "gap",
-        text: rawTokens.at(i) ?? "",
         liaison: i > 0 && liaisonAfter[i - 1] === true,
+        text: rawTokens.at(i) ?? "",
       });
       continue;
     }
     const mask = silentMask(info, {
-      prevLastSeg: wordAt(i - 2)?.lastSeg ?? null,
-      next: wordAt(i + 2),
       liaisonConsumesFinal: liaisonAfter[i] === true,
+      next: wordAt(i + 2),
+      prevLastSeg: wordAt(i - 2)?.lastSeg ?? null,
     });
     tokens.push({
       kind: "word",
-      text: info.raw,
-      runs: toRuns(info, mask),
       liaisonToNext: liaisonAfter[i] === true,
+      runs: toRuns(info, mask),
+      text: info.raw,
     });
   }
   return tokens;
@@ -126,7 +131,7 @@ export function annotationToPlainText(tokens: AnnotatedToken[]): string {
     .map((token) =>
       token.kind === "gap"
         ? token.text
-        : token.runs.map((run) => run.text).join(""),
+        : token.runs.map((run) => run.text).join("")
     )
     .join("");
 }

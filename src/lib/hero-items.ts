@@ -2,9 +2,9 @@ import type { PickerItem } from "~/components/picker-grid";
 
 /** Minimal shape both a DB hero and a config hero (mapped) satisfy. */
 interface HeroLike {
+  emoji?: string | null;
   id: string;
   label: string;
-  emoji?: string | null;
 }
 
 /**
@@ -13,9 +13,9 @@ interface HeroLike {
  */
 export function toHeroItems(heroes: HeroLike[]): PickerItem[] {
   return heroes.map((h) => ({
+    emoji: h.emoji || "🧒",
     id: h.id,
     label: h.label,
-    emoji: h.emoji || "🧒",
   }));
 }
 

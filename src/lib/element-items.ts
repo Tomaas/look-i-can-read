@@ -2,9 +2,9 @@ import type { PickerItem } from "~/components/picker-grid";
 
 /** Minimal shape both a DB element and a config element satisfy. */
 interface ElementLike {
+  emoji?: string | null;
   id: string;
   label: string;
-  emoji?: string | null;
 }
 
 /**
@@ -13,9 +13,9 @@ interface ElementLike {
  */
 export function toElementItems(elements: ElementLike[]): PickerItem[] {
   return elements.map((e) => ({
+    emoji: e.emoji || "✨",
     id: e.id,
     label: e.label,
-    emoji: e.emoji || "✨",
   }));
 }
 

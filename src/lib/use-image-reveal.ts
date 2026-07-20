@@ -27,8 +27,6 @@ import {
  * unchanged.
  */
 export interface ImageRevealState {
-  /** True once text + image may be shown together (resolved/failed/timed-out). */
-  revealed: boolean;
   /** The resolved image path, or null (disabled / failed / not-yet-arrived). */
   imagePath: string | null;
   /**
@@ -42,22 +40,24 @@ export interface ImageRevealState {
    * late image may still swap in.
    */
   imageStatus: ImageStatus;
+  /** True once text + image may be shown together (resolved/failed/timed-out). */
+  revealed: boolean;
 }
 
 interface UseImageRevealArgs {
-  imageEnabled: boolean;
-  /** An already-known image path (e.g. a library replay) — reveal at once. */
-  initialPath: string | null;
   /** Fetches/generates the image in the background; resolves the discriminated
    * {imagePath, imageStatus}. */
   fetchImage: () => Promise<ImageResult>;
-  /** Max time to wait before revealing text with the neutral field (~45s). */
-  timeoutMs?: number;
+  imageEnabled: boolean;
+  /** An already-known image path (e.g. a library replay) — reveal at once. */
+  initialPath: string | null;
   /**
    * Re-run when this changes (a new beat). Keep it stable for one beat — pass
    * the beat's idx / story id so a new beat re-arms the gate.
    */
   resetKey: string | number;
+  /** Max time to wait before revealing text with the neutral field (~45s). */
+  timeoutMs?: number;
 }
 
 const DEFAULT_TIMEOUT_MS = 45_000;
@@ -120,13 +120,13 @@ export function useImageReveal({
   const initial = resolveStoredImagePath(initialPath);
   // Non-null stored value (real path OR failure sentinel) = SETTLED: reveal at
   // once, never fetch. Null = nothing yet → fetch.
-  const isSettled = initialPath != null;
+  const isSettled = initialPath !== null;
   const [imagePath, setImagePath] = useState<string | null>(initial.imagePath);
   // A settled state carries its real status (ready / failed). When we have to
   // fetch, it stays "skipped" until the fetch settles it — a calm default so a
   // timeout-before-fetch reads as "no picture yet", not a failure.
   const [imageStatus, setImageStatus] = useState<ImageStatus>(
-    isSettled ? initial.imageStatus : "skipped",
+    isSettled ? initial.imageStatus : "skipped"
   );
   // Reveal immediately when there is nothing to wait for: images off, or the
   // row is already settled. Otherwise gate the reveal on the fetch/timeout.
@@ -139,15 +139,15 @@ export function useImageReveal({
   useEffect(() => {
     // Already-settled row (real image / prior failure) or disabled: reveal at
     // once, no fetch, no wait. The sentinel maps to (null, "failed").
-    if (!imageEnabled || initialPath != null) {
+    if (!imageEnabled || initialPath !== null) {
       const settled = resolveStoredImagePath(initialPath);
       console.log("[stories] client image fetch SKIPPED (no fetch)", {
+        reason: imageEnabled ? "row already settled" : "imageEnabled=false",
         resetKey,
-        reason: !imageEnabled ? "imageEnabled=false" : "row already settled",
-        status: !imageEnabled ? "skipped" : settled.imageStatus,
+        status: imageEnabled ? settled.imageStatus : "skipped",
       });
       setImagePath(settled.imagePath);
-      setImageStatus(!imageEnabled ? "skipped" : settled.imageStatus);
+      setImageStatus(imageEnabled ? settled.imageStatus : "skipped");
       setRevealed(true);
       return;
     }
@@ -175,7 +175,7 @@ export function useImageReveal({
     const timeout = setTimeout(() => {
       if (!unmounted) {
         console.warn(
-          `[stories] image reveal timed out after ${timeoutMs}ms (elapsed ${Date.now() - fetchStartedAt}ms) — not blocking the child; the fetch keeps running and will swap the image in when it resolves`,
+          `[stories] image reveal timed out after ${timeoutMs}ms (elapsed ${Date.now() - fetchStartedAt}ms) — not blocking the child; the fetch keeps running and will swap the image in when it resolves`
         );
         setRevealed(true);
       }
@@ -214,12 +214,12 @@ export function useImageReveal({
         }
         const elapsedMs = Date.now() - fetchStartedAt;
         console.log("[stories] client image fetch SETTLED", {
-          resetKey,
-          status,
-          ms: elapsedMs,
           hasPath: !!path,
           // True when this resolved AFTER the reveal timeout — a late swap-in.
           lateSwap: elapsedMs >= timeoutMs,
+          ms: elapsedMs,
+          resetKey,
+          status,
         });
         if (!path) {
           // No image: record whether it was a real failure or just skipped, then
@@ -274,5 +274,5 @@ export function useImageReveal({
     // one beat. fetchImage is intentionally excluded (see fetchRef above).
   }, [resetKey, imageEnabled, initialPath, timeoutMs]);
 
-  return { revealed, imagePath, imageStatus };
+  return { imagePath, imageStatus, revealed };
 }

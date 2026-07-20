@@ -57,7 +57,7 @@ function check(name: string, ok: boolean, detail?: string) {
   if (ok) {
     console.log(`✓ ${name}`);
   } else {
-    failures++;
+    failures += 1;
     console.error(`✗ ${name}${detail ? `\n  ${detail}` : ""}`);
   }
 }
@@ -83,14 +83,14 @@ check("countMultCarries(48, 7) = 2", countMultCarries(48, 7) === 2);
   check(
     "identité PRNG: palier 0, seed 1 → 32 + 2 = 34 (0 retenue)",
     op.a === 32 && op.b === 2 && op.expected === 34 && op.carries === 0,
-    JSON.stringify(op),
+    JSON.stringify(op)
   );
   const serie = generateSerie(PALIERS[0].constraints, 2026, 3);
   check(
     "identité PRNG: dérivation des seeds de série (2026 → 62806, 70725, 78644)",
     JSON.stringify(serie.map((o) => o.seed)) ===
-      JSON.stringify([62806, 70725, 78644]),
-    JSON.stringify(serie.map((o) => o.seed)),
+      JSON.stringify([62_806, 70_725, 78_644]),
+    JSON.stringify(serie.map((o) => o.seed))
   );
 }
 
@@ -116,18 +116,18 @@ check(
   MIN_SERIE_SIZE === 1 &&
     MAX_SERIE_SIZE === 6 &&
     DEFAULT_SERIE_SIZE >= MIN_SERIE_SIZE &&
-    DEFAULT_SERIE_SIZE <= MAX_SERIE_SIZE,
+    DEFAULT_SERIE_SIZE <= MAX_SERIE_SIZE
 );
 
 for (const palier of PALIERS) {
   let allValid = true;
   let firstProblem = "";
-  for (let seed = 1; seed <= 200; seed++) {
+  for (let seed = 1; seed <= 200; seed += 1) {
     const op = generateOperation(palier.constraints, seed);
     const trueResult = {
       addition: op.a + op.b,
-      soustraction: op.a - op.b,
       multiplication: op.a * op.b,
+      soustraction: op.a - op.b,
     }[op.op];
     const expectedOk = op.expected === trueResult;
     const quota =
@@ -154,16 +154,16 @@ for (const palier of PALIERS) {
   const a2 = generateOperation(c, 42);
   check(
     "déterminisme: seed 42 rejoue exactement la même opération",
-    a1.a === a2.a && a1.b === a2.b && a1.expected === a2.expected,
+    a1.a === a2.a && a1.b === a2.b && a1.expected === a2.expected
   );
   const varied = new Set(
     Array.from({ length: 50 }, (_, i) =>
-      JSON.stringify(generateOperation(c, i + 1)),
-    ),
+      JSON.stringify(generateOperation(c, i + 1))
+    )
   );
   check(
     "variété: 50 seeds → au moins 30 opérations distinctes",
-    varied.size >= 30,
+    varied.size >= 30
   );
 }
 
@@ -173,12 +173,12 @@ for (const palier of PALIERS) {
   try {
     generateOperation(
       {
-        op: "addition",
-        aDigits: { min: 1, max: 1 },
-        bDigits: { min: 1, max: 1 },
+        aDigits: { max: 1, min: 1 },
+        bDigits: { max: 1, min: 1 },
         carries: "some",
+        op: "addition",
       },
-      7,
+      7
     );
     // 1 chiffre + 1 chiffre AVEC retenue existe (ex. 7+8) — celle-ci est satisfaisable.
     threw = false;
@@ -187,26 +187,26 @@ for (const palier of PALIERS) {
   }
   check(
     "contrainte satisfaisable: 1+1 chiffre avec retenue ne lève pas",
-    !threw,
+    !threw
   );
 
   let impossibleThrew = false;
   try {
     generateOperation(
       {
-        op: "soustraction",
-        aDigits: { min: 1, max: 1 },
-        bDigits: { min: 1, max: 1 },
+        aDigits: { max: 1, min: 1 },
+        bDigits: { max: 1, min: 1 },
         borrows: "some",
+        op: "soustraction",
       },
-      7,
+      7
     );
   } catch (e) {
     impossibleThrew = e instanceof UnsatisfiableConstraintError;
   }
   check(
     "contrainte insatisfaisable (emprunt sur 1 chiffre) → UnsatisfiableConstraintError",
-    impossibleThrew,
+    impossibleThrew
   );
 }
 
@@ -217,7 +217,7 @@ for (const palier of PALIERS) {
     if (palier.constraints.op !== "multiplication") {
       continue;
     }
-    for (let seed = 1; seed <= 200; seed++) {
+    for (let seed = 1; seed <= 200; seed += 1) {
       if (generateOperation(palier.constraints, seed).b < 2) {
         allB2Plus = false;
       }
@@ -239,7 +239,7 @@ for (const palier of PALIERS) {
     const { aDigits, bDigits } = palier.constraints;
     const minDigits = Math.min(aDigits.min, bDigits.min);
     const maxDigits = Math.max(aDigits.max, bDigits.max);
-    for (let seed = 1; seed <= 200; seed++) {
+    for (let seed = 1; seed <= 200; seed += 1) {
       const o = generateOperation(palier.constraints, seed);
       if (o.a <= o.b) {
         strict = false;
@@ -259,7 +259,7 @@ for (const palier of PALIERS) {
   check("soustraction: a > b strict (jamais de résultat nul)", strict);
   check(
     "soustraction: les opérandes échangés restent dans les plages de chiffres",
-    digitsOk,
+    digitsOk
   );
 }
 
@@ -269,12 +269,12 @@ for (const palier of PALIERS) {
   const replay = generateSerie(
     PALIERS[0].constraints,
     2026,
-    DEFAULT_SERIE_SIZE,
+    DEFAULT_SERIE_SIZE
   );
   check("série: taille par défaut = 3", serie.length === 3);
   check(
     "série: déterministe à seed égal",
-    JSON.stringify(serie) === JSON.stringify(replay),
+    JSON.stringify(serie) === JSON.stringify(replay)
   );
 }
 
@@ -282,18 +282,18 @@ for (const palier of PALIERS) {
 
 {
   const l = layoutOperation({
-    op: "addition",
     a: 47,
     b: 25,
-    expected: 72,
     carries: 1,
+    expected: 72,
+    op: "addition",
     seed: 1,
   });
   check("layout 47+25: 2 colonnes", l.columnCount === 2);
   check("layout 47+25: signe +", l.sign === "+");
   check(
     "layout 47+25: retenue possible sur les dizaines seulement",
-    JSON.stringify(l.carrySlots) === JSON.stringify([true, false]),
+    JSON.stringify(l.carrySlots) === JSON.stringify([true, false])
   );
   check(
     "layout 47+25: rangées ['4','7'] / ['2','5']",
@@ -301,22 +301,22 @@ for (const palier of PALIERS) {
       JSON.stringify([
         ["4", "7"],
         ["2", "5"],
-      ]),
+      ])
   );
   check(
     "layout 47+25: résultat ['7','2']",
-    JSON.stringify(l.expectedDigits) === JSON.stringify(["7", "2"]),
+    JSON.stringify(l.expectedDigits) === JSON.stringify(["7", "2"])
   );
 }
 
 {
   // Le résultat déborde d'une colonne : la grille s'aligne sur lui.
   const l = layoutOperation({
-    op: "addition",
     a: 85,
     b: 61,
-    expected: 146,
     carries: 1,
+    expected: 146,
+    op: "addition",
     seed: 1,
   });
   check("layout 85+61: 3 colonnes (résultat 146)", l.columnCount === 3);
@@ -326,43 +326,43 @@ for (const palier of PALIERS) {
       JSON.stringify([
         ["", "8", "5"],
         ["", "6", "1"],
-      ]),
+      ])
   );
 }
 
 {
   const l = layoutOperation({
-    op: "soustraction",
     a: 52,
     b: 27,
-    expected: 25,
     carries: 1,
+    expected: 25,
+    op: "soustraction",
     seed: 1,
   });
   check("layout 52−27: signe −", l.sign === "−");
   const m = layoutOperation({
-    op: "multiplication",
     a: 24,
     b: 3,
-    expected: 72,
     carries: 1,
+    expected: 72,
+    op: "multiplication",
     seed: 1,
   });
   check("layout 24×3: signe ×", m.sign === "×");
   check(
     "layout 24×3: b aligné à droite ['','3']",
-    JSON.stringify(m.operandRows[1]) === JSON.stringify(["", "3"]),
+    JSON.stringify(m.operandRows[1]) === JSON.stringify(["", "3"])
   );
 }
 
 {
   // 4 rangs (D12-C) : jusqu'aux milliers, jamais au-delà.
   const l = layoutOperation({
-    op: "addition",
     a: 4736,
     b: 2851,
-    expected: 7587,
     carries: 1,
+    expected: 7587,
+    op: "addition",
     seed: 1,
   });
   check("layout milliers: 4 colonnes max", l.columnCount === 4);
@@ -371,11 +371,11 @@ for (const palier of PALIERS) {
 {
   // Cas limite 1 colonne : jamais de case de retenue au-dessus des unités.
   const l = layoutOperation({
-    op: "soustraction",
     a: 9,
     b: 2,
-    expected: 7,
     carries: 0,
+    expected: 7,
+    op: "soustraction",
     seed: 1,
   });
   check(
@@ -383,7 +383,7 @@ for (const palier of PALIERS) {
     l.columnCount === 1 &&
       JSON.stringify(l.carrySlots) === JSON.stringify([false]) &&
       JSON.stringify(l.operandRows) === JSON.stringify([["9"], ["2"]]) &&
-      JSON.stringify(l.expectedDigits) === JSON.stringify(["7"]),
+      JSON.stringify(l.expectedDigits) === JSON.stringify(["7"])
   );
 }
 
@@ -393,7 +393,7 @@ for (const palier of PALIERS) {
   let coherent = true;
   let firstProblem = "";
   for (const palier of PALIERS) {
-    for (let seed = 1; seed <= 60; seed++) {
+    for (let seed = 1; seed <= 60; seed += 1) {
       const o = generateOperation(palier.constraints, seed);
       const l = layoutOperation(o);
       const widthsOk =
@@ -415,7 +415,7 @@ for (const palier of PALIERS) {
   check(
     "layout: géométrie cohérente sur tous les paliers × 60 seeds",
     coherent,
-    firstProblem,
+    firstProblem
   );
 }
 
@@ -424,42 +424,42 @@ for (const palier of PALIERS) {
 check(
   "paliers: ordres strictement croissants",
   (() => {
-    for (let i = 1; i < PALIERS.length; i++) {
+    for (let i = 1; i < PALIERS.length; i += 1) {
       if (PALIERS[i].ordre <= PALIERS[i - 1].ordre) {
         return false;
       }
     }
     return true;
-  })(),
+  })()
 );
 check(
   "paliers: le premier est l'addition sans retenue (progression Montessori)",
   PALIERS[0].constraints.op === "addition" &&
-    PALIERS[0].constraints.carries === "none",
+    PALIERS[0].constraints.carries === "none"
 );
 check(
   "resolvePalier: id inconnu ou null → premier palier, jamais d'erreur",
   resolvePalier("palier-disparu").id === PALIERS[0].id &&
-    resolvePalier(null).id === PALIERS[0].id,
+    resolvePalier(null).id === PALIERS[0].id
 );
 check(
   "paliers: aucune notion d'évaluation (pas de champ score/confort/temps)",
-  PALIERS.every((p) => !("comfort" in p) && !("score" in p) && !("time" in p)),
+  PALIERS.every((p) => !("comfort" in p || "score" in p || "time" in p))
 );
 check(
   "paliers: ids uniques (clés stables pour la DB et resolvePalier)",
-  new Set(PALIERS.map((p) => p.id)).size === PALIERS.length,
+  new Set(PALIERS.map((p) => p.id)).size === PALIERS.length
 );
 check(
   "palierById: id connu → le palier, id inconnu → undefined",
   palierById("mult-1-chiffre")?.id === "mult-1-chiffre" &&
-    palierById("nope") === undefined,
+    palierById("nope") === undefined
 );
 check(
   "resolvePalier: undefined / '' → premier palier ; id valide conservé",
   resolvePalier(undefined).id === PALIERS[0].id &&
     resolvePalier("").id === PALIERS[0].id &&
-    resolvePalier("sous-emprunt").id === "sous-emprunt",
+    resolvePalier("sous-emprunt").id === "sous-emprunt"
 );
 check(
   "rangs (D12-C): 4 rangs exactement, couleurs du matériel épinglées",
@@ -468,24 +468,24 @@ check(
     RANK_COLORS[0] === "vert" &&
     RANK_COLORS[1] === "bleu" &&
     RANK_COLORS[2] === "rouge" &&
-    RANK_COLORS[3] === "vert-mille",
+    RANK_COLORS[3] === "vert-mille"
 );
 
 /* --------------------------- Énoncés (D11-C) --------------------------- */
 
 {
   const op = generateOperation(PALIERS[0].constraints, 11);
-  const e1 = enonceFor(op, { hero: "Arsène", doudou: "Doudou" });
-  const e2 = enonceFor(op, { hero: "Arsène", doudou: "Doudou" });
+  const e1 = enonceFor(op, { doudou: "Doudou", hero: "Arsène" });
+  const e2 = enonceFor(op, { doudou: "Doudou", hero: "Arsène" });
   check("énoncé: déterministe à opération égale", e1 === e2);
   check("énoncé: contient le héros", e1.includes("Arsène"));
   check(
     "énoncé: contient les deux nombres",
-    e1.includes(String(op.a)) && e1.includes(String(op.b)),
+    e1.includes(String(op.a)) && e1.includes(String(op.b))
   );
   check(
     "énoncé: une seule phrase courte",
-    e1.split(".").length <= 2 && e1.length < 90,
+    e1.split(".").length <= 2 && e1.length < 90
   );
 
   const sansDoudou = enonceFor(op, { hero: "Léa" });
@@ -503,11 +503,11 @@ check(
   ];
   let calm = true;
   for (const palier of PALIERS) {
-    for (let seed = 1; seed <= 60; seed++) {
+    for (let seed = 1; seed <= 60; seed += 1) {
       const o = generateOperation(palier.constraints, seed);
       const phrase = enonceFor(o, {
-        hero: "Arsène",
         doudou: "Doudou",
+        hero: "Arsène",
       }).toLowerCase();
       if (FORBIDDEN.some((w) => phrase.includes(w))) {
         calm = false;
@@ -524,15 +524,15 @@ check(
   const op = generateOperation(PALIERS[0].constraints, 1); // 32 + 2
   check(
     "énoncé épinglé (avec doudou): variante compagnon exacte",
-    enonceFor(op, { hero: "Arsène", doudou: "Doudou" }) ===
+    enonceFor(op, { doudou: "Doudou", hero: "Arsène" }) ===
       "Arsène range 32 plumes, Doudou en apporte 2.",
-    enonceFor(op, { hero: "Arsène", doudou: "Doudou" }),
+    enonceFor(op, { doudou: "Doudou", hero: "Arsène" })
   );
   check(
     "énoncé épinglé (sans doudou): variante solo exacte",
     enonceFor(op, { hero: "Arsène" }) ===
       "Arsène a 32 plumes et en trouve encore 2.",
-    enonceFor(op, { hero: "Arsène" }),
+    enonceFor(op, { hero: "Arsène" })
   );
 }
 
@@ -541,35 +541,35 @@ check(
 {
   const addVariants = new Set<string>();
   const sousVariants = new Set<string>();
-  for (let seed = 1; seed <= 100; seed++) {
+  for (let seed = 1; seed <= 100; seed += 1) {
     const add = generateOperation(PALIERS[0].constraints, seed);
     addVariants.add(
-      enonceFor(add, { hero: "A", doudou: "D" }).includes("apporte")
+      enonceFor(add, { doudou: "D", hero: "A" }).includes("apporte")
         ? "compagnon"
-        : "solo",
+        : "solo"
     );
     const sous = generateOperation(PALIERS[3].constraints, seed);
     sousVariants.add(
-      enonceFor(sous, { hero: "A", doudou: "D" }).includes("donne")
+      enonceFor(sous, { doudou: "D", hero: "A" }).includes("donne")
         ? "compagnon"
-        : "solo",
+        : "solo"
     );
   }
   check(
     "énoncé addition: les deux variantes (compagnon/solo) apparaissent",
-    addVariants.size === 2,
+    addVariants.size === 2
   );
   check(
     "énoncé soustraction: les deux variantes (compagnon/solo) apparaissent",
-    sousVariants.size === 2,
+    sousVariants.size === 2
   );
 
   const mult = generateOperation(PALIERS[5].constraints, 3);
-  const multPhrase = enonceFor(mult, { hero: "Arsène", doudou: "Doudou" });
+  const multPhrase = enonceFor(mult, { doudou: "Doudou", hero: "Arsène" });
   check(
     "énoncé multiplication: gabarit paniers, sans compagnon",
     multPhrase.includes("paniers") && !multPhrase.includes("Doudou"),
-    multPhrase,
+    multPhrase
   );
 }
 
@@ -580,38 +580,37 @@ check(
     FAMILLES.length === 3 &&
       FAMILLES[0] === "addition" &&
       FAMILLES[1] === "soustraction" &&
-      FAMILLES[2] === "multiplication",
+      FAMILLES[2] === "multiplication"
   );
   check(
     "paliersByFamille: découpage 3/2/2 des 7 paliers",
     paliersByFamille("addition").length === 3 &&
       paliersByFamille("soustraction").length === 2 &&
-      paliersByFamille("multiplication").length === 2,
+      paliersByFamille("multiplication").length === 2
   );
   check(
     "paliersByFamille: chaque palier appartient bien à sa famille",
     FAMILLES.every((op) =>
-      paliersByFamille(op).every((p) => p.constraints.op === op),
-    ),
+      paliersByFamille(op).every((p) => p.constraints.op === op)
+    )
   );
   check(
     "resolvePalierForFamille: id connu de la famille → lui-même",
     resolvePalierForFamille("soustraction", "sous-emprunt").id ===
-      "sous-emprunt",
+      "sous-emprunt"
   );
   check(
     "resolvePalierForFamille: id inconnu → premier palier de la famille",
-    resolvePalierForFamille("multiplication", "fantome").id ===
-      "mult-1-chiffre",
+    resolvePalierForFamille("multiplication", "fantome").id === "mult-1-chiffre"
   );
   check(
     "resolvePalierForFamille: id d'une AUTRE famille → réparé (jamais d'erreur)",
     resolvePalierForFamille("addition", "sous-emprunt").id ===
-      "add-sans-retenue",
+      "add-sans-retenue"
   );
   check(
     "resolvePalierForFamille: null → premier palier de la famille",
-    resolvePalierForFamille("soustraction", null).id === "sous-sans-emprunt",
+    resolvePalierForFamille("soustraction", null).id === "sous-sans-emprunt"
   );
   check(
     "familleOfPalier: les 7 paliers pointent leur famille, inconnu → addition",
@@ -619,7 +618,7 @@ check(
       familleOfPalier("sous-sans-emprunt") === "soustraction" &&
       familleOfPalier("mult-abstraite") === "multiplication" &&
       familleOfPalier("fantome") === "addition" &&
-      familleOfPalier(null) === "addition",
+      familleOfPalier(null) === "addition"
   );
 
   // settingsFromRows — les cas de bord tranchés en review (3A).
@@ -629,77 +628,77 @@ check(
     vide.familles.length === 1 &&
       vide.familles[0].op === "addition" &&
       vide.familles[0].palier === DEFAULT_PALIER_ID &&
-      vide.serieSize === DEFAULT_SERIE_SIZE,
+      vide.serieSize === DEFAULT_SERIE_SIZE
   );
   const troisRows = [
     {
-      skill: skillKeyOf("multiplication"),
       palier: "mult-abstraite",
       serieSize: 5,
+      skill: skillKeyOf("multiplication"),
     },
-    { skill: skillKeyOf("addition"), palier: "add-retenue", serieSize: 4 },
-    { skill: skillKeyOf("soustraction"), palier: "sous-emprunt", serieSize: 6 },
+    { palier: "add-retenue", serieSize: 4, skill: skillKeyOf("addition") },
+    { palier: "sous-emprunt", serieSize: 6, skill: skillKeyOf("soustraction") },
   ];
   const trois = settingsFromRows(troisRows);
   check(
     "settingsFromRows: 3 familles, ré-émises dans l'ordre canonique",
     trois.familles.map((f) => f.op).join(",") ===
-      "addition,soustraction,multiplication",
+      "addition,soustraction,multiplication"
   );
   check(
     "settingsFromRows: serieSize lue sur la 1re ligne canonique (addition)",
-    trois.serieSize === 4,
+    trois.serieSize === 4
   );
   const sale = settingsFromRows([
-    { skill: "calcul-pose", palier: "add-retenue", serieSize: 3 },
-    { skill: "exotique", palier: "add-retenue", serieSize: 3 },
+    { palier: "add-retenue", serieSize: 3, skill: "calcul-pose" },
+    { palier: "add-retenue", serieSize: 3, skill: "exotique" },
     {
-      skill: skillKeyOf("soustraction"),
       palier: "mult-abstraite",
       serieSize: 99,
+      skill: skillKeyOf("soustraction"),
     },
   ]);
   check(
     "settingsFromRows: legacy non migrée et clé exotique IGNORÉES",
-    sale.familles.length === 1 && sale.familles[0].op === "soustraction",
+    sale.familles.length === 1 && sale.familles[0].op === "soustraction"
   );
   check(
     "settingsFromRows: palier d'une autre famille réparé + serieSize clampée",
     sale.familles[0].palier === "sous-sans-emprunt" &&
-      sale.serieSize === MAX_SERIE_SIZE,
+      sale.serieSize === MAX_SERIE_SIZE
   );
 
   // normalizeFamilySettings — le cache appareil ne crashe jamais l'enfant.
   const garbage = normalizeFamilySettings({ palier: "add-retenue" });
   check(
     "normalizeFamilySettings: ancien format de cache → défauts sûrs",
-    garbage.familles.length === 1 && garbage.familles[0].op === "addition",
+    garbage.familles.length === 1 && garbage.familles[0].op === "addition"
   );
   const normal = normalizeFamilySettings({
-    serieSize: 2,
     familles: [
       { op: "multiplication", palier: "mult-1-chiffre" },
       { op: "multiplication", palier: "mult-1-chiffre" },
       { op: "addition", palier: "fantome" },
       { op: "licorne", palier: "add-retenue" },
     ],
+    serieSize: 2,
   });
   check(
     "normalizeFamilySettings: dédup + ordre canonique + paliers réparés",
     normal.serieSize === 2 &&
       normal.familles.map((f) => `${f.op}:${f.palier}`).join(",") ===
-        "addition:add-sans-retenue,multiplication:mult-1-chiffre",
+        "addition:add-sans-retenue,multiplication:mult-1-chiffre"
   );
 
   // bridgeLegacySerie — RÉGRESSION CRITIQUE (2A/T4) : la série d'avant la
   // mise à jour survit, enrichie de sa famille dérivée du palier.
   const legacy = {
-    palierId: "sous-emprunt",
-    serieSize: 3,
-    seed: 42,
     index: 1,
     opsFingerprint: "soustraction:52:27",
-    perOp: [{ entries: { result: ["5"], carries: [null] }, done: false }],
+    palierId: "sous-emprunt",
+    perOp: [{ done: false, entries: { carries: [null], result: ["5"] } }],
+    seed: 42,
+    serieSize: 3,
   };
   const bridged = bridgeLegacySerie(legacy);
   check(
@@ -708,23 +707,23 @@ check(
       bridged.famille === "soustraction" &&
       bridged.state.famille === "soustraction" &&
       bridged.state.seed === 42 &&
-      bridged.state.index === 1,
+      bridged.state.index === 1
   );
   check(
     "pont legacy: un champ famille déjà présent est respecté",
     bridgeLegacySerie({ ...legacy, famille: "addition" })?.famille ===
-      "addition",
+      "addition"
   );
   check(
     "pont legacy: une valeur méconnaissable → null (pas de fantôme)",
     bridgeLegacySerie(null) === null &&
       bridgeLegacySerie({ seed: 1 }) === null &&
-      bridgeLegacySerie("calcul") === null,
+      bridgeLegacySerie("calcul") === null
   );
   check(
     "pont legacy: un champ famille INVALIDE est re-dérivé du palierId",
     bridgeLegacySerie({ ...legacy, famille: "licorne" })?.famille ===
-      "soustraction",
+      "soustraction"
   );
   const nul = normalizeFamilySettings(null);
   const texte = normalizeFamilySettings("calcul");
@@ -734,23 +733,23 @@ check(
       nul.familles[0].op === "addition" &&
       nul.serieSize === DEFAULT_SERIE_SIZE &&
       texte.familles.length === 1 &&
-      texte.familles[0].op === "addition",
+      texte.familles[0].op === "addition"
   );
   const brouillon = normalizeFamilySettings({
-    serieSize: "beaucoup",
     familles: ["addition", null, 7, { op: "soustraction", palier: 42 }],
+    serieSize: "beaucoup",
   });
   check(
     "normalizeFamilySettings: entrées non-objet filtrées, palier non-string et serieSize sales réparés",
     brouillon.familles.map((f) => `${f.op}:${f.palier}`).join(",") ===
       "soustraction:sous-sans-emprunt" &&
-      brouillon.serieSize === DEFAULT_SERIE_SIZE,
+      brouillon.serieSize === DEFAULT_SERIE_SIZE
   );
   check(
     "clés de rangement: une par famille + préfixe skill stable",
     serieStorageKeyOf("addition") === "calcul:serie:addition" &&
       LEGACY_SERIE_STATE_KEY === "calcul:serie" &&
-      skillKeyOf("soustraction") === "calcul-pose:soustraction",
+      skillKeyOf("soustraction") === "calcul-pose:soustraction"
   );
 
   // isPalierOfFamille — le prédicat du refine zod (T7) : REFUSE, ne répare pas.
@@ -759,7 +758,7 @@ check(
     isPalierOfFamille("soustraction", "sous-emprunt") &&
       !isPalierOfFamille("addition", "sous-emprunt") &&
       !isPalierOfFamille("addition", "fantome") &&
-      !isPalierOfFamille("addition", null),
+      !isPalierOfFamille("addition", null)
   );
 
   // normalizeFamilySettings — la taille de série d'un vieux cache SURVIT
@@ -772,7 +771,7 @@ check(
     "normalizeFamilySettings: vieux format → défaut addition MAIS serieSize conservée",
     vieuxCache.familles.length === 1 &&
       vieuxCache.familles[0].op === "addition" &&
-      vieuxCache.serieSize === 5,
+      vieuxCache.serieSize === 5
   );
 
   // isResumableSerie — le prédicat de l'état « sorti » (D-3A/F5), désormais
@@ -781,34 +780,31 @@ check(
   const opsS = safeGenerateSerie(palierS, 77, 2);
   const resumable = {
     famille: "soustraction" as const,
-    palierId: palierS.id,
-    serieSize: 2,
-    seed: 77,
     index: 1,
     opsFingerprint: fingerprintOps(opsS),
+    palierId: palierS.id,
     perOp: opsS.map(() => ({
-      entries: { result: ["4", null], carries: [null] },
       done: false,
+      entries: { carries: [null], result: ["4", null] },
     })),
+    seed: 77,
+    serieSize: 2,
   };
   check(
     "isResumableSerie: une série valide se reprend",
-    isResumableSerie(resumable, "soustraction", palierS.id, 2),
+    isResumableSerie(resumable, "soustraction", palierS.id, 2)
   );
   check(
     "isResumableSerie: autre famille / autre palier / autre taille → refus",
-    !isResumableSerie(resumable, "addition", palierS.id, 2) &&
-      !isResumableSerie(resumable, "soustraction", "sous-emprunt", 2) &&
-      !isResumableSerie(resumable, "soustraction", palierS.id, 3),
+    !(
+      isResumableSerie(resumable, "addition", palierS.id, 2) ||
+      isResumableSerie(resumable, "soustraction", "sous-emprunt", 2) ||
+      isResumableSerie(resumable, "soustraction", palierS.id, 3)
+    )
   );
   check(
     "isResumableSerie: série FINIE (index === size) → rangée, pas sortie",
-    !isResumableSerie(
-      { ...resumable, index: 2 },
-      "soustraction",
-      palierS.id,
-      2,
-    ),
+    !isResumableSerie({ ...resumable, index: 2 }, "soustraction", palierS.id, 2)
   );
   check(
     "isResumableSerie: empreinte qui ne régénère pas → série fraîche",
@@ -816,27 +812,28 @@ check(
       { ...resumable, opsFingerprint: "corrompue" },
       "soustraction",
       palierS.id,
-      2,
-    ),
+      2
+    )
   );
   check(
     "isResumableSerie: null et perOp difforme → refus sans crash",
-    !isResumableSerie(null, "soustraction", palierS.id, 2) &&
-      !isResumableSerie(
+    !(
+      isResumableSerie(null, "soustraction", palierS.id, 2) ||
+      isResumableSerie(
         {
           ...resumable,
-          perOp: [{ entries: { result: [3], carries: [] }, done: false }],
+          perOp: [{ done: false, entries: { carries: [], result: [3] } }],
         } as never,
         "soustraction",
         palierS.id,
-        2,
-      ),
+        2
+      )
+    )
   );
   check(
     "safeGenerateSerie: palier valide → série pleine, déterministe",
     safeGenerateSerie(palierS, 77, 2).length === 2 &&
-      fingerprintOps(safeGenerateSerie(palierS, 77, 2)) ===
-        fingerprintOps(opsS),
+      fingerprintOps(safeGenerateSerie(palierS, 77, 2)) === fingerprintOps(opsS)
   );
 }
 

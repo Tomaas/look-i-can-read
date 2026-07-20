@@ -43,7 +43,7 @@ export const IMAGE_MODELS: readonly ImageModelOption[] = [
 export const DEFAULT_IMAGE_MODEL = "gemini-3.1-flash-image";
 
 const VALID_IMAGE_MODEL_IDS: ReadonlySet<string> = new Set(
-  IMAGE_MODELS.map((m) => m.id),
+  IMAGE_MODELS.map((m) => m.id)
 );
 
 /** True when `id` is one of the offered models. */
@@ -60,14 +60,14 @@ export function isValidImageModel(id: string | undefined): boolean {
  */
 export function resolveImageModel(
   requested: string | undefined,
-  fallback: string,
+  fallback: string
 ): string {
   if (isValidImageModel(requested)) {
     return requested as string;
   }
   if (requested !== undefined) {
     console.warn(
-      `[stories] unknown image model '${requested}', falling back to ${fallback}`,
+      `[stories] unknown image model '${requested}', falling back to ${fallback}`
     );
   }
   return fallback;

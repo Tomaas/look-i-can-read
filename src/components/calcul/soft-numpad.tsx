@@ -62,7 +62,7 @@ function DigitKey({
       className={cn(
         DIGIT_TILE_CLASSES,
         "touch-none",
-        isDragging && "opacity-40",
+        isDragging && "opacity-40"
       )}
       onClick={() => onDigit(digit)}
       ref={setNodeRef}

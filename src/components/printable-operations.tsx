@@ -28,13 +28,13 @@ function GridCell({
   variant: "digit" | "carry" | "result" | "blank";
 }) {
   const base: React.CSSProperties = {
-    width: `${CELL_MM}mm`,
-    height: variant === "carry" ? `${CELL_MM * 0.6}mm` : `${CELL_MM}mm`,
-    display: "flex",
     alignItems: "center",
-    justifyContent: "center",
+    display: "flex",
     fontSize: variant === "carry" ? "10pt" : "20pt",
+    height: variant === "carry" ? `${CELL_MM * 0.6}mm` : `${CELL_MM}mm`,
+    justifyContent: "center",
     lineHeight: 1,
+    width: `${CELL_MM}mm`,
   };
   if (variant === "carry") {
     return (
@@ -59,7 +59,7 @@ function GridCell({
 
 function CarrySpacer() {
   return (
-    <span style={{ width: `${CELL_MM}mm`, height: `${CELL_MM * 0.6}mm` }} />
+    <span style={{ height: `${CELL_MM * 0.6}mm`, width: `${CELL_MM}mm` }} />
   );
 }
 
@@ -95,7 +95,7 @@ function PrintedOperation({
               <GridCell key={`c-${operation.seed}-${i}`} variant="carry" />
             ) : (
               <CarrySpacer key={`c-${operation.seed}-${i}`} />
-            ),
+            )
           )}
         </div>
         <div style={rowStyle}>

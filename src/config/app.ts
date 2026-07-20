@@ -16,21 +16,23 @@
  * where that's wrong (h aspiré, semi-consonant Y like "de Yann") can use the
  * full-string override vars instead.
  */
+const ELIDING_INITIAL = /^[aàâäæeéèêëiîïoôöœuùûüh]/i;
+
 function withDe(name: string): string {
-  return /^[aàâäæeéèêëiîïoôöœuùûüh]/i.test(name) ? `d'${name}` : `de ${name}`;
+  return ELIDING_INITIAL.test(name) ? `d'${name}` : `de ${name}`;
 }
 
 const childName: string = (import.meta.env.VITE_CHILD_NAME || "").trim();
 
 export const appConfig = {
-  /** Display name: browser tab, home header. */
-  name:
-    import.meta.env.VITE_APP_NAME ||
-    (childName ? `L'atelier ${withDe(childName)}` : "Le petit atelier"),
   /** One-line description (meta description tag). */
   description:
     import.meta.env.VITE_APP_DESCRIPTION ||
     "Un endroit calme pour lire, inventer et calculer.",
+  /** Display name: browser tab, home header. */
+  name:
+    import.meta.env.VITE_APP_NAME ||
+    (childName ? `L'atelier ${withDe(childName)}` : "Le petit atelier"),
   /**
    * Discreet footer printed on the A5 booklet, and the fallback story title
    * when the model returns none.

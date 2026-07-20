@@ -14,58 +14,58 @@
  * already-created story.
  */
 export interface Doudou {
-  id: string;
-  label: string;
   emoji: string;
-  promptHint: string;
+  id: string;
   imageHint: string;
+  label: string;
+  promptHint: string;
 }
 
 export const doudous: Doudou[] = [
   {
-    id: "doudou-tout-doux",
-    label: "un doudou tout doux",
     emoji: "🧸",
-    promptHint:
-      "un doudou moelleux et tout chaud, qui accompagne le héros, le rassure d'une petite présence tendre, et reste blotti près de lui jusqu'au bout",
+    id: "doudou-tout-doux",
     imageHint:
       "un doudou en tissu moelleux, aux couleurs pastel et tendres, blotti contre l'enfant",
+    label: "un doudou tout doux",
+    promptHint:
+      "un doudou moelleux et tout chaud, qui accompagne le héros, le rassure d'une petite présence tendre, et reste blotti près de lui jusqu'au bout",
   },
   {
-    id: "petit-lapin",
-    label: "un petit lapin en peluche",
     emoji: "🐰",
-    promptHint:
-      "un petit lapin en peluche aux longues oreilles souples, compagnon calme et câlin qui suit le héros pas à pas et veille tendrement sur lui",
+    id: "petit-lapin",
     imageHint:
       "une peluche lapin aux longues oreilles tombantes, couleur crème, serrée contre l'enfant",
+    label: "un petit lapin en peluche",
+    promptHint:
+      "un petit lapin en peluche aux longues oreilles souples, compagnon calme et câlin qui suit le héros pas à pas et veille tendrement sur lui",
   },
   {
-    id: "ours-calin",
-    label: "un ours câlin",
     emoji: "🐻",
-    promptHint:
-      "un ours en peluche tout rond et câlin, présence chaude et rassurante qui marche au côté du héros et lui offre de gros câlins",
+    id: "ours-calin",
     imageHint:
       "un ours en peluche tout rond et moelleux, au pelage beige, qui fait un câlin à l'enfant",
+    label: "un ours câlin",
+    promptHint:
+      "un ours en peluche tout rond et câlin, présence chaude et rassurante qui marche au côté du héros et lui offre de gros câlins",
   },
   {
-    id: "petit-chat",
-    label: "un petit chat tout doux",
     emoji: "🐱",
-    promptHint:
-      "un petit chat en peluche au pelage soyeux, qui ronronne tout bas et reste lové près du héros pour le réconforter",
+    id: "petit-chat",
     imageHint:
       "un petit chat en peluche au pelage gris, lové paisiblement près de l'enfant",
+    label: "un petit chat tout doux",
+    promptHint:
+      "un petit chat en peluche au pelage soyeux, qui ronronne tout bas et reste lové près du héros pour le réconforter",
   },
   {
-    id: "etoile-douce",
-    label: "une étoile douce",
     emoji: "⭐",
-    promptHint:
-      "une petite étoile en tissu qui brille faiblement, veilleuse tendre qui accompagne le héros et répand une lumière calme et rassurante",
+    id: "etoile-douce",
     imageHint:
       "une étoile en tissu moelleuse, jaune pâle, qui scintille près de l'enfant",
+    label: "une étoile douce",
+    promptHint:
+      "une petite étoile en tissu qui brille faiblement, veilleuse tendre qui accompagne le héros et répand une lumière calme et rassurante",
   },
 ];
 

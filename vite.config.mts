@@ -20,24 +20,15 @@ export default defineConfig(({ mode }) => {
 
   return {
     envPrefix: ["VITE_"],
-    // Dedupe React so the SSR/lambda bundle resolves a single copy. A duplicated
-    // react/react-dom is a classic prod-only SSR throw.
-    resolve: {
-      dedupe: ["react", "react-dom"],
-    },
-    server: {
-      port: 3009,
-      ...(allowedHosts.length > 0 ? { allowedHosts } : {}),
-    },
     plugins: [
       tailwindcss(),
       tsconfigPaths(),
       tanstackStart({
-        srcDirectory: "src",
         router: {
-          routesDirectory: "app",
           routeFileIgnorePattern: "^(client|ssr)\\.tsx$",
+          routesDirectory: "app",
         },
+        srcDirectory: "src",
       }),
       // Self-hosted deploy: the `node-server` preset emits a standalone
       // `.output/server/index.mjs` (what `bun run start` runs, also the Docker
@@ -47,5 +38,14 @@ export default defineConfig(({ mode }) => {
       nitro({ preset: "node-server" }),
       viteReact(),
     ],
+    // Dedupe React so the SSR/lambda bundle resolves a single copy. A duplicated
+    // react/react-dom is a classic prod-only SSR throw.
+    resolve: {
+      dedupe: ["react", "react-dom"],
+    },
+    server: {
+      port: 3009,
+      ...(allowedHosts.length > 0 ? { allowedHosts } : {}),
+    },
   };
 });

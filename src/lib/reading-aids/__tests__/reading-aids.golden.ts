@@ -30,7 +30,7 @@ function check(name: string, ok: boolean, detail?: string) {
   if (ok) {
     console.log(`✓ ${name}`);
   } else {
-    failures++;
+    failures += 1;
     console.error(`✗ ${name}${detail ? `\n  ${detail}` : ""}`);
   }
 }
@@ -65,7 +65,7 @@ gold("les yeux", "les‿yeu(x)");
 gold("les heures", "les‿(h)eur(es)");
 gold(
   "Elles écoutent, puis elles chantent.",
-  "Ell(e)s‿écout(ent), pui(s) ell(es) chant(ent).",
+  "Ell(e)s‿écout(ent), pui(s) ell(es) chant(ent)."
 );
 
 /* -------------------- Liaisons refusées (précision) ---------------------- */
@@ -96,11 +96,11 @@ gold("moment", "momen(t)");
 // Verbes pluriels après un sujet nommé (le cas réel des histoires multi-héros).
 gold(
   "Adèle et Justine arrivent au parc.",
-  "Adèl(e) e(t) Justin(e) arriv(ent) au parc.",
+  "Adèl(e) e(t) Justin(e) arriv(ent) au parc."
 );
 gold(
   "Adèle et Justine s'assoient là.",
-  "Adèl(e) e(t) Justin(e) s'assoi(ent) là.",
+  "Adèl(e) e(t) Justin(e) s'assoi(ent) là."
 );
 gold("Les tortues montent.", "Le(s) tortu(es) mont(ent).");
 // Contre-exemples : nom en -ent → t seul ; forme ambiguë hors lexique → rien.
@@ -113,7 +113,7 @@ gold("le plus joli coin du parc", "le plu(s) joli coin du parc");
 gold("un joli pont plus haut", "un joli pon(t) plu(s) (h)au(t)");
 gold(
   "Ils ne montent plus vers le pont.",
-  "Il(s) ne mont(ent) plu(s) ver(s) le pon(t).",
+  "Il(s) ne mont(ent) plu(s) ver(s) le pon(t)."
 );
 // …mais RIEN dans les contextes ambigus (fin de phrase, voyelle/h muet =
 // liaison possible, quantité, arithmétique).
@@ -156,7 +156,7 @@ for (const input of corpus) {
 
 check(
   "H_MUET_WORDS et H_ASPIRE_WORDS sont disjoints",
-  [...H_ASPIRE_WORDS].every((w) => !H_MUET_WORDS.has(w)),
+  [...H_ASPIRE_WORDS].every((w) => !H_MUET_WORDS.has(w))
 );
 
 for (const word of H_ASPIRE_WORDS) {
@@ -169,7 +169,7 @@ for (const [word, mask] of SIGHT_WORD_MASKS) {
   check(
     `sight mask « ${word} » a la bonne longueur et alphabet`,
     mask.length === word.length && /^[.x]+$/.test(mask),
-    `mask "${mask}"`,
+    `mask "${mask}"`
   );
 }
 

@@ -63,16 +63,15 @@ export const getMathSettingsFn = createServerFn({ method: "GET" }).handler(
     // clé exotique (`calcul-pose:banana`, casse LIKE) matcherait le LIKE mais
     // produirait des défauts — qui ne doivent jamais armer la purge client.
     const recognized = rows.some((row) =>
-      FAMILLES.some((op) => row.skill === skillKeyOf(op)),
+      FAMILLES.some((op) => row.skill === skillKeyOf(op))
     );
     return { ...settingsFromRows(rows), authoritative: recognized };
-  },
+  }
 );
 
 const familleValues = FAMILLES as readonly [Operation, ...Operation[]];
 
 const saveSchema = z.object({
-  serieSize: z.number().int().min(MIN_SERIE_SIZE).max(MAX_SERIE_SIZE),
   familles: z
     .array(
       z
@@ -85,8 +84,8 @@ const saveSchema = z.object({
         // lecture — un palier qui change dans le dos du parent. On refuse.
         .refine(
           (f) => isPalierOfFamille(f.op, f.palier),
-          "Palier hors de sa famille.",
-        ),
+          "Palier hors de sa famille."
+        )
     )
     // Garde-fou « impossible de tout désactiver » : l'UI bloque le dernier
     // interrupteur, le serveur refuse quand même (message côté parent
@@ -94,8 +93,9 @@ const saveSchema = z.object({
     .min(1, "Au moins une famille reste sur l'étagère.")
     .refine(
       (familles) => new Set(familles.map((f) => f.op)).size === familles.length,
-      "Famille en double.",
+      "Famille en double."
     ),
+  serieSize: z.number().int().min(MIN_SERIE_SIZE).max(MAX_SERIE_SIZE),
 });
 
 export type MathSettingsMutationResult =
@@ -116,30 +116,30 @@ export const saveMathSettingsFn = createServerFn({ method: "POST" })
           or(
             and(
               like(mathSkills.skill, `${SKILL_KEY_PREFIX}%`),
-              notInArray(mathSkills.skill, keptKeys),
+              notInArray(mathSkills.skill, keptKeys)
             ),
             // Auto-nettoyage : une ligne legacy nue recréée par l'ANCIEN
             // code pendant la fenêtre post-migration/pré-redéploiement
             // (data-migration review) disparaît à la première sauvegarde.
-            eq(mathSkills.skill, "calcul-pose"),
-          ),
+            eq(mathSkills.skill, "calcul-pose")
+          )
         ),
         ...data.familles.map((famille) =>
           db
             .insert(mathSkills)
             .values({
-              skill: skillKeyOf(famille.op),
               palier: famille.palier,
               serieSize: data.serieSize,
+              skill: skillKeyOf(famille.op),
             })
             .onConflictDoUpdate({
-              target: mathSkills.skill,
               set: {
                 palier: famille.palier,
                 serieSize: data.serieSize,
                 updatedAt: nowSqlTimestamp(),
               },
-            }),
+              target: mathSkills.skill,
+            })
         ),
       ]);
     } catch (error) {
@@ -147,19 +147,19 @@ export const saveMathSettingsFn = createServerFn({ method: "POST" })
       // parent reçoit un message calme et fixe (security review).
       console.error("saveMathSettingsFn:", error);
       return {
-        success: false,
         error: "Enregistrement impossible pour le moment — réessaie.",
+        success: false,
       };
     }
     return {
-      success: true,
       settings: {
-        serieSize: data.serieSize,
         // Ré-émis dans l'ordre canonique, comme settingsFromRows le lirait.
         familles: FAMILLES.flatMap((op) => {
           const famille = data.familles.find((f) => f.op === op);
           return famille ? [{ op, palier: famille.palier }] : [];
         }),
+        serieSize: data.serieSize,
       },
+      success: true,
     };
   });

@@ -29,7 +29,7 @@ const IMAGE_SIZES = ["512", "1K", "2K", "4K"] as const;
 type ImageSize = (typeof IMAGE_SIZES)[number];
 const rawImageResolution = process.env.IMAGE_RESOLUTION;
 const imageResolution: ImageSize = IMAGE_SIZES.includes(
-  rawImageResolution as ImageSize,
+  rawImageResolution as ImageSize
 )
   ? (rawImageResolution as ImageSize)
   : "1K";
@@ -37,6 +37,7 @@ const ttsProvider = (process.env.TTS_PROVIDER ?? "edge") as
   | "edge"
   | "elevenlabs";
 
+// biome-ignore assist/source/useSortedKeys: groupement SÉMANTIQUE (requis vs optionnel, par fonctionnalité) — les commentaires de section documentent chaque groupe.
 export const serverEnv = {
   // Text generation (required).
   anthropicApiKey: process.env.ANTHROPIC_API_KEY ?? "",
@@ -94,7 +95,7 @@ function validateServerEnv(): void {
     )
   ) {
     errors.push(
-      "DATABASE_URL doit être une URL Turso (libsql://<db>.turso.io). Le mode fichier local n'est plus supporté.",
+      "DATABASE_URL doit être une URL Turso (libsql://<db>.turso.io). Le mode fichier local n'est plus supporté."
     );
   }
 
@@ -112,13 +113,13 @@ function validateServerEnv(): void {
     !serverEnv.elevenLabsApiKey
   ) {
     errors.push(
-      "ELEVENLABS_API_KEY est requis quand TTS_ENABLED=true et TTS_PROVIDER=elevenlabs.",
+      "ELEVENLABS_API_KEY est requis quand TTS_ENABLED=true et TTS_PROVIDER=elevenlabs."
     );
   }
 
   if (errors.length > 0) {
     throw new Error(
-      `Configuration .env.local incomplète :\n- ${errors.join("\n- ")}`,
+      `Configuration .env.local incomplète :\n- ${errors.join("\n- ")}`
     );
   }
 }
@@ -130,20 +131,20 @@ validateServerEnv();
  * "Écouter" button and the illustration slot. No secrets here.
  */
 export interface PublicFlags {
-  imageEnabled: boolean;
-  ttsEnabled: boolean;
   defaultLang: "fr" | "ru";
+  imageEnabled: boolean;
   // The env default image model, mirrored so the /parents picker's "par défaut"
   // badge + the localStorage hook's default track the deployed env (not a
   // hard-coded mirror). The id itself is not a secret.
   imageModel: string;
+  ttsEnabled: boolean;
 }
 
 export function getPublicFlags(): PublicFlags {
   return {
-    imageEnabled: serverEnv.imageEnabled,
-    ttsEnabled: serverEnv.ttsEnabled,
     defaultLang: serverEnv.defaultLang,
+    imageEnabled: serverEnv.imageEnabled,
     imageModel: serverEnv.imageModel,
+    ttsEnabled: serverEnv.ttsEnabled,
   };
 }

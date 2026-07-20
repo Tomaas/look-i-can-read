@@ -22,88 +22,88 @@ export const MAX_SERIE_SIZE = 6;
 
 export const PALIERS: readonly Palier[] = [
   {
-    id: "add-sans-retenue",
-    ordre: 1,
-    label: "Additions posées sans retenue",
     constraints: {
-      op: "addition",
-      aDigits: { min: 2, max: 2 },
-      bDigits: { min: 1, max: 2 },
+      aDigits: { max: 2, min: 2 },
+      bDigits: { max: 2, min: 1 },
       carries: "none",
+      op: "addition",
     },
     fondu: "opaque",
+    id: "add-sans-retenue",
+    label: "Additions posées sans retenue",
+    ordre: 1,
   },
   {
-    id: "add-retenue",
-    ordre: 2,
-    label: "Additions posées avec retenue",
     constraints: {
-      op: "addition",
-      aDigits: { min: 2, max: 2 },
-      bDigits: { min: 2, max: 2 },
+      aDigits: { max: 2, min: 2 },
+      bDigits: { max: 2, min: 2 },
       carries: "some",
-    },
-    fondu: "opaque",
-  },
-  {
-    id: "add-grands-nombres",
-    ordre: 3,
-    label: "Additions posées jusqu'aux milliers",
-    constraints: {
       op: "addition",
-      aDigits: { min: 3, max: 4 },
-      bDigits: { min: 2, max: 3 },
-      carries: "any",
     },
-    fondu: "translucide",
+    fondu: "opaque",
+    id: "add-retenue",
+    label: "Additions posées avec retenue",
+    ordre: 2,
   },
   {
-    id: "sous-sans-emprunt",
-    ordre: 4,
-    label: "Soustractions posées sans emprunt",
     constraints: {
-      op: "soustraction",
-      aDigits: { min: 2, max: 2 },
-      bDigits: { min: 1, max: 2 },
+      aDigits: { max: 4, min: 3 },
+      bDigits: { max: 3, min: 2 },
+      carries: "any",
+      op: "addition",
+    },
+    fondu: "translucide",
+    id: "add-grands-nombres",
+    label: "Additions posées jusqu'aux milliers",
+    ordre: 3,
+  },
+  {
+    constraints: {
+      aDigits: { max: 2, min: 2 },
+      bDigits: { max: 2, min: 1 },
       borrows: "none",
+      op: "soustraction",
     },
     fondu: "opaque",
+    id: "sous-sans-emprunt",
+    label: "Soustractions posées sans emprunt",
+    ordre: 4,
   },
   {
-    id: "sous-emprunt",
-    ordre: 5,
-    label: "Soustractions posées avec emprunt",
     constraints: {
-      op: "soustraction",
-      aDigits: { min: 2, max: 3 },
-      bDigits: { min: 2, max: 2 },
+      aDigits: { max: 3, min: 2 },
+      bDigits: { max: 2, min: 2 },
       borrows: "some",
+      op: "soustraction",
     },
     fondu: "translucide",
+    id: "sous-emprunt",
+    label: "Soustractions posées avec emprunt",
+    ordre: 5,
   },
   {
-    id: "mult-1-chiffre",
-    ordre: 6,
-    label: "Multiplications posées à 1 chiffre",
     constraints: {
-      op: "multiplication",
-      aDigits: { min: 2, max: 2 },
-      bDigits: { min: 1, max: 1 },
+      aDigits: { max: 2, min: 2 },
+      bDigits: { max: 1, min: 1 },
       carries: "any",
+      op: "multiplication",
     },
     fondu: "opaque",
+    id: "mult-1-chiffre",
+    label: "Multiplications posées à 1 chiffre",
+    ordre: 6,
   },
   {
-    id: "mult-abstraite",
-    ordre: 7,
-    label: "Multiplications posées, sans le matériel",
     constraints: {
-      op: "multiplication",
-      aDigits: { min: 2, max: 3 },
-      bDigits: { min: 1, max: 1 },
+      aDigits: { max: 3, min: 2 },
+      bDigits: { max: 1, min: 1 },
       carries: "any",
+      op: "multiplication",
     },
     fondu: "absent",
+    id: "mult-abstraite",
+    label: "Multiplications posées, sans le matériel",
+    ordre: 7,
   },
 ] as const;
 
@@ -143,7 +143,7 @@ export function paliersByFamille(op: Operation): Palier[] {
  */
 export function isPalierOfFamille(
   op: Operation,
-  id: string | null | undefined,
+  id: string | null | undefined
 ): boolean {
   const palier = id ? palierById(id) : undefined;
   return palier !== undefined && palier.constraints.op === op;
@@ -156,7 +156,7 @@ export function isPalierOfFamille(
  */
 export function resolvePalierForFamille(
   op: Operation,
-  id: string | null | undefined,
+  id: string | null | undefined
 ): Palier {
   const palier = id ? palierById(id) : undefined;
   return palier && palier.constraints.op === op

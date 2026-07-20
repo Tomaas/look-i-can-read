@@ -47,22 +47,22 @@ export type Quota = "none" | "some" | "any";
  * Contraintes de génération d'une opération, décrites par palier.
  */
 export interface GenerationConstraints {
-  op: Operation;
   /** Nombre de chiffres du premier opérande (min/max inclus). */
   aDigits: { min: number; max: number };
   /** Nombre de chiffres du second opérande. Multiplication v1 : 1 chiffre. */
   bDigits: { min: number; max: number };
-  carries?: Quota;
   borrows?: Quota;
+  carries?: Quota;
+  op: Operation;
 }
 
 export interface GeneratedOperation {
-  op: Operation;
   a: number;
   b: number;
-  expected: number;
   /** Nombre de retenues (addition/multiplication) ou d'emprunts (soustraction). */
   carries: number;
+  expected: number;
+  op: Operation;
   seed: number;
 }
 
@@ -76,11 +76,11 @@ export interface GeneratedOperation {
 export type Fondu = "opaque" | "translucide" | "optionnel" | "absent";
 
 export interface Palier {
-  id: string;
-  /** Ordre pédagogique global (échelle unique, jamais affichée à l'enfant). */
-  ordre: number;
-  /** Libellé côté /parents uniquement. */
-  label: string;
   constraints: GenerationConstraints;
   fondu: Fondu;
+  id: string;
+  /** Libellé côté /parents uniquement. */
+  label: string;
+  /** Ordre pédagogique global (échelle unique, jamais affichée à l'enfant). */
+  ordre: number;
 }

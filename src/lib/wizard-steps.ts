@@ -10,30 +10,30 @@
 export type WizardStep = "hero" | "place" | "element" | "doudou" | "extra";
 
 export interface WizardStepMeta {
-  step: WizardStep;
   emoji: string;
   /** Short label shown under the emoji in the stepper. */
   label: string;
   /** Required steps gate forward jumps; optional ones (doudou, extra) never do
    * and are shown visually lighter with a "facultatif" hint. */
   required: boolean;
+  step: WizardStep;
 }
 
 /** Ordered setup steps (the order the child walks through). */
 export const WIZARD_STEPS: WizardStepMeta[] = [
-  { step: "hero", emoji: "🦸", label: "Héros", required: true },
-  { step: "place", emoji: "📍", label: "Lieu", required: true },
-  { step: "element", emoji: "✨", label: "Élément", required: true },
-  { step: "doudou", emoji: "🧸", label: "Doudou", required: false },
-  { step: "extra", emoji: "✏️", label: "Touche perso", required: false },
+  { emoji: "🦸", label: "Héros", required: true, step: "hero" },
+  { emoji: "📍", label: "Lieu", required: true, step: "place" },
+  { emoji: "✨", label: "Élément", required: true, step: "element" },
+  { emoji: "🧸", label: "Doudou", required: false, step: "doudou" },
+  { emoji: "✏️", label: "Touche perso", required: false, step: "extra" },
 ];
 
 /** The picks made so far, used to decide which steps are reachable + complete.
  * Heroes always have ≥1 (default hero), so the gate is really place+element. */
 export interface WizardProgress {
+  elementIds: string[];
   heroIds: string[];
   placeId?: string;
-  elementIds: string[];
 }
 
 const ORDER: WizardStep[] = WIZARD_STEPS.map((s) => s.step);
@@ -76,13 +76,13 @@ function isStepSatisfied(step: WizardStep, p: WizardProgress): boolean {
 export function canJumpTo(
   target: WizardStep,
   current: WizardStep,
-  p: WizardProgress,
+  p: WizardProgress
 ): boolean {
   const ti = stepIndex(target);
   if (ti <= stepIndex(current)) {
     return true;
   }
-  for (let i = 0; i < ti; i++) {
+  for (let i = 0; i < ti; i += 1) {
     const meta = WIZARD_STEPS[i];
     if (meta.required && !isStepSatisfied(meta.step, p)) {
       return false;
@@ -99,7 +99,7 @@ export function canJumpTo(
 export function isStepCompleted(
   step: WizardStep,
   current: WizardStep,
-  p: WizardProgress,
+  p: WizardProgress
 ): boolean {
   return stepIndex(step) < stepIndex(current) && isStepSatisfied(step, p);
 }

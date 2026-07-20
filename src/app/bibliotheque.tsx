@@ -1,12 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Home, Leaf } from "lucide-react";
 import { Button } from "~/components/ui/button";
+import {
+  GENERATED_IMAGE_HEIGHT,
+  GENERATED_IMAGE_WIDTH,
+} from "~/lib/generated-image";
 import { getLibraryFn } from "~/server/functions";
 import { isRenderableImagePath } from "~/server/providers/types";
 
 export const Route = createFileRoute("/bibliotheque")({
-  loader: () => getLibraryFn(),
   component: LibraryPage,
+  loader: () => getLibraryFn(),
 });
 
 /**
@@ -68,7 +72,9 @@ function LibraryPage() {
                   <img
                     alt=""
                     className="size-full object-cover"
+                    height={GENERATED_IMAGE_HEIGHT}
                     src={story.imagePath}
+                    width={GENERATED_IMAGE_WIDTH}
                   />
                 ) : (
                   <span aria-hidden="true" className="text-4xl opacity-60">

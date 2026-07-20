@@ -7,27 +7,28 @@
  */
 
 export interface WordInfo {
-  /** Original token text (no whitespace). */
-  raw: string;
-  /** Opening punctuation («, ", ( …). */
-  lead: string;
   /** The word body: letters/digits plus internal apostrophes/hyphens. */
   core: string;
-  /** Closing punctuation (.,!?…»). */
-  trail: string;
-  /** Matching key: core lowercased, typographic apostrophe → '. */
-  norm: string;
+  hasDigit: boolean;
+  /** Capitalized mid-sentence → proper noun (rules mostly skipped). */
+  isProper: boolean;
   /** Last elision/hyphen segment of `norm` (l'histoire → histoire). */
   lastSeg: string;
   /** Start index of `lastSeg` within `core`/`norm`. */
   lastSegStart: number;
-  hasDigit: boolean;
-  /** Capitalized mid-sentence → proper noun (rules mostly skipped). */
-  isProper: boolean;
+  /** Opening punctuation («, ", ( …). */
+  lead: string;
+  /** Matching key: core lowercased, typographic apostrophe → '. */
+  norm: string;
+  /** Original token text (no whitespace). */
+  raw: string;
+  /** Closing punctuation (.,!?…»). */
+  trail: string;
 }
 
 const ALNUM = /[\p{L}\p{N}]/u;
 const UPPER = /\p{Lu}/u;
+const DIGIT = /\p{N}/u;
 const SENTENCE_END = /[.!?…]/;
 
 function lastSegment(norm: string): { seg: string; start: number } {
@@ -42,39 +43,39 @@ function lastSegment(norm: string): { seg: string; start: number } {
 export function parseWord(raw: string, sentenceStart: boolean): WordInfo {
   let start = 0;
   while (start < raw.length && !ALNUM.test(raw.charAt(start))) {
-    start++;
+    start += 1;
   }
   if (start === raw.length) {
     // Punctuation-only token («, !, — …): no word body at all.
     return {
-      raw,
-      lead: raw,
       core: "",
-      trail: "",
-      norm: "",
-      lastSeg: "",
-      lastSegStart: 0,
       hasDigit: false,
       isProper: false,
+      lastSeg: "",
+      lastSegStart: 0,
+      lead: raw,
+      norm: "",
+      raw,
+      trail: "",
     };
   }
   let end = raw.length - 1;
   while (!ALNUM.test(raw.charAt(end))) {
-    end--;
+    end -= 1;
   }
   const core = raw.slice(start, end + 1);
   const norm = core.toLowerCase().replaceAll("’", "'");
   const { seg, start: segStart } = lastSegment(norm);
   return {
-    raw,
-    lead: raw.slice(0, start),
     core,
-    trail: raw.slice(end + 1),
-    norm,
+    hasDigit: DIGIT.test(core),
+    isProper: UPPER.test(core.charAt(0)) && !sentenceStart,
     lastSeg: seg,
     lastSegStart: segStart,
-    hasDigit: /\p{N}/u.test(core),
-    isProper: UPPER.test(core.charAt(0)) && !sentenceStart,
+    lead: raw.slice(0, start),
+    norm,
+    raw,
+    trail: raw.slice(end + 1),
   };
 }
 

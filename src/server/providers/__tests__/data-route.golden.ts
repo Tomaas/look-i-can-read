@@ -28,7 +28,7 @@ function check(name: string, ok: boolean, detail?: string) {
   if (ok) {
     console.log(`✓ ${name}`);
   } else {
-    failures++;
+    failures += 1;
     console.error(`✗ ${name}${detail ? `\n  ${detail}` : ""}`);
   }
 }
@@ -39,11 +39,12 @@ const handlers = Route.options.server?.handlers as
 const get = handlers?.GET;
 check(
   "the /data/$ route exposes a GET server handler",
-  typeof get === "function",
+  typeof get === "function"
 );
+// biome-ignore lint/suspicious/noUnnecessaryConditions: garde d'exécution volontaire — le type vient d'un cast `as`, le runtime peut différer.
 if (!get) {
   console.error(
-    "\nDATA-ROUTE FAILED: no GET handler — nothing serves stored media.",
+    "\nDATA-ROUTE FAILED: no GET handler — nothing serves stored media."
   );
   process.exit(1);
 }
@@ -54,7 +55,7 @@ const jpgBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
 writeFileSync(join(mediaDir, "img_golden.jpg"), jpgBytes);
 writeFileSync(
   join(process.env.DATA_DIR, "outside.txt"),
-  "must never be served",
+  "must never be served"
 );
 
 // The exact bug scenario: a stored `/data/media/<file>` path must serve bytes.
@@ -64,21 +65,21 @@ writeFileSync(
   check(
     "a stored media file is served with 200",
     res.status === 200,
-    `status=${res.status}`,
+    `status=${res.status}`
   );
   check(
     "served bytes are byte-identical to the stored file",
-    body.length === jpgBytes.length && body.every((b, i) => b === jpgBytes[i]),
+    body.length === jpgBytes.length && body.every((b, i) => b === jpgBytes[i])
   );
   check(
     "content-type derives from the extension (image/jpeg)",
     res.headers.get("content-type") === "image/jpeg",
-    `content-type=${res.headers.get("content-type")}`,
+    `content-type=${res.headers.get("content-type")}`
   );
   check(
     "immutable long-lived cache header (files are nanoid-unique, never overwritten)",
     res.headers.get("cache-control") === "public, max-age=31536000, immutable",
-    `cache-control=${res.headers.get("cache-control")}`,
+    `cache-control=${res.headers.get("cache-control")}`
   );
 }
 
@@ -89,7 +90,7 @@ writeFileSync(
   check(
     "a missing media file → 404",
     res.status === 404,
-    `status=${res.status}`,
+    `status=${res.status}`
   );
 }
 
@@ -99,7 +100,7 @@ writeFileSync(
   check(
     "a path escaping the media dir → 404",
     res.status === 404,
-    `status=${res.status}`,
+    `status=${res.status}`
   );
 }
 
@@ -110,7 +111,7 @@ writeFileSync(
   check(
     "a non-media /data path → 404",
     res.status === 404,
-    `status=${res.status}`,
+    `status=${res.status}`
   );
 }
 
@@ -119,5 +120,5 @@ if (failures > 0) {
   process.exit(1);
 }
 console.log(
-  "\nDATA-ROUTE OK: local-disk media is served (200 + right headers), everything else 404s.",
+  "\nDATA-ROUTE OK: local-disk media is served (200 + right headers), everything else 404s."
 );

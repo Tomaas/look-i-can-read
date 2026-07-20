@@ -72,9 +72,9 @@ body {
   *,
   *::before,
   *::after {
+    transition-duration: 0.001ms !important;
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.001ms !important;
   }
 }
 
@@ -112,9 +112,9 @@ body {
 */
 @media (hover: hover) {
   .story-word {
-    border-radius: 0.35em;
     padding: 0.02em 0.12em;
     margin: 0 -0.12em;
+    border-radius: 0.35em;
     transition: background-color 0.12s ease-out;
   }
 
@@ -146,12 +146,12 @@ body {
 /* The arc: a bottom-half rounded "U" hugging the gap and the two adjacent
    letters. Scales with the font via em units. */
 .story-liaison-gap::after {
-  content: "";
   position: absolute;
-  left: -0.3em;
   right: -0.3em;
   bottom: -0.14em;
+  left: -0.3em;
   height: 0.3em;
+  content: "";
   border: 1.5px solid var(--muted-foreground);
   border-top: none;
   border-radius: 0 0 0.6em 0.6em;
@@ -166,8 +166,8 @@ body {
   }
 
   body {
-    background: white;
     font-size: 18pt;
+    background: white;
   }
 
   /* Everything except the printable story is hidden. */

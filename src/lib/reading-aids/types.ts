@@ -10,25 +10,25 @@
 
 /** A run of consecutive characters sharing one silent/pronounced state. */
 export interface LetterRun {
-  text: string;
   silent: boolean;
+  text: string;
 }
 
 export interface WordToken {
   kind: "word";
-  /** Original token text incl. punctuation — runs concatenate back to it. */
-  text: string;
-  runs: LetterRun[];
   /** Mandatory liaison to the NEXT word (arc over the following gap). */
   liaisonToNext: boolean;
+  runs: LetterRun[];
+  /** Original token text incl. punctuation — runs concatenate back to it. */
+  text: string;
 }
 
 export interface GapToken {
   kind: "gap";
-  /** The literal whitespace between two words. */
-  text: string;
   /** True when this gap sits inside a liaison (carries the arc). */
   liaison: boolean;
+  /** The literal whitespace between two words. */
+  text: string;
 }
 
 export type AnnotatedToken = WordToken | GapToken;

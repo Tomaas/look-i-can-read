@@ -19,18 +19,18 @@ export const listHeroesFn = createServerFn({ method: "GET" }).handler(
       .from(heroes)
       .where(isNull(heroes.deletedAt))
       .orderBy(asc(heroes.sort), asc(heroes.createdAt));
-  },
+  }
 );
 
 const upsertSchema = z.object({
-  label: z.string().trim().min(1, "Un nom est nécessaire."),
   emoji: z.string().trim().max(8).optional(),
-  imagePath: z.string().trim().optional(),
-  promptHint: z.string().trim().min(1, "Une description est nécessaire."),
   imageHint: z
     .string()
     .trim()
     .min(1, "Une description pour l'image est nécessaire."),
+  imagePath: z.string().trim().optional(),
+  label: z.string().trim().min(1, "Un nom est nécessaire."),
+  promptHint: z.string().trim().min(1, "Une description est nécessaire."),
   sort: z.number().int().optional(),
 });
 
@@ -44,15 +44,15 @@ export const createHeroFn = createServerFn({ method: "POST" })
     const [hero] = await db
       .insert(heroes)
       .values({
-        label: data.label,
         emoji: data.emoji || null,
-        imagePath: data.imagePath || null,
-        promptHint: data.promptHint,
         imageHint: data.imageHint,
+        imagePath: data.imagePath || null,
+        label: data.label,
+        promptHint: data.promptHint,
         sort: data.sort ?? 999,
       })
       .returning();
-    return { success: true, hero };
+    return { hero, success: true };
   });
 
 export const updateHeroFn = createServerFn({ method: "POST" })
@@ -61,19 +61,19 @@ export const updateHeroFn = createServerFn({ method: "POST" })
     const [hero] = await db
       .update(heroes)
       .set({
-        label: data.label,
         emoji: data.emoji || null,
-        imagePath: data.imagePath || null,
-        promptHint: data.promptHint,
         imageHint: data.imageHint,
+        imagePath: data.imagePath || null,
+        label: data.label,
+        promptHint: data.promptHint,
         ...(data.sort === undefined ? {} : { sort: data.sort }),
       })
       .where(and(eq(heroes.id, data.id), isNull(heroes.deletedAt)))
       .returning();
     if (!hero) {
-      return { success: false, error: "Héros introuvable." };
+      return { error: "Héros introuvable.", success: false };
     }
-    return { success: true, hero };
+    return { hero, success: true };
   });
 
 /**

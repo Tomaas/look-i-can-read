@@ -12,7 +12,7 @@ import type { ImageStatus } from "~/server/providers/types";
 
 /** Flags the client may read (no secrets). */
 export const getFlagsFn = createServerFn({ method: "GET" }).handler(() =>
-  getPublicFlags(),
+  getPublicFlags()
 );
 
 /**
@@ -40,9 +40,9 @@ export interface TestImageResult {
 export const generateTestImageFn = createServerFn({ method: "POST" })
   .validator(
     z.object({
-      prompt: z.string().min(1).max(2000),
       imageModel: z.string().optional(),
-    }),
+      prompt: z.string().min(1).max(2000),
+    })
   )
   .handler(async ({ data }): Promise<TestImageResult> => {
     // Resolve the picked model against the allowlist (loud fallback log on an
@@ -50,7 +50,7 @@ export const generateTestImageFn = createServerFn({ method: "POST" })
     const model = resolveImageModel(data.imageModel, serverEnv.imageModel);
     if (!serverEnv.imageEnabled) {
       console.warn(
-        "[stories] test image gen SKIPPED — IMAGE_ENABLED is false (set IMAGE_ENABLED=true to enable)",
+        "[stories] test image gen SKIPPED — IMAGE_ENABLED is false (set IMAGE_ENABLED=true to enable)"
       );
       return { imagePath: null, imageStatus: "skipped", model, ms: 0 };
     }
@@ -58,8 +58,8 @@ export const generateTestImageFn = createServerFn({ method: "POST" })
     const startedAt = Date.now();
     console.log("[stories] test image gen START", {
       model,
-      resolution: serverEnv.imageResolution,
       promptLen: data.prompt.length,
+      resolution: serverEnv.imageResolution,
     });
 
     try {
@@ -67,10 +67,10 @@ export const generateTestImageFn = createServerFn({ method: "POST" })
       // auto-append; the playground prefill already carries it).
       const imagePath = await nanoBananaImageProvider.generateImage(
         data.prompt,
-        model,
+        model
       );
       const ms = Date.now() - startedAt;
-      console.log("[stories] test image gen DONE", { model, ms, imagePath });
+      console.log("[stories] test image gen DONE", { imagePath, model, ms });
       return { imagePath, imageStatus: "ready", model, ms };
     } catch (error) {
       const ms = Date.now() - startedAt;
@@ -78,7 +78,7 @@ export const generateTestImageFn = createServerFn({ method: "POST" })
       // Gemini billing/quota denial; the parent gets a calm inline message.
       console.error(
         `[stories] test image generation FAILED (model=${model}, ms=${ms}): ` +
-          (error instanceof Error ? error.message : String(error)),
+          (error instanceof Error ? error.message : String(error))
       );
       return { imagePath: null, imageStatus: "failed", model, ms };
     }
@@ -116,7 +116,7 @@ export const synthesizeFn = createServerFn({ method: "POST" })
     try {
       const audioPath = await provider.synthesize(
         fullText,
-        story.lang as "fr" | "ru",
+        story.lang as "fr" | "ru"
       );
       await db
         .update(stories)
@@ -138,5 +138,5 @@ export const getLibraryFn = createServerFn({ method: "GET" }).handler(() =>
     .select()
     .from(stories)
     .where(and(eq(stories.kept, "1"), eq(stories.mode, "dynamic")))
-    .orderBy(desc(stories.createdAt)),
+    .orderBy(desc(stories.createdAt))
 );

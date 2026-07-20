@@ -3,14 +3,14 @@ import { Button } from "~/components/ui/button";
 import { PickerGrid, type PickerItem } from "./picker-grid";
 
 interface PickerStepProps {
-  title: string;
   items: PickerItem[];
   onPick: (id: string) => void;
-  selectedId?: string;
   // When set, an OPTIONAL step: a quiet skip button below "au hasard" that
   // advances without picking anything (e.g. "sans doudou"). Zero pressure.
   onSkip?: () => void;
+  selectedId?: string;
   skipLabel?: string;
+  title: string;
 }
 
 /**

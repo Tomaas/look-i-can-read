@@ -18,69 +18,15 @@ import { generateId } from "~/lib/id-generator";
  * default to "classic" so they stay valid.
  */
 export const stories = sqliteTable("stories", {
-  id: text("id")
-    .primaryKey()
-    .$defaultFn(() => generateId("story")),
-  mode: text("mode")
-    .notNull()
-    .default("classic")
-    .$type<"classic" | "dynamic">(),
-  lang: text("lang").notNull().default("fr"),
-  heroId: text("hero_id").notNull(),
-  placeId: text("place_id").notNull(),
-  elementId: text("element_id").notNull(),
-  // For classic stories, the title is set on generation. For dynamic stories
-  // it is set from the opening beat.
-  title: text("title").notNull(),
-  // Classic: the full story text. Dynamic: empty array (text lives in segments).
-  paragraphs: text("paragraphs", { mode: "json" }).notNull().$type<string[]>(),
-  // Classic: the single illustration. Dynamic: per-segment (see story_segments).
-  imagePath: text("image_path"),
   audioPath: text("audio_path"),
-  // 1 = kept in the library, 0 = transient. Stories are auto-kept.
-  kept: text("kept").notNull().default("1"),
+  createdAt: text("created_at").default(
+    sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`
+  ),
   // Optional free-text "saveur" the child added at creation ("Tu veux ajouter
   // quelque chose ?"). Injected as subordinate flavour into EVERY generation for
   // this story (classic once, dynamic on every beat incl. continuation). Always
   // overridden by the calm/safety rules; null/empty = none.
   customPrompt: text("custom_prompt"),
-  // Dynamic only: the hidden "fil rouge" generated once at creation (goal, 2-3
-  // gentle milestones, ending image). NEVER shown to the child — injected into
-  // every beat prompt so the story advances along one thread instead of
-  // drifting episodically, and so the surprise element pays off before the end.
-  // Null on older rows / when arc generation soft-failed → beats are generated
-  // exactly as before (arc-less), no behavior break.
-  storyArc: text("story_arc"),
-  // Dynamic only: the story's "visual world" (time of day, season, weather,
-  // light ambiance — one concrete sentence for the illustrator), generated in
-  // the SAME call as the arc and frozen at creation. Injected into every
-  // segment's IMAGE prompt as the story's DEFAULT ambiance (the beat's own
-  // sceneHint still wins on location) so illustrations stop drifting from day
-  // to night between pages. Null on older rows / arc soft-fail → image prompts
-  // are built exactly as before.
-  visualWorld: text("visual_world"),
-  // Dynamic only: the heroes' outfit (the fixed wardrobe of every hero, one
-  // concrete sentence), generated in the SAME call as the arc and frozen at
-  // creation. Injected into every segment's IMAGE prompt as a DEFAULT the
-  // reference image can override, so the characters stop changing clothes
-  // between pages (esp. beat 0, which has no reference image yet). Scanned
-  // independently of the arc — an unsafe wardrobe nulls only this field. Null
-  // on older rows / arc soft-fail / safety drop → image prompts as before.
-  outfit: text("outfit"),
-  // ── History-safety snapshots (frozen at creation) ──────────────────────────
-  // The place is the only EDITABLE entity, so its label + prompt hint are frozen
-  // onto the row at creation. Every history re-prompt path (image regen, dynamic
-  // continuation, segment image) reads these instead of the live DB place, so
-  // editing/deleting a place never alters an already-created story.
-  //
-  // Hero + element are still resolved from their IMMUTABLE config files at
-  // re-prompt time (they are not editable yet), so they need no snapshot today.
-  // These columns are designed so hero/element snapshots can be added later when
-  // those become editable — the frozen-context helper already centralises reads.
-  // Null on pre-existing rows → the helper falls back to the IMMUTABLE legacy
-  // config by id (never the editable DB row), keeping old stories identical.
-  placeLabel: text("place_label"),
-  placePromptHint: text("place_prompt_hint"),
   // ── Doudou snapshot (frozen at creation, all nullable) ──────────────────────
   // The optional comforting companion(s). Like the place, doudous are editable,
   // so their label + prompt/image hints are frozen onto the row at creation;
@@ -94,12 +40,23 @@ export const stories = sqliteTable("stories", {
   // mirror the FIRST doudou into them so any singular reader still resolves.
   // `getFrozenStoryPromptContext` prefers the array, falls back to the singular
   // columns, else no doudou — so old AND new rows render correctly.
+  doudouImageHint: text("doudou_image_hint"),
   doudouLabel: text("doudou_label"),
   doudouPromptHint: text("doudou_prompt_hint"),
-  doudouImageHint: text("doudou_image_hint"),
   doudouSnapshots: text("doudou_snapshots", { mode: "json" }).$type<
     Array<{ label: string; promptHint: string; imageHint: string }>
   >(),
+  elementId: text("element_id").notNull(),
+  // ── Element snapshot (frozen at creation, all nullable) ─────────────────────
+  // Elements became editable + MULTI-select. Same shape as the hero snapshot
+  // minus `imageHint` (elements never drive the illustration). Null on
+  // pre-existing rows → config fallback by `elementId` (`src/config/elements.ts`)
+  // as a one-element array. The NOT NULL `elementId` column mirrors the FIRST
+  // element for that fallback.
+  elementSnapshots: text("element_snapshots", { mode: "json" }).$type<
+    Array<{ label: string; promptHint: string }>
+  >(),
+  heroId: text("hero_id").notNull(),
   // ── Hero snapshot (frozen at creation, all nullable) ────────────────────────
   // Heroes became editable + MULTI-select. Like the doudou, each chosen hero's
   // label + prompt/image hints are frozen onto the row at creation; every history
@@ -115,18 +72,61 @@ export const stories = sqliteTable("stories", {
   heroSnapshots: text("hero_snapshots", { mode: "json" }).$type<
     Array<{ label: string; promptHint: string; imageHint: string }>
   >(),
-  // ── Element snapshot (frozen at creation, all nullable) ─────────────────────
-  // Elements became editable + MULTI-select. Same shape as the hero snapshot
-  // minus `imageHint` (elements never drive the illustration). Null on
-  // pre-existing rows → config fallback by `elementId` (`src/config/elements.ts`)
-  // as a one-element array. The NOT NULL `elementId` column mirrors the FIRST
-  // element for that fallback.
-  elementSnapshots: text("element_snapshots", { mode: "json" }).$type<
-    Array<{ label: string; promptHint: string }>
-  >(),
-  createdAt: text("created_at").default(
-    sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`,
-  ),
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => generateId("story")),
+  // Classic: the single illustration. Dynamic: per-segment (see story_segments).
+  imagePath: text("image_path"),
+  // 1 = kept in the library, 0 = transient. Stories are auto-kept.
+  kept: text("kept").notNull().default("1"),
+  lang: text("lang").notNull().default("fr"),
+  mode: text("mode")
+    .notNull()
+    .default("classic")
+    .$type<"classic" | "dynamic">(),
+  // Dynamic only: the heroes' outfit (the fixed wardrobe of every hero, one
+  // concrete sentence), generated in the SAME call as the arc and frozen at
+  // creation. Injected into every segment's IMAGE prompt as a DEFAULT the
+  // reference image can override, so the characters stop changing clothes
+  // between pages (esp. beat 0, which has no reference image yet). Scanned
+  // independently of the arc — an unsafe wardrobe nulls only this field. Null
+  // on older rows / arc soft-fail / safety drop → image prompts as before.
+  outfit: text("outfit"),
+  // Classic: the full story text. Dynamic: empty array (text lives in segments).
+  paragraphs: text("paragraphs", { mode: "json" }).notNull().$type<string[]>(),
+  placeId: text("place_id").notNull(),
+  // ── History-safety snapshots (frozen at creation) ──────────────────────────
+  // The place is the only EDITABLE entity, so its label + prompt hint are frozen
+  // onto the row at creation. Every history re-prompt path (image regen, dynamic
+  // continuation, segment image) reads these instead of the live DB place, so
+  // editing/deleting a place never alters an already-created story.
+  //
+  // Hero + element are still resolved from their IMMUTABLE config files at
+  // re-prompt time (they are not editable yet), so they need no snapshot today.
+  // These columns are designed so hero/element snapshots can be added later when
+  // those become editable — the frozen-context helper already centralises reads.
+  // Null on pre-existing rows → the helper falls back to the IMMUTABLE legacy
+  // config by id (never the editable DB row), keeping old stories identical.
+  placeLabel: text("place_label"),
+  placePromptHint: text("place_prompt_hint"),
+  // Dynamic only: the hidden "fil rouge" generated once at creation (goal, 2-3
+  // gentle milestones, ending image). NEVER shown to the child — injected into
+  // every beat prompt so the story advances along one thread instead of
+  // drifting episodically, and so the surprise element pays off before the end.
+  // Null on older rows / when arc generation soft-failed → beats are generated
+  // exactly as before (arc-less), no behavior break.
+  storyArc: text("story_arc"),
+  // For classic stories, the title is set on generation. For dynamic stories
+  // it is set from the opening beat.
+  title: text("title").notNull(),
+  // Dynamic only: the story's "visual world" (time of day, season, weather,
+  // light ambiance — one concrete sentence for the illustrator), generated in
+  // the SAME call as the arc and frozen at creation. Injected into every
+  // segment's IMAGE prompt as the story's DEFAULT ambiance (the beat's own
+  // sceneHint still wins on location) so illustrations stop drifting from day
+  // to night between pages. Null on older rows / arc soft-fail → image prompts
+  // are built exactly as before.
+  visualWorld: text("visual_world"),
 });
 
 /** One choice offered to the child: a stable id + a short friendly label. */
@@ -154,40 +154,40 @@ export type SegmentStatus = "ready" | "generating" | "complete" | "error";
 export const storySegments = sqliteTable(
   "story_segments",
   {
+    // The 2 choices this beat offers, or null on the final beat.
+    choices: text("choices", { mode: "json" }).$type<SegmentChoice[] | null>(),
+    // Which offered choice the child picked (null until picked / final beat).
+    chosenChoiceId: text("chosen_choice_id"),
+    createdAt: text("created_at").default(
+      sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`
+    ),
+    error: text("error"),
     id: text("id")
       .primaryKey()
       .$defaultFn(() => generateId("seg")),
-    storyId: text("story_id")
-      .notNull()
-      .references(() => stories.id),
     // 0-based position in the path.
     idx: integer("idx").notNull(),
+    imagePath: text("image_path"),
     paragraphs: text("paragraphs", { mode: "json" })
       .notNull()
       .$type<string[]>(),
-    imagePath: text("image_path"),
+    // The choice that led to (or is generating) this beat — used to recover a
+    // beat whose generation was interrupted, without re-asking the child.
+    pendingChoiceId: text("pending_choice_id"),
     // Short visual description of THIS beat's scene, emitted by the text model
     // alongside the beat (where the action happens right now). The image prompt
     // prefers it over the story's frozen place hint, so an illustration follows
     // the story into a secret garden instead of stamping "Aux États-Unis" (US
     // flags…) on every page. Null on older rows → place-hint fallback.
     sceneHint: text("scene_hint"),
-    // The 2 choices this beat offers, or null on the final beat.
-    choices: text("choices", { mode: "json" }).$type<SegmentChoice[] | null>(),
-    // Which offered choice the child picked (null until picked / final beat).
-    chosenChoiceId: text("chosen_choice_id"),
-    // The choice that led to (or is generating) this beat — used to recover a
-    // beat whose generation was interrupted, without re-asking the child.
-    pendingChoiceId: text("pending_choice_id"),
     status: text("status").notNull().default("complete").$type<SegmentStatus>(),
-    error: text("error"),
-    createdAt: text("created_at").default(
-      sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`,
-    ),
+    storyId: text("story_id")
+      .notNull()
+      .references(() => stories.id),
   },
   (table) => [
     uniqueIndex("story_segments_story_idx").on(table.storyId, table.idx),
-  ],
+  ]
 );
 
 /**
@@ -203,21 +203,21 @@ export const storySegments = sqliteTable(
  * stories. `src/config/places.ts` stays as the immutable legacy fallback.
  */
 export const places = sqliteTable("places", {
+  createdAt: text("created_at").default(
+    sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`
+  ),
+  // Soft delete — NULL = active. Never hard-deleted so old ids still resolve.
+  deletedAt: text("deleted_at"),
+  emoji: text("emoji"),
   id: text("id")
     .primaryKey()
     .$defaultFn(() => generateId("place")),
-  label: text("label").notNull(),
-  emoji: text("emoji"),
   // Optional manual image path (no upload widget yet). Picker falls back to emoji.
   imagePath: text("image_path"),
+  label: text("label").notNull(),
   // Injected into the story prompt when this place is chosen at creation.
   promptHint: text("prompt_hint").notNull(),
   sort: integer("sort").notNull().default(0),
-  // Soft delete — NULL = active. Never hard-deleted so old ids still resolve.
-  deletedAt: text("deleted_at"),
-  createdAt: text("created_at").default(
-    sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`,
-  ),
 });
 
 /**
@@ -233,23 +233,23 @@ export const places = sqliteTable("places", {
  * fallback) — so edits/deletes can't change old stories.
  */
 export const doudous = sqliteTable("doudous", {
+  createdAt: text("created_at").default(
+    sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`
+  ),
+  // Soft delete — NULL = active. Never hard-deleted so old ids still resolve.
+  deletedAt: text("deleted_at"),
+  emoji: text("emoji"),
   id: text("id")
     .primaryKey()
     .$defaultFn(() => generateId("doudou")),
-  label: text("label").notNull(),
-  emoji: text("emoji"),
-  // Optional manual image path (no upload widget yet). Picker falls back to emoji.
-  imagePath: text("image_path"),
-  // Injected into the story TEXT prompt when this doudou is chosen at creation.
-  promptHint: text("prompt_hint").notNull(),
   // Injected into the IMAGE prompt so the doudou appears beside the hero.
   imageHint: text("image_hint").notNull(),
+  // Optional manual image path (no upload widget yet). Picker falls back to emoji.
+  imagePath: text("image_path"),
+  label: text("label").notNull(),
+  // Injected into the story TEXT prompt when this doudou is chosen at creation.
+  promptHint: text("prompt_hint").notNull(),
   sort: integer("sort").notNull().default(0),
-  // Soft delete — NULL = active. Never hard-deleted so old ids still resolve.
-  deletedAt: text("deleted_at"),
-  createdAt: text("created_at").default(
-    sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`,
-  ),
 });
 
 /**
@@ -272,24 +272,24 @@ export const doudous = sqliteTable("doudous", {
  * edits/deletes can't change old stories.
  */
 export const heroes = sqliteTable("heroes", {
+  createdAt: text("created_at").default(
+    sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`
+  ),
+  // Soft delete — NULL = active. Never hard-deleted so old ids still resolve.
+  deletedAt: text("deleted_at"),
+  emoji: text("emoji"),
   id: text("id")
     .primaryKey()
     .$defaultFn(() => generateId("hero")),
-  // The NAME shown to the child (config `name`).
-  label: text("label").notNull(),
-  emoji: text("emoji"),
-  // Optional manual image path (no upload widget yet). Picker falls back to emoji.
-  imagePath: text("image_path"),
-  // The GUIDING DESCRIPTION injected into the story TEXT prompt (config `description`).
-  promptHint: text("prompt_hint").notNull(),
   // Injected into the IMAGE prompt so the hero looks consistent (config `imageHint`).
   imageHint: text("image_hint").notNull(),
+  // Optional manual image path (no upload widget yet). Picker falls back to emoji.
+  imagePath: text("image_path"),
+  // The NAME shown to the child (config `name`).
+  label: text("label").notNull(),
+  // The GUIDING DESCRIPTION injected into the story TEXT prompt (config `description`).
+  promptHint: text("prompt_hint").notNull(),
   sort: integer("sort").notNull().default(0),
-  // Soft delete — NULL = active. Never hard-deleted so old ids still resolve.
-  deletedAt: text("deleted_at"),
-  createdAt: text("created_at").default(
-    sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`,
-  ),
 });
 
 /**
@@ -306,21 +306,21 @@ export const heroes = sqliteTable("heroes", {
  * this table — they use the story's frozen snapshot (or config fallback).
  */
 export const dbElements = sqliteTable("elements", {
+  createdAt: text("created_at").default(
+    sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`
+  ),
+  // Soft delete — NULL = active. Never hard-deleted so old ids still resolve.
+  deletedAt: text("deleted_at"),
+  emoji: text("emoji"),
   id: text("id")
     .primaryKey()
     .$defaultFn(() => generateId("element")),
-  label: text("label").notNull(),
-  emoji: text("emoji"),
   // Optional manual image path (no upload widget yet). Picker falls back to emoji.
   imagePath: text("image_path"),
+  label: text("label").notNull(),
   // The GUIDING DESCRIPTION injected into the story TEXT prompt (config `promptHint`).
   promptHint: text("prompt_hint").notNull(),
   sort: integer("sort").notNull().default(0),
-  // Soft delete — NULL = active. Never hard-deleted so old ids still resolve.
-  deletedAt: text("deleted_at"),
-  createdAt: text("created_at").default(
-    sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`,
-  ),
 });
 
 /**
@@ -345,14 +345,14 @@ export const mathSkills = sqliteTable(
     id: text("id")
       .primaryKey()
       .$defaultFn(() => generateId("mathskill")),
-    skill: text("skill").notNull(),
     palier: text("palier").notNull(),
     serieSize: integer("serie_size").notNull().default(3),
+    skill: text("skill").notNull(),
     updatedAt: text("updated_at").default(
-      sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`,
+      sql`(strftime('%Y-%m-%d %H:%M:%S.000+00', 'now'))`
     ),
   },
-  (table) => [uniqueIndex("math_skills_skill_idx").on(table.skill)],
+  (table) => [uniqueIndex("math_skills_skill_idx").on(table.skill)]
 );
 
 export type Story = typeof stories.$inferSelect;

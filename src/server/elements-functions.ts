@@ -19,13 +19,13 @@ export const listElementsFn = createServerFn({ method: "GET" }).handler(
       .from(dbElements)
       .where(isNull(dbElements.deletedAt))
       .orderBy(asc(dbElements.sort), asc(dbElements.createdAt));
-  },
+  }
 );
 
 const upsertSchema = z.object({
-  label: z.string().trim().min(1, "Un nom est nécessaire."),
   emoji: z.string().trim().max(8).optional(),
   imagePath: z.string().trim().optional(),
+  label: z.string().trim().min(1, "Un nom est nécessaire."),
   promptHint: z.string().trim().min(1, "Une description est nécessaire."),
   sort: z.number().int().optional(),
 });
@@ -40,14 +40,14 @@ export const createElementFn = createServerFn({ method: "POST" })
     const [element] = await db
       .insert(dbElements)
       .values({
-        label: data.label,
         emoji: data.emoji || null,
         imagePath: data.imagePath || null,
+        label: data.label,
         promptHint: data.promptHint,
         sort: data.sort ?? 999,
       })
       .returning();
-    return { success: true, element };
+    return { element, success: true };
   });
 
 export const updateElementFn = createServerFn({ method: "POST" })
@@ -56,18 +56,18 @@ export const updateElementFn = createServerFn({ method: "POST" })
     const [element] = await db
       .update(dbElements)
       .set({
-        label: data.label,
         emoji: data.emoji || null,
         imagePath: data.imagePath || null,
+        label: data.label,
         promptHint: data.promptHint,
         ...(data.sort === undefined ? {} : { sort: data.sort }),
       })
       .where(and(eq(dbElements.id, data.id), isNull(dbElements.deletedAt)))
       .returning();
     if (!element) {
-      return { success: false, error: "Élément introuvable." };
+      return { error: "Élément introuvable.", success: false };
     }
-    return { success: true, element };
+    return { element, success: true };
   });
 
 /**

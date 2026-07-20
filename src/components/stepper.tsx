@@ -10,10 +10,10 @@ import {
 
 interface StepperProps {
   current: WizardStep;
-  progress: WizardProgress;
   /** Jump straight to a reachable step (the component only calls this for steps
    * that pass `canJumpTo`). */
   onJump: (step: WizardStep) => void;
+  progress: WizardProgress;
 }
 
 /** The pill's surface style by state (avoids a nested ternary in the JSX). */
@@ -64,16 +64,16 @@ export function Stepper({ current, progress, onJump }: StepperProps) {
                   tappable
                     ? "cursor-pointer hover:-translate-y-0.5 hover:border-primary/50"
                     : "cursor-default",
-                  !(reachable || isCurrent) && "opacity-40",
+                  !(reachable || isCurrent) && "opacity-40"
                 )}
                 disabled={!tappable}
                 onClick={() => tappable && onJump(meta.step)}
                 type="button"
               >
-                <span className="relative" aria-hidden="true">
+                <span aria-hidden="true" className="relative">
                   <span className="text-3xl leading-none">{meta.emoji}</span>
                   {completed ? (
-                    <span className="-top-1 -right-2 absolute flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                    <span className="absolute -top-1 -right-2 flex size-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
                       <Check className="size-3" />
                     </span>
                   ) : null}
@@ -81,7 +81,7 @@ export function Stepper({ current, progress, onJump }: StepperProps) {
                 <span
                   className={cn(
                     "font-semibold text-sm leading-tight",
-                    isCurrent ? "text-foreground" : "text-muted-foreground",
+                    isCurrent ? "text-foreground" : "text-muted-foreground"
                   )}
                 >
                   {meta.label}

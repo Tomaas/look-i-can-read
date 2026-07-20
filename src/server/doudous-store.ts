@@ -29,13 +29,13 @@ export async function seedDoudousIfNeeded(): Promise<void> {
     .insert(doudous)
     .values(
       legacyDoudous.map((d, i) => ({
-        id: d.id,
-        label: d.label,
         emoji: d.emoji,
-        promptHint: d.promptHint,
+        id: d.id,
         imageHint: d.imageHint,
+        label: d.label,
+        promptHint: d.promptHint,
         sort: i,
-      })),
+      }))
     )
     .onConflictDoNothing()
     .run();
@@ -49,7 +49,7 @@ export async function seedDoudousIfNeeded(): Promise<void> {
  * a pre-seed gap. The resolved labels + hints are frozen onto the story row.
  */
 export async function resolveDoudousForCreation(
-  doudouIds: string[],
+  doudouIds: string[]
 ): Promise<Array<{ label: string; promptHint: string; imageHint: string }>> {
   const uniqueIds = [...new Set(doudouIds)];
   if (uniqueIds.length === 0) {
@@ -71,18 +71,18 @@ export async function resolveDoudousForCreation(
     const row = byId.get(id);
     if (row) {
       resolved.push({
+        imageHint: row.imageHint,
         label: row.label,
         promptHint: row.promptHint,
-        imageHint: row.imageHint,
       });
       continue;
     }
     const legacy = legacyById.get(id);
     if (legacy) {
       resolved.push({
+        imageHint: legacy.imageHint,
         label: legacy.label,
         promptHint: legacy.promptHint,
-        imageHint: legacy.imageHint,
       });
     }
   }

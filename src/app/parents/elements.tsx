@@ -12,8 +12,8 @@ import {
 } from "~/server/elements-functions";
 
 export const Route = createFileRoute("/parents/elements")({
-  loader: () => listElementsFn(),
   component: ParentsElementsPage,
+  loader: () => listElementsFn(),
 });
 
 /**
@@ -36,8 +36,9 @@ function ParentsElementsPage() {
 
   async function handleDelete(id: string) {
     if (
+      // biome-ignore lint/suspicious/noAlert: confirm() volontairement minimal — garde anti-tap accidentel, pas d'UI modale à maintenir.
       !window.confirm(
-        "Retirer cet élément ? Les histoires déjà créées ne changeront pas.",
+        "Retirer cet élément ? Les histoires déjà créées ne changeront pas."
       )
     ) {
       return;

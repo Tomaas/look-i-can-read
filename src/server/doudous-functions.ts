@@ -18,18 +18,18 @@ export const listDoudousFn = createServerFn({ method: "GET" }).handler(
       .from(doudous)
       .where(isNull(doudous.deletedAt))
       .orderBy(asc(doudous.sort), asc(doudous.createdAt));
-  },
+  }
 );
 
 const upsertSchema = z.object({
-  label: z.string().trim().min(1, "Un nom est nécessaire."),
   emoji: z.string().trim().max(8).optional(),
-  imagePath: z.string().trim().optional(),
-  promptHint: z.string().trim().min(1, "Une description est nécessaire."),
   imageHint: z
     .string()
     .trim()
     .min(1, "Une description pour l'image est nécessaire."),
+  imagePath: z.string().trim().optional(),
+  label: z.string().trim().min(1, "Un nom est nécessaire."),
+  promptHint: z.string().trim().min(1, "Une description est nécessaire."),
   sort: z.number().int().optional(),
 });
 
@@ -43,15 +43,15 @@ export const createDoudouFn = createServerFn({ method: "POST" })
     const [doudou] = await db
       .insert(doudous)
       .values({
-        label: data.label,
         emoji: data.emoji || null,
-        imagePath: data.imagePath || null,
-        promptHint: data.promptHint,
         imageHint: data.imageHint,
+        imagePath: data.imagePath || null,
+        label: data.label,
+        promptHint: data.promptHint,
         sort: data.sort ?? 999,
       })
       .returning();
-    return { success: true, doudou };
+    return { doudou, success: true };
   });
 
 export const updateDoudouFn = createServerFn({ method: "POST" })
@@ -60,19 +60,19 @@ export const updateDoudouFn = createServerFn({ method: "POST" })
     const [doudou] = await db
       .update(doudous)
       .set({
-        label: data.label,
         emoji: data.emoji || null,
-        imagePath: data.imagePath || null,
-        promptHint: data.promptHint,
         imageHint: data.imageHint,
+        imagePath: data.imagePath || null,
+        label: data.label,
+        promptHint: data.promptHint,
         ...(data.sort === undefined ? {} : { sort: data.sort }),
       })
       .where(and(eq(doudous.id, data.id), isNull(doudous.deletedAt)))
       .returning();
     if (!doudou) {
-      return { success: false, error: "Doudou introuvable." };
+      return { error: "Doudou introuvable.", success: false };
     }
-    return { success: true, doudou };
+    return { doudou, success: true };
   });
 
 /**

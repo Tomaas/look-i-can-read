@@ -1,6 +1,10 @@
 import { useId, useState } from "react";
 import { Button } from "~/components/ui/button";
 import { IMAGE_MODELS } from "~/config/image-models";
+import {
+  GENERATED_IMAGE_HEIGHT,
+  GENERATED_IMAGE_WIDTH,
+} from "~/lib/generated-image";
 import { generateTestImageFn, type TestImageResult } from "~/server/functions";
 
 /**
@@ -37,7 +41,9 @@ function ResultCard({ entry }: { entry: ResultEntry }) {
         <img
           alt="Aperçu généré"
           className="aspect-[4/3] w-full object-cover"
+          height={GENERATED_IMAGE_HEIGHT}
           src={entry.imagePath}
+          width={GENERATED_IMAGE_WIDTH}
         />
       ) : (
         <div className="flex aspect-[4/3] w-full items-center justify-center px-6 text-center">
@@ -79,7 +85,7 @@ export function ImageTestPlayground({
     setGenerating(true);
     try {
       const result = await generateTestImageFn({
-        data: { prompt, imageModel: testModel },
+        data: { imageModel: testModel, prompt },
       });
       // Prepend so the newest sits on top; prior outputs stay for comparison.
       setResults((prev) => [{ ...result, key: Date.now() }, ...prev]);
@@ -89,9 +95,9 @@ export function ImageTestPlayground({
         {
           imagePath: null,
           imageStatus: "failed",
+          key: Date.now(),
           model: testModel,
           ms: 0,
-          key: Date.now(),
         },
         ...prev,
       ]);

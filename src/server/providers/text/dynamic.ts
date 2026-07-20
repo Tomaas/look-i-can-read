@@ -23,14 +23,18 @@ import {
 } from "./hero-prompt";
 import { MAX_WORDS_RETRY, READING_LEVEL_GUIDANCE } from "./reading-level";
 
+// Sentence enders / whitespace used by the structure validators.
+const SENTENCE_ENDERS = /[.!?…]+/;
+const WHITESPACE = /\s+/;
+
 // Claude models bill per input/output token. Prices per 1M tokens, matched on
 // a model-id substring so the STORY_MODEL env override keeps costing correctly
 // across tiers. Unknown models log tokens without a cost estimate.
 // Source: https://platform.claude.com/docs/en/pricing (2026-07).
 const TEXT_USD_PER_MTOK = [
-  { match: "opus", input: 5, output: 25 },
-  { match: "sonnet", input: 3, output: 15 },
-  { match: "haiku", input: 1, output: 5 },
+  { input: 5, match: "opus", output: 25 },
+  { input: 3, match: "sonnet", output: 15 },
+  { input: 1, match: "haiku", output: 5 },
 ] as const;
 
 /**
@@ -44,7 +48,7 @@ function logTextGen(
   kind: "beat" | "arc",
   attempt: number,
   ms: number,
-  usage?: { inputTokens?: number; outputTokens?: number },
+  usage?: { inputTokens?: number; outputTokens?: number }
 ): void {
   try {
     const model = serverEnv.storyModel;
@@ -52,13 +56,13 @@ function logTextGen(
     const outTok = usage?.outputTokens;
     const price = TEXT_USD_PER_MTOK.find((p) => model.includes(p.match));
     const cost =
-      price && inTok != null && outTok != null
+      price && inTok !== undefined && outTok !== undefined
         ? ((inTok * price.input + outTok * price.output) / 1_000_000).toFixed(4)
         : null;
     console.log(
       `[text-gen] kind=${kind} model=${model} attempt=${attempt} ms=${ms} ` +
         `tokens=${inTok ?? "?"}in/${outTok ?? "?"}out` +
-        (cost ? ` cost≈$${cost}` : " cost=unknown-model"),
+        (cost ? ` cost≈$${cost}` : " cost=unknown-model")
     );
   } catch {
     // Never let cost logging break text generation.
@@ -75,12 +79,13 @@ function logTextGen(
  * only asked in the prompt.
  */
 function buildBeatSchema(landing: boolean) {
+  // biome-ignore assist/source/useSortedKeys: l'ordre des clés EST le schéma JSON envoyé au modèle (le récit d'abord : title → paragraphs → choices) — épinglé par test:coherence.
   return z.object({
     title: z
       .string()
       .optional()
       .describe(
-        "Titre court et chaleureux (uniquement pour le tout premier bout).",
+        "Titre court et chaleureux (uniquement pour le tout premier bout)."
       ),
     paragraphs: z
       .array(z.string().min(1))
@@ -89,14 +94,14 @@ function buildBeatSchema(landing: boolean) {
       .describe(
         landing
           ? "Un bout court qui atterrit : 2 phrases courtes LIÉES (puis, alors…), 1 par entrée."
-          : "Un court bout d'histoire qui coule : 2 à 3 phrases courtes LIÉES (puis, alors, mais…), 1 ou 2 par entrée.",
+          : "Un court bout d'histoire qui coule : 2 à 3 phrases courtes LIÉES (puis, alors, mais…), 1 ou 2 par entrée."
       ),
     choices: z
       .array(z.string().min(1))
       .length(2)
       .nullable()
       .describe(
-        "Exactement 2 choix (libellés courts et simples), ou null pour le bout final.",
+        "Exactement 2 choix (libellés courts et simples), ou null pour le bout final."
       ),
     isFinal: z
       .boolean()
@@ -105,7 +110,7 @@ function buildBeatSchema(landing: boolean) {
       .string()
       .min(1)
       .describe(
-        "Pour l'illustrateur : où se passe CE bout et ce qu'on y voit, en une phrase concrète (lieu précis, moment, action). En français, sans consigne de style.",
+        "Pour l'illustrateur : où se passe CE bout et ce qu'on y voit, en une phrase concrète (lieu précis, moment, action). En français, sans consigne de style."
       ),
   });
 }
@@ -123,7 +128,7 @@ export const LANDING_BEAT_SCHEMA = buildBeatSchema(true);
  */
 // Exported for the standalone assertion script (test:coherence) only.
 export function isLanding(
-  input: Pick<GenerateBeatInput, "mustEnd" | "history" | "remainingChoices">,
+  input: Pick<GenerateBeatInput, "mustEnd" | "history" | "remainingChoices">
 ): boolean {
   return (
     input.mustEnd ||
@@ -189,7 +194,7 @@ export function safetyProblems(beat: DynamicBeat, heroName: string): string[] {
   const stakes = STAKES_TERMS.filter((t) => lower.includes(t));
   if (stakes.length > 0) {
     problems.push(
-      `Langage d'enjeu/évaluation interdit (les 2 choix sont également bons) : ${stakes.join(", ")}.`,
+      `Langage d'enjeu/évaluation interdit (les 2 choix sont également bons) : ${stakes.join(", ")}.`
     );
   }
 
@@ -219,7 +224,7 @@ export function softnessTicCount(text: string): number {
 export function structureProblems(
   beat: DynamicBeat,
   mustEnd: boolean,
-  landing: boolean,
+  landing: boolean
 ): string[] {
   const problems: string[] = [];
 
@@ -229,11 +234,11 @@ export function structureProblems(
   if (landing) {
     const sentenceCount = beat.paragraphs
       .join(" ")
-      .split(/[.!?…]+/)
+      .split(SENTENCE_ENDERS)
       .filter((s) => s.trim().length > 0).length;
     if (sentenceCount > 3) {
       problems.push(
-        "C'est la fin de l'histoire : raccourcis ce bout à 2 phrases courtes.",
+        "C'est la fin de l'histoire : raccourcis ce bout à 2 phrases courtes."
       );
     }
   }
@@ -241,11 +246,11 @@ export function structureProblems(
   // Soft anti-tic nudge (NON-fatal): more than one "doux/douce/doucement" in a
   // single beat reads as a verbal tic. The retry rewrites with varied words.
   const ticCount = softnessTicCount(
-    [...beat.paragraphs, ...(beat.choices ?? [])].join("\n"),
+    [...beat.paragraphs, ...(beat.choices ?? [])].join("\n")
   );
   if (ticCount > 1) {
     problems.push(
-      `Trop de « doux / douce / doucement » (${ticCount} fois) : garde-en un seul au maximum, remplace les autres (calme, tendre, tranquille, léger…) ou montre la douceur par les gestes sans la nommer.`,
+      `Trop de « doux / douce / doucement » (${ticCount} fois) : garde-en un seul au maximum, remplace les autres (calme, tendre, tranquille, léger…) ou montre la douceur par les gestes sans la nommer.`
     );
   }
 
@@ -257,25 +262,26 @@ export function structureProblems(
   // before counting words — flag a SENTENCE strictly longer than MAX_WORDS_RETRY.
   const longSentence = beat.paragraphs.some((p) =>
     p
-      .split(/[.!?…]+/)
+      .split(SENTENCE_ENDERS)
       .some(
-        (s) => s.trim().split(/\s+/).filter(Boolean).length > MAX_WORDS_RETRY,
-      ),
+        (s) =>
+          s.trim().split(WHITESPACE).filter(Boolean).length > MAX_WORDS_RETRY
+      )
   );
   if (longSentence) {
     problems.push(
-      "Phrases trop longues pour un lecteur débutant : raccourcis-les (vise 8 mots, une idée par phrase).",
+      "Phrases trop longues pour un lecteur débutant : raccourcis-les (vise 8 mots, une idée par phrase)."
     );
   }
 
   if (mustEnd && !(beat.isFinal && beat.choices === null)) {
     problems.push(
-      "C'est le dernier bout : isFinal doit être true et choices doit être null (fin rassurante, sans choix).",
+      "C'est le dernier bout : isFinal doit être true et choices doit être null (fin rassurante, sans choix)."
     );
   }
   if (beat.isFinal && beat.choices !== null) {
     problems.push(
-      "Un bout final ne doit pas proposer de choix (choices=null).",
+      "Un bout final ne doit pas proposer de choix (choices=null)."
     );
   }
   if (!beat.isFinal && (beat.choices === null || beat.choices.length !== 2)) {
@@ -299,7 +305,7 @@ function validateBeat(
   beat: DynamicBeat,
   heroName: string,
   mustEnd: boolean,
-  landing: boolean,
+  landing: boolean
 ): string[] {
   return [
     ...safetyProblems(beat, heroName),
@@ -368,7 +374,7 @@ export function buildSystem(lang: GenerateBeatInput["lang"]): string {
 export function buildPrompt(
   input: GenerateBeatInput,
   corrections?: string[],
-  dropCustomPrompt = false,
+  dropCustomPrompt = false
 ): string {
   const { heroes, place, elements, doudous, history, mustEnd } = input;
   // Single hero / single element emit BYTE-IDENTICAL lines to the pre-multi code
@@ -392,14 +398,14 @@ export function buildPrompt(
     lines.push(
       "",
       "Fil de l'histoire (secret, pour toi seulement — ne le récite pas, fais-le vivre) :",
-      input.storyArc,
+      input.storyArc
     );
   }
 
   if (history.length === 0) {
     lines.push(
       "",
-      "Écris le TOUT PREMIER bout de l'histoire (avec un titre court et chaleureux), puis 2 choix.",
+      "Écris le TOUT PREMIER bout de l'histoire (avec un titre court et chaleureux), puis 2 choix."
     );
   } else {
     lines.push("", "Histoire jusqu'ici :");
@@ -413,7 +419,7 @@ export function buildPrompt(
       }
       lines.push(
         `  → choix proposés : « ${h.offered[0]} » / « ${h.offered[1]} »`,
-        `  → l'enfant a choisi : « ${h.chosenLabel} »`,
+        `  → l'enfant a choisi : « ${h.chosenLabel} »`
       );
     });
     lines.push(
@@ -429,7 +435,7 @@ export function buildPrompt(
             "NE propose AUCUN choix. Ne pose AUCUNE question. N'ouvre PAS de nouvelle",
             "aventure. C'est la dernière page du livre.",
           ].join("\n")
-        : "Écris le bout suivant en continuant à partir du choix de l'enfant, puis 2 nouveaux choix.",
+        : "Écris le bout suivant en continuant à partir du choix de l'enfant, puis 2 nouveaux choix."
     );
     // Landing announcement: on the last beats before the forced final one, tell
     // the model the end is near so the resolution is PREPARED (the element has
@@ -441,7 +447,7 @@ export function buildPrompt(
       lines.push(
         remaining <= 1
           ? "La fin est proche : ce bout propose le DERNIER choix de l'histoire. Il doit préparer la conclusion (l'élément surprise a servi ou sert maintenant, le héros se rapproche de la fin de son aventure). Écris un bout court : 2 phrases seulement."
-          : `Il ne reste que ${remaining} choix avant la fin de l'histoire (en comptant celui de ce bout) : commence à resserrer le fil vers sa conclusion, sans ouvrir de nouvelle piste. L'histoire atterrit : écris un bout un peu plus court (2 phrases).`,
+          : `Il ne reste que ${remaining} choix avant la fin de l'histoire (en comptant celui de ce bout) : commence à resserrer le fil vers sa conclusion, sans ouvrir de nouvelle piste. L'histoire atterrit : écris un bout un peu plus court (2 phrases).`
       );
     }
   }
@@ -460,7 +466,7 @@ export function buildPrompt(
     lines.push(
       "",
       "La tentative précédente avait ces problèmes, corrige-les :",
-      ...corrections.map((c) => `- ${c}`),
+      ...corrections.map((c) => `- ${c}`)
     );
   }
 
@@ -471,25 +477,25 @@ async function generateOnce(
   input: GenerateBeatInput,
   attempt: number,
   corrections?: string[],
-  dropCustomPrompt = false,
+  dropCustomPrompt = false
 ): Promise<DynamicBeat> {
   const anthropic = createAnthropic({ apiKey: serverEnv.anthropicApiKey });
   const startedAt = Date.now();
   const { object, usage } = await generateObject({
     model: anthropic(serverEnv.storyModel),
+    prompt: buildPrompt(input, corrections, dropCustomPrompt),
     schema: isLanding(input) ? LANDING_BEAT_SCHEMA : BEAT_SCHEMA,
     system: buildSystem(input.lang),
-    prompt: buildPrompt(input, corrections, dropCustomPrompt),
   });
   logTextGen("beat", attempt, Date.now() - startedAt, usage);
 
   // Normalize the Zod array into the typed tuple shape.
   return {
-    title: object.title,
-    paragraphs: object.paragraphs,
     choices: object.choices ? [object.choices[0], object.choices[1]] : null,
     isFinal: object.isFinal,
+    paragraphs: object.paragraphs,
     sceneHint: object.sceneHint,
+    title: object.title,
   };
 }
 
@@ -510,15 +516,15 @@ async function generateOnce(
 export function coerceBeat(
   beat: DynamicBeat,
   heroName: string,
-  mustEnd: boolean,
+  mustEnd: boolean
 ): DynamicBeat | null {
   if (mustEnd || beat.isFinal) {
     const coerced: DynamicBeat = {
-      title: beat.title,
-      paragraphs: beat.paragraphs,
       choices: null,
       isFinal: true,
+      paragraphs: beat.paragraphs,
       sceneHint: beat.sceneHint,
+      title: beat.title,
     };
     return safetyProblems(coerced, heroName).length === 0 ? coerced : null;
   }
@@ -534,11 +540,11 @@ export function coerceBeat(
     b.length <= 60
   ) {
     const coerced: DynamicBeat = {
-      title: beat.title,
-      paragraphs: beat.paragraphs,
       choices: [a, b],
       isFinal: false,
+      paragraphs: beat.paragraphs,
       sceneHint: beat.sceneHint,
+      title: beat.title,
     };
     return safetyProblems(coerced, heroName).length === 0 ? coerced : null;
   }
@@ -547,26 +553,29 @@ export function coerceBeat(
 
 // ── Hidden story arc ("fil rouge") ──────────────────────────────────────────
 
-const arcSchema = z.object({
+// Exporté pour le script d'assertions (test:coherence) uniquement.
+// biome-ignore assist/source/useSortedKeys: l'ordre des clés EST le schéma JSON envoyé au modèle — épinglé par test:coherence.
+export const ARC_SCHEMA = z.object({
   arc: z
     .string()
     .min(1)
     .describe(
-      "Le fil de l'histoire en 2 ou 3 phrases simples : l'envie ou le petit but du héros, comment l'élément surprise sert concrètement en chemin, et l'image de la fin (rassurante, le héros rentre ou se repose).",
+      "Le fil de l'histoire en 2 ou 3 phrases simples : l'envie ou le petit but du héros, comment l'élément surprise sert concrètement en chemin, et l'image de la fin (rassurante, le héros rentre ou se repose)."
     ),
   visualWorld: z
     .string()
     .min(1)
     .describe(
-      "Le monde visuel de l'histoire, en UNE phrase concrète pour l'illustrateur : moment de la journée, saison, météo, ambiance lumineuse (ex. « fin d'après-midi d'été, lumière dorée, ciel dégagé »).",
+      "Le monde visuel de l'histoire, en UNE phrase concrète pour l'illustrateur : moment de la journée, saison, météo, ambiance lumineuse (ex. « fin d'après-midi d'été, lumière dorée, ciel dégagé »)."
     ),
   outfit: z
     .string()
     .min(1)
     .describe(
-      "La tenue vestimentaire de TOUS les héros, en UNE phrase concrète : les vêtements de CHAQUE héros (couleur + type), la même du début à la fin. C'est la garde-robe FIXE de toutes les illustrations (ex. « Jules en pull bleu et pantalon beige ; Zoé en veste verte »).",
+      "La tenue vestimentaire de TOUS les héros, en UNE phrase concrète : les vêtements de CHAQUE héros (couleur + type), la même du début à la fin. C'est la garde-robe FIXE de toutes les illustrations (ex. « Jules en pull bleu et pantalon beige ; Zoé en veste verte »)."
     ),
 });
+const arcSchema = ARC_SCHEMA;
 
 /**
  * The shared over-blocking safety scan (same bias as `safetyProblems`):
@@ -591,7 +600,7 @@ export function safeOutfitOrNull(outfit: string): string | null {
   const hit = scanForbidden(outfit);
   if (hit) {
     console.warn(
-      `[stories] story outfit dropped by the safety scan (matched « ${hit} »); illustrations keep prior clothing behavior.`,
+      `[stories] story outfit dropped by the safety scan (matched « ${hit} »); illustrations keep prior clothing behavior.`
     );
     return null;
   }
@@ -614,7 +623,7 @@ export function safeOutfitOrNull(outfit: string): string | null {
  * opening beat.
  */
 export async function generateStoryArc(
-  input: GenerateArcInput,
+  input: GenerateArcInput
 ): Promise<StoryArcResult | null> {
   if (!serverEnv.anthropicApiKey) {
     return null;
@@ -670,18 +679,19 @@ export async function generateStoryArc(
   // from a generation FAILURE when reading logs (a substring false positive on
   // the safety scan silently disables the feature; it must be visible).
   let dropReason = "generation never produced an arc";
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     const startedAt = Date.now();
     try {
+      // biome-ignore lint/performance/noAwaitInLoops: retries correctifs SÉQUENTIELS par design — chaque tentative dépend des problèmes de la précédente.
       const { object, usage } = await generateObject({
-        model: anthropic(serverEnv.storyModel),
-        schema: arcSchema,
-        system,
-        prompt: lines.join("\n"),
         // The arc gates the child-facing opening beat: a hung call must never
         // hold the waiting screen. Per-attempt cap → worst case ~30s, then the
         // story simply starts arc-less (best-effort contract above).
         abortSignal: AbortSignal.timeout(15_000),
+        model: anthropic(serverEnv.storyModel),
+        prompt: lines.join("\n"),
+        schema: arcSchema,
+        system,
       });
       logTextGen("arc", attempt + 1, Date.now() - startedAt, usage);
       const arc = object.arc.trim();
@@ -696,7 +706,7 @@ export async function generateStoryArc(
       if (!hit && arc.length > 0 && visualWorld.length > 0) {
         // The outfit is scanned SEPARATELY (see safeOutfitOrNull): a forbidden
         // word in the wardrobe drops only the outfit line, never the whole arc.
-        return { arc, visualWorld, outfit: safeOutfitOrNull(outfit) };
+        return { arc, outfit: safeOutfitOrNull(outfit), visualWorld };
       }
       dropReason = hit
         ? `arc text dropped by the safety scan (matched « ${hit} »)`
@@ -706,7 +716,7 @@ export async function generateStoryArc(
     }
   }
   console.warn(
-    `[stories] story arc unavailable — ${dropReason}; starting without one.`,
+    `[stories] story arc unavailable — ${dropReason}; starting without one.`
   );
   return null;
 }
@@ -732,21 +742,22 @@ export const anthropicDynamicProvider: DynamicTextProvider = {
     // flavour is not the cause of a schema mismatch).
     let lastSafetyFailed = false;
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
       if (attempt > 0) {
         // Corrective retry — say WHY, so a billed extra call is never silent.
         console.warn(
           `[stories] beat corrective retry ${attempt + 1}/${maxAttempts}` +
-            ` (safety=${lastSafetyFailed}): ${lastProblems.join(" | ")}`,
+            ` (safety=${lastSafetyFailed}): ${lastProblems.join(" | ")}`
         );
       }
       let beat: DynamicBeat;
       try {
+        // biome-ignore lint/performance/noAwaitInLoops: retries correctifs SÉQUENTIELS par design — chaque tentative dépend des problèmes de la précédente.
         beat = await generateOnce(
           input,
           attempt + 1,
           attempt === 0 ? undefined : lastProblems,
-          lastSafetyFailed,
+          lastSafetyFailed
         );
       } catch (genErr) {
         // A transient generation/parse failure (e.g. generateObject "response
@@ -762,7 +773,7 @@ export const anthropicDynamicProvider: DynamicTextProvider = {
         beat,
         heroName,
         input.mustEnd,
-        isLanding(input),
+        isLanding(input)
       );
       if (problems.length === 0) {
         return beat;
@@ -781,7 +792,7 @@ export const anthropicDynamicProvider: DynamicTextProvider = {
       if (coerced) {
         // Server-side diagnostic (TanStack swallows thrown errors client-side).
         console.warn(
-          `[stories] beat coerced after ${maxAttempts} attempts (mustEnd=${input.mustEnd}); text was safe. Problems: ${lastProblems.join("; ")}`,
+          `[stories] beat coerced after ${maxAttempts} attempts (mustEnd=${input.mustEnd}); text was safe. Problems: ${lastProblems.join("; ")}`
         );
         return coerced;
       }
@@ -792,10 +803,10 @@ export const anthropicDynamicProvider: DynamicTextProvider = {
     // retries the current beat without losing prior segments.
     // Server-side diagnostic (TanStack swallows thrown errors client-side).
     console.error(
-      `[stories] beat generation failed after ${maxAttempts} attempts (mustEnd=${input.mustEnd}). Problems: ${lastProblems.join("; ")}`,
+      `[stories] beat generation failed after ${maxAttempts} attempts (mustEnd=${input.mustEnd}). Problems: ${lastProblems.join("; ")}`
     );
     throw new Error(
-      `Le bout généré ne respecte pas les règles : ${lastProblems.join(" ")}`,
+      `Le bout généré ne respecte pas les règles : ${lastProblems.join(" ")}`
     );
   },
 };

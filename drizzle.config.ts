@@ -6,11 +6,11 @@ config({ path: ".env.local" });
 config({ path: ".env" });
 
 export default defineConfig({
-  schema: "./src/server/db/schema.ts",
-  out: "./drizzle",
-  dialect: "turso",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "",
     authToken: process.env.TURSO_AUTH_TOKEN ?? "",
+    url: process.env.DATABASE_URL ?? "",
   },
+  dialect: "turso",
+  out: "./drizzle",
+  schema: "./src/server/db/schema.ts",
 });

@@ -6,17 +6,17 @@ import { Textarea } from "~/components/ui/textarea";
 import type { DbPlace } from "~/server/db/schema";
 
 export interface PlaceFormValues {
-  label: string;
   emoji?: string;
   imagePath?: string;
+  label: string;
   promptHint: string;
 }
 
 interface PlaceFormProps {
   // Undefined = a new place; a row = editing it.
   initial?: DbPlace;
-  onSubmit: (values: PlaceFormValues) => void | Promise<void>;
   onCancel: () => void;
+  onSubmit: (values: PlaceFormValues) => void | Promise<void>;
 }
 
 // Nudge the shared UI defaults (14px on desktop) up one step so the parent tool
@@ -46,9 +46,9 @@ export function PlaceForm({ initial, onSubmit, onCancel }: PlaceFormProps) {
     setSubmitting(true);
     try {
       await onSubmit({
-        label: label.trim(),
         emoji: emoji.trim() || undefined,
         imagePath: imagePath.trim() || undefined,
+        label: label.trim(),
         promptHint: promptHint.trim(),
       });
     } finally {

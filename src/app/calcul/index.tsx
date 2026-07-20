@@ -51,7 +51,7 @@ import { getMathSettingsFn, type MathSettings } from "~/server/math-functions";
 function withTimeout<T>(
   promise: Promise<T>,
   fallback: T,
-  ms = 3000,
+  ms = 3000
 ): Promise<T> {
   return Promise.race([
     promise.catch(() => fallback),
@@ -60,6 +60,7 @@ function withTimeout<T>(
 }
 
 export const Route = createFileRoute("/calcul/")({
+  component: CalculWorkshopPage,
   // Network resilience (eng-review 2A): a DB outage or hang NEVER blocks the
   // child — the loader swallows failures AND bounds waits with a short
   // timeout; the component falls back to the palier cached on this device.
@@ -71,12 +72,11 @@ export const Route = createFileRoute("/calcul/")({
       withTimeout(listDoudousFn(), []),
     ]);
     return {
-      settings,
-      heroName: heroes[0]?.label ?? null,
       doudouName: doudous[0]?.label ?? null,
+      heroName: heroes[0]?.label ?? null,
+      settings,
     };
   },
-  component: CalculWorkshopPage,
 });
 
 const SETTINGS_CACHE_KEY = "calcul:settings";
@@ -120,7 +120,7 @@ function isCellRef(value: unknown): value is CellRef {
  */
 function pencilAdvance(cell: CellRef): CellRef {
   return cell.row === "result" && cell.col > 0
-    ? { row: "result", col: cell.col - 1 }
+    ? { col: cell.col - 1, row: "result" }
     : cell;
 }
 
@@ -157,7 +157,7 @@ function writeJson(key: string, value: unknown) {
 function readResumableSerie(
   famille: Operation,
   palierId: string,
-  serieSize: number,
+  serieSize: number
 ): SerieState | null {
   const key = serieStorageKeyOf(famille);
   const saved = readJson<SerieState>(key);
@@ -237,7 +237,7 @@ function CalculWorkshopPage() {
     }
     if (legacyStr !== null) {
       const legacy = bridgeLegacySerie(
-        readJson<unknown>(LEGACY_SERIE_STATE_KEY),
+        readJson<unknown>(LEGACY_SERIE_STATE_KEY)
       );
       if (legacy) {
         const target = serieStorageKeyOf(legacy.famille);
@@ -260,7 +260,7 @@ function CalculWorkshopPage() {
 
     function finishSettings() {
       const normalized = normalizeFamilySettings(
-        dbSettings ?? readJson<unknown>(SETTINGS_CACHE_KEY),
+        dbSettings ?? readJson<unknown>(SETTINGS_CACHE_KEY)
       );
       // Le cache appareil ne mémorise que des réglages AUTHORITATIFS
       // (adversarial #3) : des défauts servis pendant la fenêtre
@@ -306,7 +306,7 @@ function CalculWorkshopPage() {
     (serie.index >= serie.serieSize || serie.perOp.length === 0);
   useEffect(() => {
     if (finished && serie) {
-      setPhase({ kind: "tidied", famille: serie.famille });
+      setPhase({ famille: serie.famille, kind: "tidied" });
     }
   }, [finished, serie]);
   useEffect(() => {
@@ -338,7 +338,7 @@ function CalculWorkshopPage() {
       serieSeed !== undefined && serieSize !== undefined
         ? safeGenerateSerie(palier, serieSeed, serieSize)
         : [],
-    [serieSeed, serieSize, palier],
+    [serieSeed, serieSize, palier]
   );
 
   // L'état « sorti » des plateaux : lecture localStorage + vérification
@@ -355,7 +355,7 @@ function CalculWorkshopPage() {
         readResumableSerie(
           f.op,
           resolvePalierForFamille(f.op, f.palier).id,
-          settings.serieSize,
+          settings.serieSize
         ) !== null,
     }));
   }, [settings, phase]);
@@ -371,7 +371,7 @@ function CalculWorkshopPage() {
     const saved = readResumableSerie(op, palierForOp.id, settings.serieSize);
     setSelected(null);
     setSerie(saved ?? freshSerie(op, palierForOp, settings.serieSize));
-    setPhase({ kind: "serie", famille: op });
+    setPhase({ famille: op, kind: "serie" });
   }
 
   /** « Reposer le plateau » (T2/D-4A) : retour à l'étagère, sans perte —
@@ -426,7 +426,7 @@ function CalculWorkshopPage() {
         return prev;
       }
       const perOp = prev.perOp.map((op, i) =>
-        i === prev.index ? { ...op, ...update } : op,
+        i === prev.index ? { ...op, ...update } : op
       );
       return { ...prev, perOp };
     });
@@ -449,12 +449,12 @@ function CalculWorkshopPage() {
         return prev;
       }
       const entries: GridEntries = {
-        result: [...op.entries.result],
         carries: [...op.entries.carries],
+        result: [...op.entries.result],
       };
       entries[rowKey][cell.col] = value;
       const perOp = prev.perOp.map((o, i) =>
-        i === prev.index ? { ...o, entries } : o,
+        i === prev.index ? { ...o, entries } : o
       );
       return { ...prev, perOp };
     });
@@ -549,8 +549,8 @@ function CalculWorkshopPage() {
         {heroName ? (
           <p className="max-w-md text-center text-muted-foreground text-xl leading-relaxed">
             {enonceFor(operation, {
-              hero: heroName,
               doudou: doudouName ?? undefined,
+              hero: heroName,
             })}
           </p>
         ) : null}
@@ -602,7 +602,7 @@ function CalculWorkshopPage() {
             <span
               className={cn(
                 DIGIT_TILE_CLASSES,
-                "flex items-center justify-center border bg-background shadow-md",
+                "flex items-center justify-center border bg-background shadow-md"
               )}
             >
               {dragDigit}
@@ -691,7 +691,7 @@ function FadeIn({ children }: { children: React.ReactNode }) {
     <div
       className={cn(
         "flex w-full flex-1 flex-col transition-opacity duration-300 motion-reduce:transition-none",
-        visible ? "opacity-100" : "opacity-0 motion-reduce:opacity-100",
+        visible ? "opacity-100" : "opacity-0 motion-reduce:opacity-100"
       )}
     >
       {children}
@@ -702,23 +702,23 @@ function FadeIn({ children }: { children: React.ReactNode }) {
 function freshSerie(
   famille: Operation,
   palier: Palier,
-  serieSize: number,
+  serieSize: number
 ): SerieState {
   // Le seed naît à la PRISE du plateau (T1 : plus de seed pré-engagé).
   const seed = newSerieSeed();
   const ops = safeGenerateSerie(palier, seed, serieSize);
   return {
     famille,
-    palierId: palier.id,
-    serieSize,
-    seed,
     // ops vide (palier cassé, cas théorique) : perOp vide → le rendu tombe
     // sur l'état "rangé" via le garde operation/current — dégradation calme.
     index: 0,
     opsFingerprint: fingerprintOps(ops),
+    palierId: palier.id,
     perOp: ops.map((op) => ({
-      entries: emptyEntries(layoutOperation(op)),
       done: false,
+      entries: emptyEntries(layoutOperation(op)),
     })),
+    seed,
+    serieSize,
   };
 }

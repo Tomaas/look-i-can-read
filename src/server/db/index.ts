@@ -7,8 +7,8 @@ import * as schema from "./schema";
 // no local/offline mode. Schema is applied to the remote db via drizzle
 // migrations (`bun run db:migrate`). Generated media stays on local disk.
 const client = createClient({
-  url: serverEnv.databaseUrl,
   authToken: serverEnv.tursoAuthToken,
+  url: serverEnv.databaseUrl,
 });
 
 export const db = drizzle(client, { schema });

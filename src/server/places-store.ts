@@ -32,12 +32,12 @@ export async function seedPlacesIfNeeded(): Promise<void> {
     .insert(places)
     .values(
       legacyPlaces.map((p, i) => ({
+        emoji: p.emoji,
         id: p.id,
         label: p.label,
-        emoji: p.emoji,
         promptHint: p.promptHint,
         sort: i,
-      })),
+      }))
     )
     .onConflictDoNothing()
     .run();
@@ -51,7 +51,7 @@ export async function seedPlacesIfNeeded(): Promise<void> {
  * after that, history never reads the table.
  */
 export async function resolvePlaceForCreation(
-  placeId: string,
+  placeId: string
 ): Promise<{ label: string; promptHint: string } | null> {
   await seedPlacesIfNeeded();
   const [row] = await db.select().from(places).where(eq(places.id, placeId));

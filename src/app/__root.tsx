@@ -10,33 +10,6 @@ import { appConfig } from "~/config/app";
 import appCss from "./globals.css?url";
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
-      },
-      { title: appConfig.name },
-      {
-        name: "description",
-        content: appConfig.description,
-      },
-    ],
-    links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      {
-        rel: "preconnect",
-        href: "https://fonts.gstatic.com",
-        crossOrigin: "anonymous",
-      },
-      { rel: "stylesheet", href: appCss },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Quicksand:wght@400..700&display=swap",
-      },
-    ],
-  }),
   component: RootComponent,
   errorComponent: () => (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center">
@@ -45,16 +18,43 @@ export const Route = createRootRoute({
       <p className="text-muted-foreground text-xl">
         On range tout et on recommence dans un instant.
       </p>
-      <a className="text-primary text-2xl underline" href="/">
+      <a className="text-2xl text-primary underline" href="/">
         Revenir à l'accueil
       </a>
     </div>
   ),
+  head: () => ({
+    links: [
+      { href: "https://fonts.googleapis.com", rel: "preconnect" },
+      {
+        crossOrigin: "anonymous",
+        href: "https://fonts.gstatic.com",
+        rel: "preconnect",
+      },
+      { href: appCss, rel: "stylesheet" },
+      {
+        href: "https://fonts.googleapis.com/css2?family=Quicksand:wght@400..700&display=swap",
+        rel: "stylesheet",
+      },
+    ],
+    meta: [
+      { charSet: "utf-8" },
+      {
+        content: "width=device-width, initial-scale=1",
+        name: "viewport",
+      },
+      { title: appConfig.name },
+      {
+        content: appConfig.description,
+        name: "description",
+      },
+    ],
+  }),
   notFoundComponent: () => (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center">
       <p className="text-4xl">🐚</p>
       <h1 className="font-bold text-3xl">Cette page n'existe pas</h1>
-      <a className="text-primary text-2xl underline" href="/">
+      <a className="text-2xl text-primary underline" href="/">
         Revenir à l'accueil
       </a>
     </div>

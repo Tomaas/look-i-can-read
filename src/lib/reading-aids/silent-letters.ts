@@ -29,12 +29,12 @@ import { VOWELS } from "./liaisons";
 import type { WordInfo } from "./word-info";
 
 export interface SilentContext {
-  /** Last segment of the previous word (ils/elles gate for -ent verbs). */
-  prevLastSeg: string | null;
-  /** The next word (contextual `plus` rule); null at paragraph end. */
-  next: WordInfo | null;
   /** The final consonant is consumed (pronounced) by a liaison. */
   liaisonConsumesFinal: boolean;
+  /** The next word (contextual `plus` rule); null at paragraph end. */
+  next: WordInfo | null;
+  /** Last segment of the previous word (ils/elles gate for -ent verbs). */
+  prevLastSeg: string | null;
 }
 
 /**
@@ -42,8 +42,8 @@ export interface SilentContext {
  * Shared by the direct rule and the plural cascade (cha(ts) = chat + s).
  */
 function finalConsonantSilent(seg: string): boolean {
-  const last = seg.charAt(seg.length - 1);
-  const beforeLast = seg.charAt(seg.length - 2);
+  const last: string | undefined = seg.at(-1);
+  const beforeLast = seg.at(-2);
   switch (last) {
     case "s":
       return !S_NEVER_MARK.has(seg);
@@ -75,7 +75,7 @@ function sightWordRule(seg: string): number[] | null {
     return null;
   }
   const silent: number[] = [];
-  for (let i = 0; i < mask.length; i++) {
+  for (let i = 0; i < mask.length; i += 1) {
     if (mask.charAt(i) === "x") {
       silent.push(i);
     }
@@ -109,8 +109,8 @@ function entRule(seg: string, prevLastSeg: string | null): number[] | null {
  * pronounced (vert(es), petit(e)).
  */
 function silentERule(seg: string): number[] | null {
-  const last = seg.charAt(seg.length - 1);
-  if (last === "s" && seg.charAt(seg.length - 2) === "e") {
+  const last = seg.at(-1);
+  if (last === "s" && seg.at(-2) === "e") {
     return ES_S_ONLY.has(seg)
       ? [seg.length - 1]
       : [seg.length - 2, seg.length - 1];

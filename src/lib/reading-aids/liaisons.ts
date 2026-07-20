@@ -78,13 +78,13 @@ function triggersLiaison(prev: WordInfo | null, w1: WordInfo): boolean {
 export function decideLiaison(
   prev: WordInfo | null,
   w1: WordInfo,
-  w2: WordInfo,
+  w2: WordInfo
 ): boolean {
   // Any punctuation between the words kills the liaison (les, amis).
   if (w1.trail !== "" || w1.hasDigit || w1.norm === "") {
     return false;
   }
-  if (!LIAISON_FINALS.has(w1.norm.charAt(w1.norm.length - 1))) {
+  if (!LIAISON_FINALS.has(w1.norm.at(-1) ?? "")) {
     return false;
   }
   return acceptsLiaison(w2) && triggersLiaison(prev, w1);

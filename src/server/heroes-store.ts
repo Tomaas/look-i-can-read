@@ -18,9 +18,9 @@ import { heroes } from "~/server/db/schema";
  * codex #2). */
 export interface ResolvedHero {
   id: string;
+  imageHint: string;
   label: string;
   promptHint: string;
-  imageHint: string;
 }
 
 /**
@@ -42,13 +42,13 @@ export async function seedHeroesIfNeeded(): Promise<void> {
     .insert(heroes)
     .values(
       legacyHeroes.map((h, i) => ({
-        id: h.id,
-        label: h.label,
         emoji: h.emoji,
-        promptHint: h.promptHint,
+        id: h.id,
         imageHint: h.imageHint,
+        label: h.label,
+        promptHint: h.promptHint,
         sort: i,
-      })),
+      }))
     )
     .onConflictDoNothing()
     .run();
@@ -63,7 +63,7 @@ export async function seedHeroesIfNeeded(): Promise<void> {
  * z.array().min(1) only proves ids were submitted, not that rows were found.
  */
 export async function resolveHeroesForCreation(
-  heroIds: string[],
+  heroIds: string[]
 ): Promise<ResolvedHero[]> {
   const uniqueIds = [...new Set(heroIds)];
   if (uniqueIds.length === 0) {
@@ -82,9 +82,9 @@ export async function resolveHeroesForCreation(
     if (row) {
       resolved.push({
         id: row.id,
+        imageHint: row.imageHint,
         label: row.label,
         promptHint: row.promptHint,
-        imageHint: row.imageHint,
       });
       continue;
     }
@@ -92,9 +92,9 @@ export async function resolveHeroesForCreation(
     if (legacy) {
       resolved.push({
         id: legacy.id,
+        imageHint: legacy.imageHint,
         label: legacy.label,
         promptHint: legacy.promptHint,
-        imageHint: legacy.imageHint,
       });
     }
   }

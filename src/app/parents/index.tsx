@@ -11,43 +11,43 @@ export const Route = createFileRoute("/parents/")({
 // emoji + one-line description style of the lists inside each sub-page.
 const SECTIONS = [
   {
-    to: "/parents/heroes",
-    emoji: "🧒",
-    title: "Les héros",
     description:
       "Les personnages proposés à l'enfant. Ajoute, modifie ou retire un héros.",
+    emoji: "🧒",
+    title: "Les héros",
+    to: "/parents/heroes",
   },
   {
-    to: "/parents/lieux",
+    description: "Les endroits où l'histoire peut se passer.",
     emoji: "📍",
     title: "Les lieux",
-    description: "Les endroits où l'histoire peut se passer.",
+    to: "/parents/lieux",
   },
   {
-    to: "/parents/elements",
+    description: "Les éléments surprise qui pimentent l'histoire.",
     emoji: "✨",
     title: "Les éléments",
-    description: "Les éléments surprise qui pimentent l'histoire.",
+    to: "/parents/elements",
   },
   {
-    to: "/parents/doudous",
+    description: "Les compagnons rassurants, toujours facultatifs.",
     emoji: "🧸",
     title: "Les doudous",
-    description: "Les compagnons rassurants, toujours facultatifs.",
+    to: "/parents/doudous",
   },
   {
-    to: "/parents/calcul",
-    emoji: "🔢",
-    title: "Les calculs",
     description:
       "Le palier des opérations posées, la taille des séries et les fiches à imprimer.",
+    emoji: "🔢",
+    title: "Les calculs",
+    to: "/parents/calcul",
   },
   {
-    to: "/parents/image-model",
-    emoji: "🎨",
-    title: "Le modèle d'image",
     description:
       "Choisis le modèle Google qui dessine les illustrations (qualité / prix / vitesse).",
+    emoji: "🎨",
+    title: "Le modèle d'image",
+    to: "/parents/image-model",
   },
 ] as const;
 

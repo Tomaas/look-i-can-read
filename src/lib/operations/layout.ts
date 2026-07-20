@@ -12,31 +12,31 @@
 import type { GeneratedOperation, Operation } from "~/lib/operations/types";
 
 export interface OperationLayout {
-  op: Operation;
-  /** Nombre de colonnes numériques (celles du résultat, les plus larges). */
-  columnCount: number;
   /**
    * Cases de retenue au-dessus des colonnes, indexées de gauche à droite.
    * true = une retenue/un emprunt peut s'écrire là (jamais sur les unités).
    */
   carrySlots: boolean[];
+  /** Nombre de colonnes numériques (celles du résultat, les plus larges). */
+  columnCount: number;
+  /** Chiffres attendus du résultat, alignés sur columnCount ("" à gauche). */
+  expectedDigits: string[];
+  op: Operation;
   /** Rangées d'opérandes : chiffres alignés à droite, "" pour case vide. */
   operandRows: string[][];
   sign: "+" | "−" | "×";
-  /** Chiffres attendus du résultat, alignés sur columnCount ("" à gauche). */
-  expectedDigits: string[];
 }
 
 function padLeft(digits: string, width: number): string[] {
   return Array.from({ length: width - digits.length }, () => "").concat(
-    digits.split(""),
+    digits.split("")
   );
 }
 
 const SIGNS: Record<Operation, "+" | "−" | "×"> = {
   addition: "+",
-  soustraction: "−",
   multiplication: "×",
+  soustraction: "−",
 };
 
 export function layoutOperation(op: GeneratedOperation): OperationLayout {
@@ -44,23 +44,23 @@ export function layoutOperation(op: GeneratedOperation): OperationLayout {
   const columnCount = Math.max(
     expectedStr.length,
     String(op.a).length,
-    String(op.b).length,
+    String(op.b).length
   );
   // Une retenue peut s'écrire au-dessus de toute colonne sauf celle des
   // unités (colonne la plus à droite) ; l'emprunt se note pareil, en haut.
   const carrySlots = Array.from(
     { length: columnCount },
-    (_, i) => i < columnCount - 1,
+    (_, i) => i < columnCount - 1
   );
   return {
-    op: op.op,
-    columnCount,
     carrySlots,
+    columnCount,
+    expectedDigits: padLeft(expectedStr, columnCount),
+    op: op.op,
     operandRows: [
       padLeft(String(op.a), columnCount),
       padLeft(String(op.b), columnCount),
     ],
     sign: SIGNS[op.op],
-    expectedDigits: padLeft(expectedStr, columnCount),
   };
 }
