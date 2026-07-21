@@ -3,16 +3,26 @@ import {
   HeadContent,
   Outlet,
   Scripts,
+  useRouterState,
 } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { Toaster } from "~/components/ui/sonner";
 import { appConfig } from "~/config/app";
 import appCss from "./globals.css?url";
 
+/**
+ * Écrans d'erreur/404 AUTO-CONTENUS (eng-review D24-A) : le shell est
+ * route-aware (plein-bleed pour la couche bureau) — ces écrans apportent donc
+ * leur propre conteneur centré, pour rendre cohérents dans les deux modes
+ * (jamais un plein-bleed cassé après un crash dans la fenêtre).
+ */
+const CALM_SCREEN_CLASS =
+  "mx-auto flex min-h-[80vh] w-full max-w-5xl flex-col items-center justify-center gap-6 px-6 py-10 text-center";
+
 export const Route = createRootRoute({
   component: RootComponent,
   errorComponent: () => (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center">
+    <div className={CALM_SCREEN_CLASS}>
       <p className="text-4xl">🌙</p>
       <h1 className="font-bold text-3xl">Oups, un petit souci</h1>
       <p className="text-muted-foreground text-xl">
@@ -51,7 +61,7 @@ export const Route = createRootRoute({
     ],
   }),
   notFoundComponent: () => (
-    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 text-center">
+    <div className={CALM_SCREEN_CLASS}>
       <p className="text-4xl">🐚</p>
       <h1 className="font-bold text-3xl">Cette page n'existe pas</h1>
       <a className="text-2xl text-primary underline" href="/">
@@ -62,23 +72,37 @@ export const Route = createRootRoute({
 });
 
 export function RootComponent() {
+  // Shell route-aware (voix extérieure T5) : la couche bureau (portrait,
+  // bureau, fenêtre) a besoin du plein-bleed ; /parents — hors de l'OS —
+  // garde le conteneur d'origine. Fonctionne au SSR (l'état du router est
+  // disponible côté serveur), donc aucun flash de shell.
+  const estParents = useRouterState({
+    select: (s) => s.location.pathname.startsWith("/parents"),
+  });
   return (
-    <RootDocument>
+    <RootDocument conteneur={estParents}>
       <Outlet />
     </RootDocument>
   );
 }
 
-export function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
+export function RootDocument({
+  children,
+  conteneur,
+}: Readonly<{ children: ReactNode; conteneur: boolean }>) {
   return (
     <html lang="fr">
       <head>
         <HeadContent />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased">
-        <div className="mx-auto min-h-screen max-w-5xl px-6 py-10">
-          {children}
-        </div>
+        {conteneur ? (
+          <div className="mx-auto min-h-screen max-w-5xl px-6 py-10">
+            {children}
+          </div>
+        ) : (
+          children
+        )}
         <Toaster />
         <Scripts />
       </body>

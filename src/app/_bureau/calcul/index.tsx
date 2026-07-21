@@ -59,7 +59,7 @@ function withTimeout<T>(
   ]);
 }
 
-export const Route = createFileRoute("/calcul/")({
+export const Route = createFileRoute("/_bureau/calcul/")({
   component: CalculWorkshopPage,
   // Network resilience (eng-review 2A): a DB outage or hang NEVER blocks the
   // child — the loader swallows failures AND bounds waits with a short

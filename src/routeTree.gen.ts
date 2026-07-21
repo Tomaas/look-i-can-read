@@ -9,11 +9,9 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './app/__root'
-import { Route as BibliothequeRouteImport } from './app/bibliotheque'
+import { Route as BureauRouteRouteImport } from './app/_bureau/route'
 import { Route as IndexRouteImport } from './app/index'
 import { Route as ParentsIndexRouteImport } from './app/parents/index'
-import { Route as CalculIndexRouteImport } from './app/calcul/index'
-import { Route as AventureIndexRouteImport } from './app/aventure/index'
 import { Route as ParentsLieuxRouteImport } from './app/parents/lieux'
 import { Route as ParentsImageModelRouteImport } from './app/parents/image-model'
 import { Route as ParentsHeroesRouteImport } from './app/parents/heroes'
@@ -21,11 +19,13 @@ import { Route as ParentsElementsRouteImport } from './app/parents/elements'
 import { Route as ParentsDoudousRouteImport } from './app/parents/doudous'
 import { Route as ParentsCalculRouteImport } from './app/parents/calcul'
 import { Route as DataSplatRouteImport } from './app/data.$'
-import { Route as AventureIdRouteImport } from './app/aventure/$id'
+import { Route as BureauBibliothequeRouteImport } from './app/_bureau/bibliotheque'
+import { Route as BureauCalculIndexRouteImport } from './app/_bureau/calcul/index'
+import { Route as BureauAventureIndexRouteImport } from './app/_bureau/aventure/index'
+import { Route as BureauAventureIdRouteImport } from './app/_bureau/aventure/$id'
 
-const BibliothequeRoute = BibliothequeRouteImport.update({
-  id: '/bibliotheque',
-  path: '/bibliotheque',
+const BureauRouteRoute = BureauRouteRouteImport.update({
+  id: '/_bureau',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -36,16 +36,6 @@ const IndexRoute = IndexRouteImport.update({
 const ParentsIndexRoute = ParentsIndexRouteImport.update({
   id: '/parents/',
   path: '/parents/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CalculIndexRoute = CalculIndexRouteImport.update({
-  id: '/calcul/',
-  path: '/calcul/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AventureIndexRoute = AventureIndexRouteImport.update({
-  id: '/aventure/',
-  path: '/aventure/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ParentsLieuxRoute = ParentsLieuxRouteImport.update({
@@ -83,16 +73,30 @@ const DataSplatRoute = DataSplatRouteImport.update({
   path: '/data/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AventureIdRoute = AventureIdRouteImport.update({
+const BureauBibliothequeRoute = BureauBibliothequeRouteImport.update({
+  id: '/bibliotheque',
+  path: '/bibliotheque',
+  getParentRoute: () => BureauRouteRoute,
+} as any)
+const BureauCalculIndexRoute = BureauCalculIndexRouteImport.update({
+  id: '/calcul/',
+  path: '/calcul/',
+  getParentRoute: () => BureauRouteRoute,
+} as any)
+const BureauAventureIndexRoute = BureauAventureIndexRouteImport.update({
+  id: '/aventure/',
+  path: '/aventure/',
+  getParentRoute: () => BureauRouteRoute,
+} as any)
+const BureauAventureIdRoute = BureauAventureIdRouteImport.update({
   id: '/aventure/$id',
   path: '/aventure/$id',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => BureauRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/bibliotheque': typeof BibliothequeRoute
-  '/aventure/$id': typeof AventureIdRoute
+  '/bibliotheque': typeof BureauBibliothequeRoute
   '/data/$': typeof DataSplatRoute
   '/parents/calcul': typeof ParentsCalculRoute
   '/parents/doudous': typeof ParentsDoudousRoute
@@ -100,14 +104,14 @@ export interface FileRoutesByFullPath {
   '/parents/heroes': typeof ParentsHeroesRoute
   '/parents/image-model': typeof ParentsImageModelRoute
   '/parents/lieux': typeof ParentsLieuxRoute
-  '/aventure/': typeof AventureIndexRoute
-  '/calcul/': typeof CalculIndexRoute
   '/parents/': typeof ParentsIndexRoute
+  '/aventure/$id': typeof BureauAventureIdRoute
+  '/aventure/': typeof BureauAventureIndexRoute
+  '/calcul/': typeof BureauCalculIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/bibliotheque': typeof BibliothequeRoute
-  '/aventure/$id': typeof AventureIdRoute
+  '/bibliotheque': typeof BureauBibliothequeRoute
   '/data/$': typeof DataSplatRoute
   '/parents/calcul': typeof ParentsCalculRoute
   '/parents/doudous': typeof ParentsDoudousRoute
@@ -115,15 +119,16 @@ export interface FileRoutesByTo {
   '/parents/heroes': typeof ParentsHeroesRoute
   '/parents/image-model': typeof ParentsImageModelRoute
   '/parents/lieux': typeof ParentsLieuxRoute
-  '/aventure': typeof AventureIndexRoute
-  '/calcul': typeof CalculIndexRoute
   '/parents': typeof ParentsIndexRoute
+  '/aventure/$id': typeof BureauAventureIdRoute
+  '/aventure': typeof BureauAventureIndexRoute
+  '/calcul': typeof BureauCalculIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/bibliotheque': typeof BibliothequeRoute
-  '/aventure/$id': typeof AventureIdRoute
+  '/_bureau': typeof BureauRouteRouteWithChildren
+  '/_bureau/bibliotheque': typeof BureauBibliothequeRoute
   '/data/$': typeof DataSplatRoute
   '/parents/calcul': typeof ParentsCalculRoute
   '/parents/doudous': typeof ParentsDoudousRoute
@@ -131,16 +136,16 @@ export interface FileRoutesById {
   '/parents/heroes': typeof ParentsHeroesRoute
   '/parents/image-model': typeof ParentsImageModelRoute
   '/parents/lieux': typeof ParentsLieuxRoute
-  '/aventure/': typeof AventureIndexRoute
-  '/calcul/': typeof CalculIndexRoute
   '/parents/': typeof ParentsIndexRoute
+  '/_bureau/aventure/$id': typeof BureauAventureIdRoute
+  '/_bureau/aventure/': typeof BureauAventureIndexRoute
+  '/_bureau/calcul/': typeof BureauCalculIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/bibliotheque'
-    | '/aventure/$id'
     | '/data/$'
     | '/parents/calcul'
     | '/parents/doudous'
@@ -148,14 +153,14 @@ export interface FileRouteTypes {
     | '/parents/heroes'
     | '/parents/image-model'
     | '/parents/lieux'
+    | '/parents/'
+    | '/aventure/$id'
     | '/aventure/'
     | '/calcul/'
-    | '/parents/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/bibliotheque'
-    | '/aventure/$id'
     | '/data/$'
     | '/parents/calcul'
     | '/parents/doudous'
@@ -163,14 +168,15 @@ export interface FileRouteTypes {
     | '/parents/heroes'
     | '/parents/image-model'
     | '/parents/lieux'
+    | '/parents'
+    | '/aventure/$id'
     | '/aventure'
     | '/calcul'
-    | '/parents'
   id:
     | '__root__'
     | '/'
-    | '/bibliotheque'
-    | '/aventure/$id'
+    | '/_bureau'
+    | '/_bureau/bibliotheque'
     | '/data/$'
     | '/parents/calcul'
     | '/parents/doudous'
@@ -178,15 +184,15 @@ export interface FileRouteTypes {
     | '/parents/heroes'
     | '/parents/image-model'
     | '/parents/lieux'
-    | '/aventure/'
-    | '/calcul/'
     | '/parents/'
+    | '/_bureau/aventure/$id'
+    | '/_bureau/aventure/'
+    | '/_bureau/calcul/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  BibliothequeRoute: typeof BibliothequeRoute
-  AventureIdRoute: typeof AventureIdRoute
+  BureauRouteRoute: typeof BureauRouteRouteWithChildren
   DataSplatRoute: typeof DataSplatRoute
   ParentsCalculRoute: typeof ParentsCalculRoute
   ParentsDoudousRoute: typeof ParentsDoudousRoute
@@ -194,18 +200,16 @@ export interface RootRouteChildren {
   ParentsHeroesRoute: typeof ParentsHeroesRoute
   ParentsImageModelRoute: typeof ParentsImageModelRoute
   ParentsLieuxRoute: typeof ParentsLieuxRoute
-  AventureIndexRoute: typeof AventureIndexRoute
-  CalculIndexRoute: typeof CalculIndexRoute
   ParentsIndexRoute: typeof ParentsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/bibliotheque': {
-      id: '/bibliotheque'
-      path: '/bibliotheque'
-      fullPath: '/bibliotheque'
-      preLoaderRoute: typeof BibliothequeRouteImport
+    '/_bureau': {
+      id: '/_bureau'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof BureauRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -220,20 +224,6 @@ declare module '@tanstack/react-router' {
       path: '/parents'
       fullPath: '/parents/'
       preLoaderRoute: typeof ParentsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/calcul/': {
-      id: '/calcul/'
-      path: '/calcul'
-      fullPath: '/calcul/'
-      preLoaderRoute: typeof CalculIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/aventure/': {
-      id: '/aventure/'
-      path: '/aventure'
-      fullPath: '/aventure/'
-      preLoaderRoute: typeof AventureIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/parents/lieux': {
@@ -285,20 +275,58 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DataSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/aventure/$id': {
-      id: '/aventure/$id'
+    '/_bureau/bibliotheque': {
+      id: '/_bureau/bibliotheque'
+      path: '/bibliotheque'
+      fullPath: '/bibliotheque'
+      preLoaderRoute: typeof BureauBibliothequeRouteImport
+      parentRoute: typeof BureauRouteRoute
+    }
+    '/_bureau/calcul/': {
+      id: '/_bureau/calcul/'
+      path: '/calcul'
+      fullPath: '/calcul/'
+      preLoaderRoute: typeof BureauCalculIndexRouteImport
+      parentRoute: typeof BureauRouteRoute
+    }
+    '/_bureau/aventure/': {
+      id: '/_bureau/aventure/'
+      path: '/aventure'
+      fullPath: '/aventure/'
+      preLoaderRoute: typeof BureauAventureIndexRouteImport
+      parentRoute: typeof BureauRouteRoute
+    }
+    '/_bureau/aventure/$id': {
+      id: '/_bureau/aventure/$id'
       path: '/aventure/$id'
       fullPath: '/aventure/$id'
-      preLoaderRoute: typeof AventureIdRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof BureauAventureIdRouteImport
+      parentRoute: typeof BureauRouteRoute
     }
   }
 }
 
+interface BureauRouteRouteChildren {
+  BureauBibliothequeRoute: typeof BureauBibliothequeRoute
+  BureauAventureIdRoute: typeof BureauAventureIdRoute
+  BureauAventureIndexRoute: typeof BureauAventureIndexRoute
+  BureauCalculIndexRoute: typeof BureauCalculIndexRoute
+}
+
+const BureauRouteRouteChildren: BureauRouteRouteChildren = {
+  BureauBibliothequeRoute: BureauBibliothequeRoute,
+  BureauAventureIdRoute: BureauAventureIdRoute,
+  BureauAventureIndexRoute: BureauAventureIndexRoute,
+  BureauCalculIndexRoute: BureauCalculIndexRoute,
+}
+
+const BureauRouteRouteWithChildren = BureauRouteRoute._addFileChildren(
+  BureauRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  BibliothequeRoute: BibliothequeRoute,
-  AventureIdRoute: AventureIdRoute,
+  BureauRouteRoute: BureauRouteRouteWithChildren,
   DataSplatRoute: DataSplatRoute,
   ParentsCalculRoute: ParentsCalculRoute,
   ParentsDoudousRoute: ParentsDoudousRoute,
@@ -306,8 +334,6 @@ const rootRouteChildren: RootRouteChildren = {
   ParentsHeroesRoute: ParentsHeroesRoute,
   ParentsImageModelRoute: ParentsImageModelRoute,
   ParentsLieuxRoute: ParentsLieuxRoute,
-  AventureIndexRoute: AventureIndexRoute,
-  CalculIndexRoute: CalculIndexRoute,
   ParentsIndexRoute: ParentsIndexRoute,
 }
 export const routeTree = rootRouteImport

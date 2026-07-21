@@ -22,6 +22,44 @@
 **Contexte :** Soustraction = seul le diminuende posé, emprunt = échange inverse 1 bleu → 10 verts (variante exacte à confirmer avec l'école) ; multiplication = ligne posée en un geste (« poser encore 48 ») ; spec détaillée de la multiplication à 2 chiffres (produits partiels, décalage) à écrire à ce moment-là.
 **Depends on:** Tranche 5.
 
+## Bureau (le vrai petit ordinateur)
+
+### Observer le bureau après ship (protocole 1 semaine)
+**Priority:** P2
+**Contexte :** Trois décisions du design doc du bureau
+(`~/.gstack/projects/Tomaas-look-i-can-read/user-main-design-20260721-141546.md`)
+sont parquées sur l'observation, jamais sur la mesure : (a) le drag de fenêtre —
+valeur ou friction ? s'il ne déplace jamais la fenêtre, la fenêtre devient fixe ;
+(b) les tailles de cibles (icônes, croix, « Ouvrir ») — copient ses mains ;
+(c) le ressenti de la gate portrait — le clic-portrait reste-t-il un rituel
+regardé ou devient-il un réflexe aveugle ? Regarder une semaine, sans aider,
+sans chronométrer (contrainte calme : jamais de mesure de l'enfant).
+**Depends on:** le ship du bureau.
+
+### Tranche clavier : la machine à écrire
+**Priority:** P3
+**Contexte :** Le design doc du bureau (D24-A) coupe explicitement le clavier
+du périmètre : la grammaire livrée est 100 % pointeur alors que le besoin
+énoncé disait « souris ET clavier ». Le foyer naturel de l'alphabétisation
+clavier est la « machine à écrire » écartée en D3 : une mini-app calme où les
+lettres tapées apparaissent grandes et belles (adjacente à la lecture —
+peut-être avec les aides de lecture de `src/lib/reading-aids/`), une icône de
+plus sur le bureau. À ouvrir après le ship du bureau, quand l'observation
+montre qu'Arsène est à l'aise avec le pointeur.
+**Depends on:** le ship du bureau.
+
+### Résilience du brouillon d'aventure pendant la génération
+**Priority:** P3
+**Contexte :** `src/app/aventure/index.tsx` (~l.380) efface le brouillon AVANT
+l'appel serveur : quitter pendant une génération en vol perd le choix de
+l'enfant. Préexistant (pas introduit par le bureau), relevé par la voix
+extérieure de la ceo-review du 21/07 (T3), épinglé tel quel par le plan /qa,
+et gardé HORS du périmètre bureau (prémisse 6 : internes intouchés). Correctif
+candidat : effacer après résolution, ou restaurer au démontage — toutes les
+sorties (croix, flèche retour, bouton Retour) deviennent alors sans perte.
+À réviser séparément, avec sa propre attention à la machine à états de
+l'aventure.
+
 ## Deploy (Docker/Compose)
 
 ### Forwarder les build args de branding dans compose.yml

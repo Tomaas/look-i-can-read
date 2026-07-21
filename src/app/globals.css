@@ -158,6 +158,26 @@ body {
   opacity: 0.7;
 }
 
+/*
+  Le bureau : fond d'écran de l'OS calme — un lavis crème doux en CSS pur
+  (tokens existants), PAS les illustrations d'histoires (écarté en D3 :
+  l'ownership choisi c'est la session et les fenêtres, pas la décoration).
+*/
+.bureau-fond {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(
+      ellipse 90% 70% at 15% 0%,
+      oklch(0.93 0.04 80 / 0.55),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 80% 60% at 95% 100%,
+      oklch(0.9 0.05 150 / 0.4),
+      transparent
+    );
+}
+
 /* --- Print: clean A5 booklet, nothing technical --- */
 @media print {
   @page {
@@ -188,5 +208,24 @@ body {
   .story-liaison-gap::after {
     border-color: #777;
     opacity: 1;
+  }
+
+  /* Le positionnement de la fenêtre du bureau est NEUTRALISÉ à l'impression
+     (voix extérieure T5) : le contenu s'imprime comme avant le bureau — sans
+     cadre, sans left/top (inline, d'où les !important), sans clip. La barre
+     de titre porte .no-print et disparaît avec le reste du chrome. */
+  .bureau-fenetre {
+    position: static !important;
+    inset: auto !important;
+    width: auto !important;
+    height: auto !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .bureau-fenetre-contenu {
+    overflow: visible !important;
   }
 }

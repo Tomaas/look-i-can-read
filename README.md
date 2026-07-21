@@ -169,8 +169,20 @@ Production notes:
 
 ## How it works for the child
 
-The home page offers two doors: the story, and the operations workshop.
-For a story:
+The app IS a small, calm computer — "the child's desktop". Opening it is a
+ritual: the portrait screen (their name, their hero's face, one click — never
+a password, never a failure state), then a desktop with three icons
+(Stories, Sums, My library). A single click selects an icon and offers a big
+"Open" button; a real double-click opens it too — the native one, so the
+gesture transfers to the family computer. Each app opens in ONE real window:
+a title bar you can drag (the bar can never leave the screen), a big soft
+close cross. No taskbar, no clock, no notifications, no sounds, no
+multi-window — the frame itself teaches pointing, clicking, double-clicking,
+dragging and closing. A discreet "Ranger le bureau" (tidy the desk) closes
+the session back to the portrait. The parent pages stay outside this grammar
+(`/parents`, by URL only).
+
+Inside the Stories window:
 
 1. **Invent a story** → pick hero(es), a place, a surprise element (or hit
    "random 🎲").
@@ -189,6 +201,46 @@ short series of posed operations begins; the child writes the digits,
 compares with the solved version when ready, and the tray goes back on the
 shelf at the end of the series. A series left mid-way resumes exactly where
 it was — each tray remembers its own (kept on the device).
+
+## Installing "their computer" (operator checklist)
+
+The desktop is designed to be launched full screen from the child's own
+account on the family machine. Everything below is a one-time operator
+action — decide it BEFORE the evening you ship it, not during.
+
+1. **The 5-minute launcher test FIRST (decision D21-A).** From the child's
+   account, try:
+
+   ```
+   chromium --app=http://localhost:3009 --start-fullscreen
+   ```
+
+   plus a `.desktop` entry (icon + name) so it looks like their program. If
+   this delivers "their computer" full screen with zero browser chrome, you
+   are DONE — the PWA/manifest slice is deliberately not built unless this
+   test shows it adds something the launcher doesn't.
+2. **The child's user account** (this is half the product): on the server
+   machine itself, `http://localhost:3009` works directly. From another
+   machine, plain `http://<lan-ip>:3009` is fine for the launcher; only a
+   PWA install would require a secure context (localhost or the private
+   https overlay in `compose.override.yml`).
+3. **Browser**: Chromium/Chrome. VERIFY `--start-fullscreen` on the real
+   machine — without it the OS title bar stays visible above our window
+   (a system close button, often red). No kiosk mode: it would contradict
+   learning a real computer and complicate printing.
+4. **Autostart**: the Docker container must start with the server machine
+   (compose restart policy) — otherwise "their computer" greets them with a
+   browser error at wake-up.
+5. **Printer** reachable from the child's account (story booklets and A5
+   operation sheets print from inside the windows).
+6. **Recovery path**: if the app doesn't answer (network, container), the
+   child sees a browser error page — out of our hands. The family protocol
+   ("go get a parent") IS the recovery path; naming it here is enough.
+7. **Watch their first mouse session** without helping: how their hand
+   clicks, double-clicks (do they manage? at what pace?), drags. Target
+   sizes and the "Open" fallback should copy their hands, not our idea of
+   their hands. The double-click delay stays the system's — never a custom
+   threshold.
 
 ## Technical notes
 
@@ -214,7 +266,8 @@ it was — each tray remembers its own (kept on the device).
   network hiccup).
 - **Tests**: `bun run test` runs golden assertion scripts (prompt identity,
   coherence validators, media store, media data route, reading aids, posed
-  operations) — plain Bun, no test runner needed.
+  operations, the desktop layer's pure modules, and public-URL integrity of
+  the route relocation) — plain Bun, no test runner needed.
 
 ## License
 

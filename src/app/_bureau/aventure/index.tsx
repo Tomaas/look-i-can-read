@@ -28,7 +28,7 @@ import { listPlacesFn } from "~/server/places-functions";
 const HERO_CAP = 2;
 const ELEMENT_CAP = 2;
 
-export const Route = createFileRoute("/aventure/")({
+export const Route = createFileRoute("/_bureau/aventure/")({
   component: AventurePage,
   // Same DB-backed heroes + elements + places + doudous (active lists) with
   // config fallback as the classic parcours, so the two flows stay in sync.
