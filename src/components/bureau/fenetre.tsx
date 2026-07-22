@@ -104,21 +104,33 @@ export function Fenetre({ children, icone, titre }: FenetreProps) {
       return;
     }
     function reclamp() {
+      if (origineDragRef.current) {
+        // Drag en vol : re-positionner sous le transform ferait sursauter la
+        // fenêtre — dragEnd re-borne de toute façon.
+        return;
+      }
       const rect = cadreRef.current?.getBoundingClientRect();
       if (!rect) {
         return;
       }
-      setPosition(
-        (prev) =>
-          prev &&
-          clampFenetrePosition(
-            prev,
-            { height: rect.height, width: rect.width },
-            { height: window.innerHeight, width: window.innerWidth },
-            FENETRE_TITLE_BAR_HEIGHT
-          )
-      );
+      setPosition((prev) => {
+        if (!prev) {
+          return prev;
+        }
+        const bornee = clampFenetrePosition(
+          prev,
+          { height: rect.height, width: rect.width },
+          { height: window.innerHeight, width: window.innerWidth },
+          FENETRE_TITLE_BAR_HEIGHT
+        );
+        // No-op → même référence : pas de re-rendu à chaque event resize
+        // quand la fenêtre est loin des bords.
+        return bornee.x === prev.x && bornee.y === prev.y ? prev : bornee;
+      });
     }
+    // Re-borne aussi à l'ATTACHE : le viewport a pu changer pendant
+    // l'interlude <lg (rotation, restore) où l'écouteur était détaché.
+    reclamp();
     window.addEventListener("resize", reclamp);
     return () => window.removeEventListener("resize", reclamp);
   }, [aUnePosition, estDesktop]);
@@ -189,7 +201,11 @@ function CadreFenetre({
   position: Position | null;
   titre: string;
 }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  // `attributes` de useDraggable est volontairement NON étalé sur la zone de
+  // drag : il injecte role="button" + tabIndex=0 — un contrôle tabbable
+  // invisible qui ne fait rien au clavier (le clavier est hors périmètre,
+  // D24-A ; pas de KeyboardSensor). Les listeners pointeur suffisent.
+  const { listeners, setNodeRef, transform } = useDraggable({
     disabled: !dragActif,
     id: "bureau-fenetre",
   });
@@ -226,7 +242,6 @@ function CadreFenetre({
             dragActif && "cursor-grab active:cursor-grabbing"
           )}
           ref={setNodeRef}
-          {...attributes}
           {...listeners}
         >
           <span aria-hidden="true" className="text-muted-foreground">

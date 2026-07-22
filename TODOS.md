@@ -30,11 +30,26 @@
 (`~/.gstack/projects/Tomaas-look-i-can-read/user-main-design-20260721-141546.md`)
 sont parquées sur l'observation, jamais sur la mesure : (a) le drag de fenêtre —
 valeur ou friction ? s'il ne déplace jamais la fenêtre, la fenêtre devient fixe ;
-(b) les tailles de cibles (icônes, croix, « Ouvrir ») — copient ses mains ;
-(c) le ressenti de la gate portrait — le clic-portrait reste-t-il un rituel
-regardé ou devient-il un réflexe aveugle ? Regarder une semaine, sans aider,
-sans chronométrer (contrainte calme : jamais de mesure de l'enfant).
+(b) les tailles de cibles (icônes, croix) — copient ses mains ; (c) le ressenti
+de la gate portrait — le clic-portrait reste-t-il un rituel regardé ou
+devient-il un réflexe aveugle ? (d) le double-clic SEUL ouvre (rattrapage
+« Ouvrir » retiré le 22/07 ; la voix Codex du pré-landing a relevé le risque
+de découvrabilité) : s'il n'y arrive pas, le bouton revient en un commit —
+la machine à états n'a pas bougé. Regarder une semaine, sans aider, sans
+chronométrer (contrainte calme : jamais de mesure de l'enfant).
 **Depends on:** le ship du bureau.
+
+### DragOverlay de /calcul sous le drag de fenêtre (multi-touch)
+**Priority:** P3
+**Contexte :** Relevé par le red team du pré-landing bureau : sur un écran
+TACTILE ≥ lg (iPad paysage), un doigt qui tient la barre de titre pendant
+qu'un second traîne une tuile du pavé ferait rendre le DragOverlay de
+/calcul décalé (le transform de drag du cadre devient son containing block)
+et rogné par l'overflow-hidden. Hors profil de la machine familiale
+(souris) ; correctif propre à la tranche 5, la prochaine ouverture légitime
+de /calcul : porter le DragOverlay sur document.body (ou garde croisée
+entre les deux DndContext).
+**Depends on:** Tranche 5 calcul (unification lib/storage.ts, D18-A).
 
 ### Tranche clavier : la machine à écrire
 **Priority:** P3
@@ -50,7 +65,7 @@ montre qu'Arsène est à l'aise avec le pointeur.
 
 ### Résilience du brouillon d'aventure pendant la génération
 **Priority:** P3
-**Contexte :** `src/app/aventure/index.tsx` (~l.380) efface le brouillon AVANT
+**Contexte :** `src/app/_bureau/aventure/index.tsx` (~l.380) efface le brouillon AVANT
 l'appel serveur : quitter pendant une génération en vol perd le choix de
 l'enfant. Préexistant (pas introduit par le bureau), relevé par la voix
 extérieure de la ceo-review du 21/07 (T3), épinglé tel quel par le plan /qa,

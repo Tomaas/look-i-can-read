@@ -28,25 +28,37 @@ export function estSessionOuverte(raw: unknown): boolean {
   );
 }
 
-/** Lit la session depuis localStorage — fermée par défaut, échec silencieux. */
+// Repli mémoire quand le stockage est en panne (mode privé, quota,
+// désactivé) : la session vit alors ICI le temps de l'onglet — sans lui, la
+// gate re-présenterait le portrait à CHAQUE ouverture d'app et le rituel
+// deviendrait une barrière répétée (contrat du module, red-team pré-landing).
+let sessionMemoire = false;
+
+/** Lit la session — localStorage d'abord, repli mémoire, échec silencieux. */
 export function lireSessionOuverte(): boolean {
+  let stockee = false;
   try {
     const raw = window.localStorage.getItem(SESSION_STORAGE_KEY);
-    return raw ? estSessionOuverte(JSON.parse(raw) as unknown) : false;
+    stockee = raw ? estSessionOuverte(JSON.parse(raw) as unknown) : false;
   } catch {
-    return false;
+    stockee = false;
   }
+  // `||` et non un simple fallback sur throw : un setItem avalé (quota plein)
+  // avec un getItem qui marche laisserait sinon la session fermée juste
+  // après le clic sur le portrait.
+  return sessionMemoire || stockee;
 }
 
 /** Le clic sur le portrait : la session s'ouvre. */
 export function ouvrirSession() {
+  sessionMemoire = true;
   try {
     window.localStorage.setItem(
       SESSION_STORAGE_KEY,
       JSON.stringify({ ouverte: true, v: 1 })
     );
   } catch {
-    // Stockage indisponible — la session vivra en mémoire, sans erreur.
+    // Stockage indisponible — la session vit en mémoire, sans erreur.
   }
 }
 
@@ -55,6 +67,7 @@ export function ouvrirSession() {
  * s'éteint réellement, et un mot qui ment mé-enseigne. Clé retirée = fermé.
  */
 export function rangerBureau() {
+  sessionMemoire = false;
   try {
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
   } catch {

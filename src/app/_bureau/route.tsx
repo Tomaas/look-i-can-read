@@ -3,8 +3,8 @@ import {
   Outlet,
   useRouterState,
 } from "@tanstack/react-router";
-import { BookHeart, Grid3x3, Leaf } from "lucide-react";
 import { useEffect, useState } from "react";
+import { appPourChemin } from "~/components/bureau/apps";
 import { Fenetre } from "~/components/bureau/fenetre";
 import { EcranPortrait } from "~/components/bureau/portrait";
 import { lireSessionOuverte, ouvrirSession } from "~/lib/bureau/session";
@@ -34,20 +34,12 @@ export const Route = createFileRoute("/_bureau")({
   component: BureauLayout,
 });
 
-/** Le titre de la fenêtre = le libellé de l'icône du bureau + son pictogramme. */
-function appPourChemin(pathname: string) {
-  if (pathname.startsWith("/calcul")) {
-    return { icone: <Grid3x3 className="size-5" />, titre: "Calculs" };
-  }
-  if (pathname.startsWith("/bibliotheque")) {
-    return { icone: <BookHeart className="size-5" />, titre: "Bibliothèque" };
-  }
-  return { icone: <Leaf className="size-5" />, titre: "Histoires" };
-}
-
 function BureauLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  // Le titre de la fenêtre = le libellé de l'icône du bureau + son
+  // pictogramme, depuis le registre UNIQUE (components/bureau/apps.tsx).
   const app = appPourChemin(pathname);
+  const Pictogramme = app.icone;
   // false au SSR et au premier rendu client (rendu optimiste D22-A) ; la
   // vérification est 100 % client — le serveur ne lit pas localStorage.
   const [gateFermee, setGateFermee] = useState(false);
@@ -57,7 +49,7 @@ function BureauLayout() {
 
   return (
     <>
-      <Fenetre icone={app.icone} titre={app.titre}>
+      <Fenetre icone={<Pictogramme className="size-5" />} titre={app.libelle}>
         <Outlet />
       </Fenetre>
       {gateFermee ? (

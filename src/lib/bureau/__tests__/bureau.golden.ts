@@ -13,6 +13,9 @@
  *    et le RE-bornage sur redimensionnement (D11-A) ;
  *  - la garde de forme de session : n'importe quel contenu de
  *    `bureau:session` → un booléen, jamais d'exception ;
+ *  - le rituel de session complet (lire/ouvrir/ranger) sur un localStorage
+ *    factice : clé stable, aller-retour, et le SILENCE en cas de panne de
+ *    stockage — l'enfant ne voit jamais d'erreur ;
  *  - la machine à états de sélection de l'icône (D19-A, sans horloge —
  *    remplace la « fonction de seuil », supprimée par T5 : dblclick natif) :
  *    la sélection ne se perd JAMAIS sur un second clic, `ouverte` absorbe ;
@@ -27,7 +30,13 @@ import {
   transitionIcone,
 } from "~/lib/bureau/icone";
 import { matchesChildName } from "~/lib/bureau/identite";
-import { estSessionOuverte } from "~/lib/bureau/session";
+import {
+  estSessionOuverte,
+  lireSessionOuverte,
+  ouvrirSession,
+  rangerBureau,
+  SESSION_STORAGE_KEY,
+} from "~/lib/bureau/session";
 
 let failures = 0;
 function check(name: string, ok: boolean, detail?: string) {
@@ -135,6 +144,91 @@ check(
 );
 check("session: tableau → fermée", estSessionOuverte([true]) === false);
 
+/* --------------- Rituel de session sur un localStorage factice ------------ */
+
+// Le script bun n'a pas de DOM : un window factice suffit — les helpers ne
+// touchent QUE window.localStorage, et c'est exactement ce qu'on épingle.
+const memoire = new Map<string, string>();
+const windowFactice = {
+  localStorage: {
+    getItem: (k: string) => memoire.get(k) ?? null,
+    removeItem: (k: string) => {
+      memoire.delete(k);
+    },
+    setItem: (k: string, v: string) => {
+      memoire.set(k, v);
+    },
+  },
+};
+(globalThis as { window?: unknown }).window = windowFactice;
+
+check(
+  "session: clé de stockage stable (bureau:session)",
+  SESSION_STORAGE_KEY === "bureau:session"
+);
+check(
+  "session: stockage vide → fermée par défaut",
+  lireSessionOuverte() === false
+);
+ouvrirSession();
+check(
+  "session: ouvrirSession → lue ouverte, sous la clé stable",
+  lireSessionOuverte() === true && memoire.has(SESSION_STORAGE_KEY)
+);
+rangerBureau();
+check(
+  "session: rangerBureau → clé retirée, lue fermée",
+  lireSessionOuverte() === false && !memoire.has(SESSION_STORAGE_KEY)
+);
+memoire.set(SESSION_STORAGE_KEY, "{pas du json");
+check(
+  "session: JSON corrompu dans le stockage → fermée, sans exception",
+  lireSessionOuverte() === false
+);
+
+// Panne de stockage (quota, mode privé, désactivé) : SILENCE — aucun des
+// trois helpers ne jette, et la session vit en MÉMOIRE le temps de l'onglet
+// (repli du module ; sans lui la gate re-présenterait le portrait à chaque
+// ouverture d'app — le rituel deviendrait une barrière répétée).
+(globalThis as { window?: unknown }).window = {
+  localStorage: {
+    getItem: () => {
+      throw new Error("panne");
+    },
+    removeItem: () => {
+      throw new Error("panne");
+    },
+    setItem: () => {
+      throw new Error("panne");
+    },
+  },
+};
+let panneSilencieuse = true;
+let ouverteEnMemoire = false;
+let rangeeEnMemoire = false;
+try {
+  ouvrirSession();
+  ouverteEnMemoire = lireSessionOuverte();
+  rangerBureau();
+  rangeeEnMemoire = !lireSessionOuverte();
+} catch {
+  panneSilencieuse = false;
+}
+check(
+  "session: stockage en panne → silence total, la session vit en mémoire",
+  panneSilencieuse && ouverteEnMemoire && rangeeEnMemoire
+);
+
+// Le stub en panne est RESTAURÉ : les assertions ajoutées après cette
+// section retrouvent un stockage qui marche (pas d'état global piégé).
+(globalThis as { window?: unknown }).window = windowFactice;
+ouvrirSession();
+check(
+  "session: après la panne, le stockage restauré fonctionne à nouveau",
+  lireSessionOuverte() === true && memoire.has(SESSION_STORAGE_KEY)
+);
+rangerBureau();
+
 /* ----------------- Machine à états de sélection de l'icône ---------------- */
 
 const transitions: [EtatIcone, EvenementIcone, EtatIcone][] = [
@@ -191,6 +285,11 @@ check(
     matchesChildName("Arsène", "d’Arsène") === true
 );
 check(
+  "identité: élision l' aussi (L'Étoile ↔ étoile)",
+  matchesChildName("L'Étoile", "étoile") === true &&
+    matchesChildName("l’étoile", "Étoile") === true
+);
+check(
   "identité: un autre héros ne correspond pas",
   matchesChildName("Jules", "Arsène") === false
 );
@@ -201,6 +300,10 @@ check(
 check(
   "identité: espaces parasites tolérés",
   matchesChildName("  Arsène ", "Arsène") === true
+);
+check(
+  "identité: accents décomposés (NFD) ↔ précomposés (NFC)",
+  matchesChildName("Arsène", "Arsène") === true
 );
 
 /* -------------------------------- Verdict -------------------------------- */

@@ -13,7 +13,16 @@
 const ELISION_PREFIX = /^[dl]['’]/i;
 
 function normalise(name: string): string {
-  return name.trim().replace(ELISION_PREFIX, "").toLocaleLowerCase("fr");
+  return (
+    name
+      // NFC d'abord : un label collé en forme décomposée (NFD, fréquent
+      // depuis un nom de fichier macOS) doit reconnaître le prénom accentué
+      // configuré — sinon le portrait tombe en silence sur l'emoji.
+      .normalize("NFC")
+      .trim()
+      .replace(ELISION_PREFIX, "")
+      .toLocaleLowerCase("fr")
+  );
 }
 
 export function matchesChildName(label: string, childName: string): boolean {

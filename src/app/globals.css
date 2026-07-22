@@ -159,9 +159,12 @@ body {
 }
 
 /*
-  Le bureau : fond d'écran de l'OS calme — un lavis crème doux en CSS pur
-  (tokens existants), PAS les illustrations d'histoires (écarté en D3 :
-  l'ownership choisi c'est la session et les fenêtres, pas la décoration).
+  Le bureau : fond d'écran de l'OS calme — un lavis crème doux en CSS pur,
+  PAS les illustrations d'histoires (écarté en D3 : l'ownership choisi c'est
+  la session et les fenêtres, pas la décoration). Les oklch littéraux
+  ci-dessous sont des variantes DÉLIBÉRÉES, appariées aux teintes des tokens
+  (--secondary ≈ hue 80, --accent ≈ hue 150) avec luminance/alpha propres au
+  lavis — à réaccorder ensemble si la palette de theme.css bouge un jour.
 */
 .bureau-fond {
   background-color: var(--background);
