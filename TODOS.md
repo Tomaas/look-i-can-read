@@ -51,6 +51,17 @@ de /calcul : porter le DragOverlay sur document.body (ou garde croisée
 entre les deux DndContext).
 **Depends on:** Tranche 5 calcul (unification lib/storage.ts, D18-A).
 
+### Hauteurs des mini-apps dans la fenêtre (min-h-[80vh] → contexte fenêtré)
+**Priority:** P3
+**Contexte :** Relevé par le Codex adversarial du pré-landing bureau : les
+shells internes (`min-h-[80vh]` dans calcul/index.tsx et ailleurs) mesurent le
+VIEWPORT, pas la fenêtre de ~85vh — le contenu déborde donc toujours d'un
+poil et la fenêtre montre une barre de défilement même quand tout tiendrait.
+Cosmétique (une scrollbar est une grammaire d'OS légitime) ; correctif à la
+prochaine ouverture légitime des internes (tranche 5) : min-h-full dans le
+contexte fenêtré plutôt que 80vh.
+**Depends on:** Tranche 5 calcul.
+
 ### Tranche clavier : la machine à écrire
 **Priority:** P3
 **Contexte :** Le design doc du bureau (D24-A) coupe explicitement le clavier

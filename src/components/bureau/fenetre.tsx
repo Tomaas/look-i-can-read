@@ -159,6 +159,32 @@ export function Fenetre({ children, icone, titre }: FenetreProps) {
     );
   }
 
+  function handleDragCancel() {
+    // dnd-kit ANNULE (jamais dragEnd) sur resize, Escape, pointercancel et
+    // changement d'onglet : sans ce nettoyage, le garde « drag en vol » de
+    // reclamp resterait armé pour toujours et l'invariant D23-A mourrait en
+    // silence (relevé par les 3 passes adversariales, cross-model).
+    origineDragRef.current = null;
+    // Le resize qui vient d'annuler le drag doit re-borner tout de suite —
+    // l'écouteur a vu le garde encore armé.
+    const rect = cadreRef.current?.getBoundingClientRect();
+    if (!rect) {
+      return;
+    }
+    setPosition((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const bornee = clampFenetrePosition(
+        prev,
+        { height: rect.height, width: rect.width },
+        { height: window.innerHeight, width: window.innerWidth },
+        FENETRE_TITLE_BAR_HEIGHT
+      );
+      return bornee.x === prev.x && bornee.y === prev.y ? prev : bornee;
+    });
+  }
+
   return (
     <>
       {/* Le bureau respire derrière la fenêtre — même lavis que l'accueil. */}
@@ -168,6 +194,7 @@ export function Fenetre({ children, icone, titre }: FenetreProps) {
           serveur et le client → mismatch d'hydratation sur aria-describedby. */}
       <DndContext
         id="bureau-fenetre-dnd"
+        onDragCancel={handleDragCancel}
         onDragEnd={handleDragEnd}
         onDragStart={handleDragStart}
         sensors={sensors}

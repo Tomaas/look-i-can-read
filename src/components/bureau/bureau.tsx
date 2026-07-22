@@ -10,7 +10,7 @@
  */
 
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { APPS_BUREAU } from "~/components/bureau/apps";
 import { IconeBureau } from "~/components/bureau/icone";
 import { Button } from "~/components/ui/button";
@@ -26,6 +26,15 @@ export function Bureau({ onRanger }: { onRanger: () => void }) {
   // « ouverte » est absorbant (machine D19-A) : la navigation est en vol,
   // plus aucun événement ne la dispute.
   const [ouverte, setOuverte] = useState(false);
+  const reArmeRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (reArmeRef.current) {
+        clearTimeout(reArmeRef.current);
+      }
+    },
+    []
+  );
 
   // « Clic ailleurs » → repos : un pointeur posé hors de toute icône (fond du
   // bureau, bouton Ranger…) relâche la sélection, comme sur le vrai OS. Le
@@ -58,7 +67,14 @@ export function Bureau({ onRanger }: { onRanger: () => void }) {
     const suivant = transitionIcone(etat, evenement);
     if (suivant === "ouverte" && !ouverte) {
       setOuverte(true);
-      navigate({ to });
+      // Filet de résilience (passes adversariales, cross-model) : une
+      // navigation qui échoue OU pend (DB injoignable, loader sans borne) ne
+      // doit jamais laisser un bureau aux icônes mortes. Échec → ré-armé tout
+      // de suite ; pendaison → ré-armé après un délai généreux (filet
+      // TECHNIQUE, jamais visible — si la navigation aboutit, le bureau est
+      // démonté et le timer ne change plus rien).
+      reArmeRef.current = setTimeout(() => setOuverte(false), 8000);
+      navigate({ to }).catch(() => setOuverte(false));
       return;
     }
     if (suivant === "selectionnee") {

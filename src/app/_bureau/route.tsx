@@ -49,9 +49,15 @@ function BureauLayout() {
 
   return (
     <>
-      <Fenetre icone={<Pictogramme className="size-5" />} titre={app.libelle}>
-        <Outlet />
-      </Fenetre>
+      {/* `inert` sous le portrait : la fenêtre recouverte sort de l'ordre de
+          tabulation et des lecteurs d'écran tant que la gate est fermée — le
+          rituel n'est pas une sécurité, mais Tab ne doit pas cliquer derrière
+          un écran opaque (passes adversariales, cross-model). */}
+      <div inert={gateFermee || undefined}>
+        <Fenetre icone={<Pictogramme className="size-5" />} titre={app.libelle}>
+          <Outlet />
+        </Fenetre>
+      </div>
       {gateFermee ? (
         <EcranPortrait
           onOuvrir={() => {
