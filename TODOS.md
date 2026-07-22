@@ -26,7 +26,7 @@
 
 ### Observer le bureau après ship (protocole 1 semaine)
 **Priority:** P2
-**Contexte :** Trois décisions du design doc du bureau
+**Contexte :** Quatre décisions du design doc du bureau
 (`~/.gstack/projects/Tomaas-look-i-can-read/user-main-design-20260721-141546.md`)
 sont parquées sur l'observation, jamais sur la mesure : (a) le drag de fenêtre —
 valeur ou friction ? s'il ne déplace jamais la fenêtre, la fenêtre devient fixe ;

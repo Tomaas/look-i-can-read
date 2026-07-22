@@ -1,8 +1,9 @@
 # CLAUDE.md — look-i-can-read
 
-Single-family web app, a two-door shelf: calm illustrated read-aloud stories
-in French where the configured child hero stars, plus a "Poser des calculs"
-mini-app (posed column arithmetic, no LLM). TanStack Start + React 19.
+Single-family web app, a calm fake-OS desktop (the "bureau") for one child:
+calm illustrated read-aloud stories in French where the configured child hero
+stars, plus a "Poser des calculs" mini-app (posed column arithmetic, no LLM),
+each opening in its own window. TanStack Start + React 19.
 Deploys via Docker (Compose) and runs locally; either way REQUIRES network +
 a Turso cloud database (no offline mode). No authentication — the compose
 file binds to loopback only; exposing it further is the operator's problem.
