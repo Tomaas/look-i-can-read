@@ -58,7 +58,8 @@ yes → don't.
   parents section, incl. /parents/calcul — /parents stays OUTSIDE the
   desktop grammar).
 - **Bureau (the calm fake-OS frame)**: `/` renders the portrait screen OR
-  the desktop (3 icons, dblclick native + reserved "Ouvrir" fallback, "Ranger
+  the desktop (3 icons, dblclick native + Enter — the "Ouvrir" fallback was
+  REMOVED by user decision 2026-07-22, single click only selects; "Ranger
   le bureau" ritual) — the choice is 100% client (localStorage
   `bureau:session`, shape-guarded, silent failure; pure modules in
   `src/lib/bureau/`, golden-tested via `test:bureau`). The `_bureau` layout

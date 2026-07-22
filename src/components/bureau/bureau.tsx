@@ -113,7 +113,7 @@ export function Bureau({ onRanger }: { onRanger: () => void }) {
     <div className="bureau-fond flex min-h-screen flex-col">
       {/* Les icônes s'empilent en colonne depuis le coin haut-gauche, comme
           sur un vrai bureau (la grammaire spatiale doit transférer aussi). */}
-      <div className="flex flex-1 flex-col flex-wrap content-start items-start gap-2 p-8">
+      <div className="flex flex-1 flex-col flex-wrap content-start items-start gap-6 p-8">
         {ICONES_BUREAU.map((app) => (
           <IconeBureau
             icone={app.icone}

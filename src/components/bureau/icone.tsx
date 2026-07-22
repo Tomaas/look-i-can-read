@@ -1,22 +1,25 @@
 /**
  * L'icône de bureau — la première grammaire de l'OS réel (prémisse 4) :
- * simple clic = sélection + apparition d'un grand « Ouvrir » dans un
- * emplacement RÉSERVÉ sous l'icône — l'icône ne bouge pas d'un pixel entre
- * le premier et le second clic (T5). Double-clic = ouvre, via l'événement
- * NATIF `dblclick` (le délai du système, jamais un seuil maison : c'est le
- * geste de l'OS réel qui doit transférer). Entrée = ouvre.
+ * simple clic = sélection (l'étiquette se surligne en sauge), double-clic =
+ * ouvre via l'événement NATIF `dblclick` (le délai du système, jamais un
+ * seuil maison : c'est le geste de l'OS réel qui doit transférer). Entrée =
+ * ouvre.
+ *
+ * REVIREMENT (décision utilisateur 2026-07-22) : le rattrapage « Ouvrir »
+ * en emplacement réservé (T5) est SUPPRIMÉ — le double-clic est le seul
+ * geste d'ouverture au pointeur, comme sur le vrai OS. Si l'observation
+ * d'Arsène (The Assignment) montre qu'il n'y arrive pas, le rattrapage se
+ * remet en un commit (la machine à états n'a pas bougé : `selectionnee`
+ * existe toujours, seul le bouton a disparu).
  *
  * Look OS réel : une TUILE d'application teintée (chaque app a sa couleur de
  * la palette calme) + l'étiquette SOUS la tuile, qui se surligne en sauge à
  * la sélection — exactement ce que fait un vrai bureau avec le nom d'une
- * icône sélectionnée. Cible ≥ 96 px ; l'observation d'Arsène (The
- * Assignment) règle les tailles, le rattrapage « Ouvrir » couvre le
- * double-clic raté quel que soit son geste. Les transitions passent par la
- * machine à états PURE de lib/bureau/icone.ts (eng-review D19-A).
+ * icône sélectionnée. Cible ≥ 96 px. Les transitions passent par la machine
+ * à états PURE de lib/bureau/icone.ts (eng-review D19-A).
  */
 
 import type { LucideIcon } from "lucide-react";
-import { Button } from "~/components/ui/button";
 import type { EvenementIcone } from "~/lib/bureau/icone";
 import { cn } from "~/lib/cn";
 
@@ -43,9 +46,8 @@ export function IconeBureau({
   teinte,
 }: IconeBureauProps) {
   return (
-    // data-icone-bureau : le « clic ailleurs » du bureau ignore tout ce qui
-    // vit ici (l'icône ET son « Ouvrir » réservé).
-    <div className="flex w-44 flex-col items-center gap-1" data-icone-bureau>
+    // data-icone-bureau : le « clic ailleurs » du bureau ignore l'icône.
+    <div className="flex w-44 flex-col items-center" data-icone-bureau>
       <button
         className="group flex flex-col items-center gap-2.5 rounded-2xl p-3 outline-none focus-visible:ring-4 focus-visible:ring-ring"
         onClick={() => onEvenement("click")}
@@ -82,19 +84,6 @@ export function IconeBureau({
           {libelle}
         </span>
       </button>
-      {/* Emplacement RÉSERVÉ (T5) : la hauteur existe toujours, seul le
-          bouton apparaît — rien ne bouge entre les deux clics. */}
-      <div className="flex h-14 items-center">
-        {selectionnee ? (
-          <Button
-            className="h-11 rounded-2xl px-6 text-lg"
-            onClick={() => onEvenement("enter")}
-            size="lg"
-          >
-            Ouvrir
-          </Button>
-        ) : null}
-      </div>
     </div>
   );
 }

@@ -7,8 +7,10 @@
  *
  * Sans horloge : la golden épingle les transitions. Invariants verrouillés —
  * la sélection ne se perd JAMAIS sur un second clic (le double-clic raté
- * laisse l'icône sélectionnée, « Ouvrir » visible), et `ouverte` est
- * absorbant (la navigation est en vol, plus rien ne la dispute).
+ * laisse l'icône sélectionnée), et `ouverte` est absorbant (la navigation
+ * est en vol, plus rien ne la dispute). Le rattrapage « Ouvrir » a été
+ * retiré (décision utilisateur 2026-07-22) ; la machine reste inchangée —
+ * `enter` couvre le clavier, et remettre le bouton serait un commit.
  */
 
 export type EtatIcone = "repos" | "selectionnee" | "ouverte";

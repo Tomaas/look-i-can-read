@@ -144,7 +144,7 @@ const transitions: [EtatIcone, EvenementIcone, EtatIcone][] = [
   ["repos", "enter", "ouverte"],
   ["repos", "clickAilleurs", "repos"],
   // sélectionnée : la sélection ne se perd JAMAIS sur un second clic (le
-  // double-clic raté laisse « Ouvrir » visible) ; ailleurs → repos.
+  // double-clic raté laisse l'icône sélectionnée) ; ailleurs → repos.
   ["selectionnee", "click", "selectionnee"],
   ["selectionnee", "dblclick", "ouverte"],
   ["selectionnee", "enter", "ouverte"],

@@ -172,9 +172,10 @@ Production notes:
 The app IS a small, calm computer — "the child's desktop". Opening it is a
 ritual: the portrait screen (their name, their hero's face, one click — never
 a password, never a failure state), then a desktop with three icons
-(Stories, Sums, My library). A single click selects an icon and offers a big
-"Open" button; a real double-click opens it too — the native one, so the
-gesture transfers to the family computer. Each app opens in ONE real window:
+(Stories, Sums, My library). A single click selects an icon (the label
+highlights, like a real desktop); a real double-click opens it — the native
+one, so the gesture transfers to the family computer (Enter works too).
+Each app opens in ONE real window:
 a title bar you can drag (the bar can never leave the screen), a big soft
 close cross. No taskbar, no clock, no notifications, no sounds, no
 multi-window — the frame itself teaches pointing, clicking, double-clicking,
@@ -238,9 +239,10 @@ action — decide it BEFORE the evening you ship it, not during.
    ("go get a parent") IS the recovery path; naming it here is enough.
 7. **Watch their first mouse session** without helping: how their hand
    clicks, double-clicks (do they manage? at what pace?), drags. Target
-   sizes and the "Open" fallback should copy their hands, not our idea of
-   their hands. The double-click delay stays the system's — never a custom
-   threshold.
+   sizes should copy their hands, not our idea of their hands. The
+   double-click delay stays the system's — never a custom threshold. If the
+   double-click turns out to be out of reach, the "Open" fallback button
+   (removed 2026-07-22) comes back in one commit.
 
 ## Technical notes
 
