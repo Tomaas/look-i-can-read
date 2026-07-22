@@ -202,7 +202,7 @@ function CadreFenetre({
         // ouverture repart centrée (D9-A).
         "bureau-fenetre fixed inset-0 z-10 flex flex-col overflow-hidden bg-background",
         "lg:inset-auto lg:top-[7.5vh] lg:left-[7.5vw] lg:h-[85vh] lg:w-[85vw]",
-        "lg:rounded-3xl lg:border-2 lg:border-border lg:shadow-xl"
+        "lg:rounded-2xl lg:border lg:border-border lg:shadow-2xl"
       )}
       ref={cadreRef}
       style={{
@@ -214,12 +214,15 @@ function CadreFenetre({
           : {}),
       }}
     >
-      <div className="no-print flex h-14 shrink-0 items-center gap-2 border-border border-b bg-card pr-2 pl-5">
-        {/* La zone de drag = titre + pictogramme SEULEMENT : la croix reste
-            un pur bouton, un doigt qui glisse dessus ne déplace rien. */}
+      {/* Barre de titre à la grammaire des vrais OS : pictogramme à gauche,
+          titre CENTRÉ sur toute la largeur de la barre, contrôle de fenêtre
+          rond à droite (ocre doux, jamais rouge). La zone de drag couvre
+          toute la barre SAUF la croix (posée au-dessus, z-10) : un doigt qui
+          glisse sur la croix ne déplace rien. */}
+      <div className="no-print relative flex h-14 shrink-0 items-center border-border border-b bg-card pr-2">
         <div
           className={cn(
-            "flex h-full min-w-0 flex-1 touch-none select-none items-center gap-3",
+            "absolute inset-0 flex touch-none select-none items-center pl-5",
             dragActif && "cursor-grab active:cursor-grabbing"
           )}
           ref={setNodeRef}
@@ -229,18 +232,18 @@ function CadreFenetre({
           <span aria-hidden="true" className="text-muted-foreground">
             {icone}
           </span>
-          <span className="truncate font-semibold text-muted-foreground text-xl">
-            {titre}
-          </span>
         </div>
+        <span className="pointer-events-none absolute inset-x-16 truncate text-center font-semibold text-muted-foreground text-xl">
+          {titre}
+        </span>
         <Button
           aria-label="Fermer la fenêtre"
-          className="size-12 shrink-0 rounded-full text-primary hover:bg-primary/15"
+          className="relative z-10 ml-auto size-12 shrink-0 rounded-full bg-primary/10 text-primary hover:bg-primary/20"
           nativeButton={false}
           render={<Link aria-label="Fermer la fenêtre" to="/" />}
           variant="ghost"
         >
-          <X className="size-7" />
+          <X className="size-6" />
         </Button>
       </div>
       <div className="bureau-fenetre-contenu min-h-0 flex-1 overflow-y-auto">

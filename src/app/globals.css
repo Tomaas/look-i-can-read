@@ -166,15 +166,25 @@ body {
 .bureau-fond {
   background-color: var(--background);
   background-image:
+/* Un soleil pâle, haut à droite. */
+    radial-gradient(
+      circle 340px at 82% 14%,
+      oklch(0.96 0.05 85 / 0.9),
+      oklch(0.95 0.04 85 / 0.35) 55%,
+      transparent 75%
+    ),
+    /* La lumière chaude qui descend du coin haut-gauche. */
     radial-gradient(
       ellipse 90% 70% at 15% 0%,
       oklch(0.93 0.04 80 / 0.55),
       transparent
     ),
+    /* La colline sauge à l'horizon bas. */
     radial-gradient(
-      ellipse 80% 60% at 95% 100%,
-      oklch(0.9 0.05 150 / 0.4),
-      transparent
+      ellipse 120% 45% at 50% 108%,
+      oklch(0.88 0.055 150 / 0.55),
+      oklch(0.9 0.05 150 / 0.3) 60%,
+      transparent 80%
     );
 }
 
