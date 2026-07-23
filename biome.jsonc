@@ -19,6 +19,10 @@
       "!!**/build",
       "!!**/data",
       "!!**/.gstack",
+      // Artefacts des sessions d'agents (rapports, plans HTML) — jamais du
+      // code de l'app ; sans cette exclusion `biome check .` casse le gate
+      // lint dès qu'une session dépose un fichier.
+      "!!**/_ai_sessions",
       // Ancré à la racine de la config (pas **/) : le checkout principal
       // exclut ses worktrees imbriqués, mais un worktree (dont la config vit
       // à SA racine) peut toujours se linter lui-même.
