@@ -49,6 +49,10 @@ et rogné par l'overflow-hidden. Hors profil de la machine familiale
 (souris) ; correctif propre à la tranche 5, la prochaine ouverture légitime
 de /calcul : porter le DragOverlay sur document.body (ou garde croisée
 entre les deux DndContext).
+**MàJ 2026-07-23 (v0.4.2.0)** : le stockage de la série vit désormais dans
+`src/lib/operations/serie-session.ts` derrière un port `SerieStorage` —
+l'unification D18-A, si elle a encore lieu, passera par ce port (elle n'est
+pas faite : la session bureau garde son module à part).
 **Depends on:** Tranche 5 calcul (unification lib/storage.ts, D18-A).
 
 ### Hauteurs des mini-apps dans la fenêtre (min-h-[80vh] → contexte fenêtré)

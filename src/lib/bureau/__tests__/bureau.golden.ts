@@ -23,7 +23,7 @@
  *    insensible à la casse et à l'élision.
  */
 
-import { clampFenetrePosition } from "~/lib/bureau/clamp";
+import { clampFenetrePosition, reclampCommitted } from "~/lib/bureau/clamp";
 import {
   type EtatIcone,
   type EvenementIcone,
@@ -118,6 +118,55 @@ check(
     { height: 40, width: 1600 },
     BARRE
   ).y === 0
+);
+
+/* ------------------- Re-bornage d'une position committée ------------------ */
+
+// reclampCommitted = la discipline de commit du composant, écrite une fois :
+// null-passthrough (fenêtre centrée par le CSS), no-op → MÊME référence
+// (setPosition(prev => prev) ne re-rend pas), sinon le clamp D23-A.
+check(
+  "reclamp: position committée nulle (centrée CSS) → null, rien à re-borner",
+  reclampCommitted(null, FENETRE, VIEWPORT, BARRE) === null
+);
+const committeeLoinDesBords = { x: 120, y: 75 };
+check(
+  "reclamp: no-op loin des bords → la MÊME référence (aucun re-rendu resize)",
+  reclampCommitted(committeeLoinDesBords, FENETRE, VIEWPORT, BARRE) ===
+    committeeLoinDesBords
+);
+const committeeAuBordExact = { x: 240, y: 944 };
+check(
+  "reclamp: déjà exactement sur la borne → toujours la même référence",
+  reclampCommitted(committeeAuBordExact, FENETRE, VIEWPORT, BARRE) ===
+    committeeAuBordExact
+);
+const committeeHorsBornes = { x: 9999, y: 9999 };
+const rebornee = reclampCommitted(
+  committeeHorsBornes,
+  FENETRE,
+  VIEWPORT,
+  BARRE
+);
+check(
+  "reclamp: hors bornes → NOUVELLE référence, bornée comme clampFenetrePosition",
+  rebornee !== committeeHorsBornes &&
+    rebornee?.x === 240 &&
+    rebornee?.y === 944,
+  `x=${rebornee?.x} y=${rebornee?.y}`
+);
+// Rétrécissement du viewport (D11-A) : le re-bornage committé suit le même
+// modifier pur que le drag.
+const retrecie = reclampCommitted(
+  { x: 240, y: 900 },
+  FENETRE,
+  { height: 600, width: 1400 },
+  BARRE
+);
+check(
+  "reclamp: re-bornage après rétrécissement du viewport (D11-A)",
+  retrecie?.x === 40 && retrecie?.y === 600 - BARRE,
+  `x=${retrecie?.x} y=${retrecie?.y}`
 );
 
 /* ------------------------ Garde de forme de session ---------------------- */

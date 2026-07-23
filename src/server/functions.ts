@@ -5,9 +5,8 @@ import { resolveImageModel } from "~/config/image-models";
 import { getPublicFlags, serverEnv } from "~/env";
 import { db } from "~/server/db";
 import { stories } from "~/server/db/schema";
-import { nanoBananaImageProvider } from "~/server/providers/image/nanobanana";
-import { edgeTtsProvider } from "~/server/providers/tts/edge";
-import { elevenLabsTtsProvider } from "~/server/providers/tts/elevenlabs";
+import { generateImage } from "~/server/providers/image/nanobanana";
+import { getTtsProvider } from "~/server/providers/tts";
 import type { ImageStatus } from "~/server/providers/types";
 
 /** Flags the client may read (no secrets). */
@@ -65,10 +64,7 @@ export const generateTestImageFn = createServerFn({ method: "POST" })
     try {
       // Send the prompt AS-IS — the parent has full control (no style suffix
       // auto-append; the playground prefill already carries it).
-      const imagePath = await nanoBananaImageProvider.generateImage(
-        data.prompt,
-        model
-      );
+      const imagePath = await generateImage(data.prompt, model);
       const ms = Date.now() - startedAt;
       console.log("[stories] test image gen DONE", { imagePath, model, ms });
       return { imagePath, imageStatus: "ready", model, ms };
@@ -106,10 +102,7 @@ export const synthesizeFn = createServerFn({ method: "POST" })
       return { audioPath: story.audioPath };
     }
 
-    const provider =
-      serverEnv.ttsProvider === "elevenlabs"
-        ? elevenLabsTtsProvider
-        : edgeTtsProvider;
+    const provider = getTtsProvider();
 
     const fullText = [story.title, ...story.paragraphs].join(". ");
 

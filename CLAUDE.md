@@ -27,20 +27,28 @@ yes → don't.
   bitwise in the seeded generator, module façades, route filenames) are
   documented inline in `biome.jsonc` and win over the presets.
 - `bun run test` — golden assertion scripts (plain bun, no vitest):
-  `test:golden` pins prompt identity; `test:coherence` pins the safety/structure
+  `test:golden` pins prompt identity (text fragments + the segment-image
+  prompt builder, byte-identical); `test:coherence` pins the safety/structure
   validators, the anti-"doux" repetition guard, the landing decrescendo, the
   prompt builders and the zod schema key order (key order IS the JSON property
   order sent to the model — a formatting pass must not reorder it);
-  `test:media` pins the media-store path rules;
+  `test:media` pins the media-store rules: blob-host derivation and the
+  read-back choke-point (allowlist in both modes, media-dir escape, bytes
+  round-trip);
   `test:data-route` pins the `/data/$` media-serving route;
   `test:reading-aids` pins the silent-letter/liaison annotator;
   `test:operations` pins the posed-operations module (seeded generator,
-  layout geometry, palier ladder, énoncé templates, calm-wording scan);
+  layout geometry, palier ladder, énoncé templates, calm-wording scan) and
+  the serie-session lifecycle (legacy bridge, authoritative purge,
+  resume/purge-on-mismatch, fingerprint round-trip, silent storage
+  degradation);
   `test:bureau` pins the desktop layer's pure modules (window clamp incl.
-  resize re-clamp, session shape guard, icon-selection state machine,
-  childName↔hero identity match);
+  the committed-position re-clamp `reclampCommitted`, session shape guard,
+  icon-selection state machine, childName↔hero identity match);
   `test:routes` pins public-URL integrity of the `_bureau/` relocation (no
-  URL changed, no stale route id, /parents never under the layout).
+  URL changed, no stale route id, /parents never under the layout) plus two
+  prose contracts: no `ssr:` option under `src/app/_bureau/**` and the
+  closed-session gate CALLED in exactly two files, never `__root`.
 - `bun run db:migrate` — apply migrations to the remote Turso db (run once on
   setup / after schema changes). `db:generate` creates a new migration from
   schema edits; `db:push` is also available for quick dev sync to remote —
@@ -69,8 +77,9 @@ yes → don't.
   visible, commit in left/top — NEVER a persistent transform, it would
   offset /calcul's DragOverlay), reopen always centered, <lg fullscreen
   without drag, print neutralized (`.bureau-fenetre` rules). CONTRACT: the
-  layout keeps `ssr: true` (Selective SSR is inherited down — `ssr:false`
-  would silently make the mini-apps client-only); the closed-session gate
+  layout never sets `ssr` (Selective SSR is inherited down — an `ssr:false`
+  would silently make the mini-apps client-only; golden-pinned, no `ssr:`
+  option anywhere under `_bureau/`); the closed-session gate
   lives at exactly TWO places (`_bureau` layout as an optimistic overlay +
   `/`), never `__root` (else /parents and /data/$ would be gated). The
   `__root` shell is route-aware: full-bleed for the desktop layer, the
@@ -113,8 +122,13 @@ yes → don't.
   (they only seed empty tables; an already-populated db wins).
 - **LLM**: Vercel AI SDK (`ai` + `@ai-sdk/anthropic`), `generateObject` + the
   Zod beat schema (see text adapter). Model from `STORY_MODEL`.
-- **Adapters** in `src/server/providers/{text,image,tts}/` behind `types.ts`:
-  - text: `dynamic.ts` (`anthropicDynamicProvider`, the SOLE text provider;
+- **Providers** in `src/server/providers/{text,image,tts}/`: text and image
+  are plain modules called by concrete name (`generateBeat`/`generateStoryArc`
+  in `text/dynamic.ts`; `generateImage` in `image/nanobanana.ts`) — no
+  interface seam (one implementation each, see the adapter-census note in
+  `types.ts`); only TTS keeps a real seam (`TtsProvider` in `types.ts`, two
+  adapters, env-switched via `getTtsProvider()` in `tts/index.ts`):
+  - text: `dynamic.ts` (the SOLE text provider;
     required) — choose-your-own-adventure beats. Per-beat Zod schema (`title`
     meaningful on the opening beat only, 1–3 short paragraphs — capped at 2 on
     landing beats, exactly 2 choice labels or null on the final beat,
@@ -146,6 +160,8 @@ yes → don't.
     non-fatal 4+-sentence nudge) — the story winds down because a beginning
     reader tires by the end; the opening beats keep their 2–3-sentence richness.
   - image: `nanobanana.ts` = Gemini image models, behind `IMAGE_ENABLED`.
+    The illustration prompt is assembled by the pure `buildSegmentImagePrompt`
+    (`image/segment-prompt.ts`, byte-identity golden-pinned).
     Consistency: beats after the first pass the story's EARLIEST illustration
     as an image input (reference) so characters/style stay stable page to page,
     and the prompt carries the story's frozen `visual_world` as the DEFAULT
@@ -156,7 +172,8 @@ yes → don't.
     (else to `*.public.blob.vercel-storage.com` — SSRF defense-in-depth) and
     local refs must stay inside the media dir. Any failure degrades to plain
     text-to-image — never fails the beat's image. Gemini call aborts at 90s.
-  - tts: `edge` (msedge-tts, default) / `elevenlabs`, behind `TTS_ENABLED`.
+  - tts: `edge` (msedge-tts, default) / `elevenlabs`, behind `TTS_ENABLED`,
+    selected via `getTtsProvider()`.
 - **Secrets**: read only in `src/env.ts` (server). Vite exposes only `VITE_*`;
   all keys/LLM calls live in server functions (`src/server/*-functions.ts`,
   story generation in `dynamic-functions.ts`).
@@ -166,10 +183,12 @@ yes → don't.
   returns a `/data/media/<file>` web path served by the `/data/$` route.
   Vercel Blob when the token is set (ephemeral filesystems) → uploads and
   returns a public `https://` CDN URL. The `/`-prefix (local) vs `https://`
-  (blob) IS the back-compat boundary; old rows of either kind keep working. Read-back (for the reference-image
-  flow): `readStoredMediaBytes` returns local media bytes and rejects any path
-  escaping the media dir; `blobStoreHost()` derives the exact allowlist host
-  from the rw token.
+  (blob) IS the back-compat boundary; old rows of either kind keep working.
+  Read-back: `resolveStoredMediaForModel` hides both branches (https
+  allowlisted to the app's own Blob host — rw-token-derived, else
+  `*.public.blob.vercel-storage.com`; local paths rejected if they escape the
+  media dir). BOTH TTS adapters and the image provider persist through
+  `saveMedia` — nothing writes media paths by hand.
 - **Reading aids** (`src/lib/reading-aids/`): pure French-phonics annotator
   (silent letters + mandatory liaisons, CP-book style), golden-tested;
   decorative CSS only (`.story-silent`, `.story-liaison-*`) — copied text stays
@@ -200,7 +219,11 @@ yes → don't.
   FAMILY (localStorage key per family, shape-guarded; the "sorti" tray state
   uses the full resumable predicate, never key-existence; a one-time bridge
   migrates the pre-shelf `calcul:serie` key; storage failure degrades
-  silently — the child never sees an error). Back arrow exists ONLY in a
+  silently — the child never sees an error) — this whole lifecycle (legacy
+  bridge, authoritative purge, resume, `calcul:settings` cache) lives in
+  `src/lib/operations/serie-session.ts` behind a `SerieStorage` port
+  (localStorage in prod via `browserSerieStorage()`, in-memory in goldens);
+  the route keeps only rendering + DnD wiring. Back arrow exists ONLY in a
   série ("Reposer le plateau" → shelf); the shelf has NO arrow — the window
   close is the way home (UX 2026-07-23: redundant arrow + drawn shelf plank
   removed); the end of a

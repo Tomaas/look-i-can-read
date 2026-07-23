@@ -4,6 +4,43 @@ Toutes les évolutions notables de l'app, une version par livraison.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/) adapté, versions
 4 chiffres `MAJOR.MINOR.PATCH.MICRO` (fichier `VERSION`).
 
+## [0.4.2.0] - 2026-07-23
+
+### Changed
+
+- **Grand rangement d'architecture, sans changement de comportement visible**
+  pour l'enfant comme pour le parent (les suites golden le garantissent, et
+  une revue extérieure indépendante a conclu « safe to ship ») :
+  - la vie d'une série de calcul (reprise exacte, migration des séries
+    d'avant l'étagère, grand ménage des clés locales, cache des réglages)
+    vit maintenant dans un module pur et testé
+    (`src/lib/operations/serie-session.ts`) derrière un petit port de
+    stockage — la page /calcul ne garde que l'affichage et les gestes ;
+  - toutes les lectures et écritures de médias générés passent par l'unique
+    point de passage `media-store` — plus aucun chemin de fichier fabriqué à
+    la main ailleurs ;
+  - le texte du prompt d'illustration est assemblé par un module dédié,
+    verrouillé octet pour octet par un test golden ;
+  - les interfaces hypothétiques des fournisseurs texte et image (une seule
+    implémentation chacune) sont supprimées ; seule la synthèse vocale, qui a
+    réellement deux voix, garde sa couture (`getTtsProvider()`) ;
+  - le re-bornage d'une fenêtre du bureau après un redimensionnement est
+    concentré dans un helper pur (`reclampCommitted`), à la place de quatre
+    blocs répétés ;
+  - deux contrats jusque-là en prose sont épinglés par des tests : aucune
+    option `ssr` sous le bureau, et la gate de session appelée à exactement
+    deux endroits (jamais la racine).
+
+### Fixed
+
+- La lecture à voix haute fonctionne désormais aussi quand les médias sont
+  stockés sur Vercel Blob : la voix par défaut (edge) écrivait son audio
+  directement sur le disque local en fabriquant son chemin à la main — en
+  mode Blob (systèmes de fichiers éphémères), l'audio était silencieusement
+  perdu. Elle passe maintenant par le magasin de médias commun, comme les
+  illustrations : l'audio suit le backend actif (disque local ou CDN). Le
+  déploiement familial actuel, sur disque local, n'était pas touché.
+
 ## [0.4.1.0] - 2026-07-23
 
 ### Added

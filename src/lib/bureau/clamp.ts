@@ -41,3 +41,30 @@ export function clampFenetrePosition(
     y: Math.min(Math.max(position.y, 0), maxY),
   };
 }
+
+/**
+ * Re-bornage d'une position COMMITTÉE (resize du viewport, drag annulé) —
+ * la règle répétée côté composant, écrite UNE fois :
+ *
+ * - `prev` null (fenêtre centrée par le CSS de chaque ouverture) → null,
+ *   rien à re-borner ;
+ * - no-op → MÊME référence : `setPosition(prev => prev)` ne re-rend pas —
+ *   aucun re-rendu à chaque event resize quand la fenêtre est loin des
+ *   bords.
+ *
+ * L'invariant « barre entièrement visible » reste celui de
+ * `clampFenetrePosition` (D23-A) : ce helper n'ajoute que la discipline de
+ * commit (null-passthrough + identité de référence).
+ */
+export function reclampCommitted(
+  prev: Position | null,
+  fenetre: Taille,
+  viewport: Taille,
+  titleBarHeight: number
+): Position | null {
+  if (!prev) {
+    return prev;
+  }
+  const bornee = clampFenetrePosition(prev, fenetre, viewport, titleBarHeight);
+  return bornee.x === prev.x && bornee.y === prev.y ? prev : bornee;
+}

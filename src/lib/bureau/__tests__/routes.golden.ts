@@ -116,6 +116,51 @@ check(
   )
 );
 
+/* --------------- Contrats prose → épinglés (D17-A + T2-A) ----------------- */
+
+// (D17-A) Selective SSR : AUCUNE option `ssr:` sous src/app/_bureau/** — la
+// config SSR de TanStack est héritée vers le bas et ne peut que se
+// restreindre ; un `ssr: false` posé sur la layout (ou n'importe quelle
+// route enfant) rendrait silencieusement les mini-apps client-only. Le scan
+// retire d'abord les commentaires : le contrat vit AUSSI en prose dans
+// route.tsx, qui cite « ssr: false » précisément pour l'interdire.
+const BLOCS_COMMENTAIRES = /\/\*[\s\S]*?\*\//g;
+const LIGNES_COMMENTAIRES = /\/\/[^\n]*/g;
+const OPTION_SSR = /\bssr\s*:/;
+function sansCommentaires(code: string): string {
+  return code.replace(BLOCS_COMMENTAIRES, "").replace(LIGNES_COMMENTAIRES, "");
+}
+const sousBureau = sources.filter((s) => s.path.startsWith("src/app/_bureau/"));
+const avecOptionSsr = sousBureau.filter((s) =>
+  OPTION_SSR.test(sansCommentaires(s.contenu))
+);
+check(
+  "contrat D17-A: aucune option `ssr:` sous src/app/_bureau/** (héritage Selective SSR)",
+  sousBureau.length > 0 && avecOptionSsr.length === 0,
+  avecOptionSsr.map((s) => s.path).join(", ") ||
+    "aucun fichier scanné sous src/app/_bureau/"
+);
+
+// (T2-A) La gate session-fermée vit à exactement DEUX endroits : `/` et la
+// layout _bureau — jamais __root, sinon /parents et /data/$ seraient gatés.
+// L'empreinte textuelle est l'APPEL `lireSessionOuverte(` (session.ts), hors
+// commentaires — la seule présence du token (ligne d'import, prose) ne
+// suffit pas : garder l'import en supprimant l'appel doit faire échouer.
+const APPEL_GATE = /\blireSessionOuverte\s*\(/;
+const EMPLACEMENTS_GATE = ["src/app/_bureau/route.tsx", "src/app/index.tsx"];
+const fichiersGate = sources
+  .filter((s) => APPEL_GATE.test(sansCommentaires(s.contenu)))
+  .map((s) => s.path)
+  // Tri par code units (pas localeCompare) : l'ordre attendu est celui des
+  // littéraux d'EMPLACEMENTS_GATE, indépendant de la locale de la machine.
+  .sort((a, b) => (a < b ? -1 : 1));
+check(
+  "contrat T2-A: la gate (lireSessionOuverte) vit à exactement DEUX endroits — / et la layout _bureau, jamais __root",
+  fichiersGate.length === EMPLACEMENTS_GATE.length &&
+    EMPLACEMENTS_GATE.every((p, i) => fichiersGate[i] === p),
+  `trouvée dans: ${fichiersGate.join(", ") || "(nulle part)"}`
+);
+
 /* -------------------------------- Verdict -------------------------------- */
 
 if (failures > 0) {

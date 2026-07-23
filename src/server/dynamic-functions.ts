@@ -3,7 +3,6 @@ import { and, asc, eq, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import { z } from "zod";
 import { appConfig } from "~/config/app";
 import { resolveImageModel } from "~/config/image-models";
-import { imageStyleSuffix } from "~/config/style";
 import { serverEnv } from "~/env";
 import { db } from "~/server/db";
 import {
@@ -17,21 +16,14 @@ import { resolveDoudousForCreation } from "~/server/doudous-store";
 import { resolveElementsForCreation } from "~/server/elements-store";
 import { resolveHeroesForCreation } from "~/server/heroes-store";
 import { resolvePlaceForCreation } from "~/server/places-store";
-import { nanoBananaImageProvider } from "~/server/providers/image/nanobanana";
-import {
-  blobStoreHost,
-  readStoredMediaBytes,
-} from "~/server/providers/media-store";
+import { generateImage } from "~/server/providers/image/nanobanana";
+import { buildSegmentImagePrompt } from "~/server/providers/image/segment-prompt";
+import { resolveStoredMediaForModel } from "~/server/providers/media-store";
 import { sanitizeCustomPrompt } from "~/server/providers/text/custom-prompt";
-import { doudouImageLine } from "~/server/providers/text/doudou-prompt";
 import {
-  anthropicDynamicProvider,
+  generateBeat,
   generateStoryArc,
 } from "~/server/providers/text/dynamic";
-import {
-  heroesImageLine,
-  outfitImageLine,
-} from "~/server/providers/text/hero-prompt";
 import {
   type BeatHistoryEntry,
   type DynamicBeat,
@@ -166,7 +158,7 @@ export const startDynamicStoryFn = createServerFn({ method: "POST" })
     });
     let beat: DynamicBeat;
     try {
-      beat = await anthropicDynamicProvider.generateBeat({
+      beat = await generateBeat({
         customPrompt: customPrompt ?? undefined,
         doudous,
         elements,
@@ -406,7 +398,7 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
     });
     let beat: DynamicBeat;
     try {
-      beat = await anthropicDynamicProvider.generateBeat({
+      beat = await generateBeat({
         // Frozen saveur, re-applied on every beat (continuation can't see the
         // original parcours state — it must come from the persisted column).
         customPrompt: sanitizeCustomPrompt(story.customPrompt) ?? undefined,
@@ -610,16 +602,13 @@ export const retrySegmentImageFn = createServerFn({ method: "POST" })
  * 0) as the canonical character/style anchor — chaining each image off the
  * previous one would compound drift instead of preventing it.
  *
- * Returns a URL for blob-hosted media (the AI SDK fetches it), raw bytes for
- * local-disk media, or undefined (beat 0 / nothing renderable yet / read
+ * Returns raw bytes, or undefined (beat 0 / nothing renderable yet / read
  * failure) — in which case the caller falls back to plain text-to-image.
  *
- * The https branch is ALLOWLISTED to THIS app's Vercel Blob store host (exact
- * hostname when the token is configured, else the public-blob suffix) — a
- * stored path pointing anywhere else (a tampered row, a future write path) is
- * ignored rather than fetched server-side (SSRF defense-in-depth). Local paths
- * go through `readStoredMediaBytes`, which rejects anything escaping the
- * media dir.
+ * The `/`-prefix (local) vs `https://` (blob) storage rule — incl. the blob
+ * host ALLOWLIST and the media-dir escape rejection — lives ENTIRELY in
+ * `resolveStoredMediaForModel` (media-store, the single media choke-point);
+ * this function only picks WHICH stored row anchors the story.
  *
  * The blob bytes are DOWNLOADED HERE, inside the best-effort try/catch, with a
  * bounded timeout — never handed to the AI SDK as a URL. A deleted/unreachable
@@ -628,13 +617,10 @@ export const retrySegmentImageFn = createServerFn({ method: "POST" })
  * every beat anchors on the same earliest image, would kill every later
  * illustration of the story with no working retry).
  */
-const BLOB_HOST_SUFFIX = ".public.blob.vercel-storage.com";
-const REFERENCE_FETCH_TIMEOUT_MS = 10_000;
-
 async function resolveReferenceImage(
   storyId: string,
   idx: number
-): Promise<Uint8Array | URL | undefined> {
+): Promise<Uint8Array | undefined> {
   if (idx <= 0) {
     return;
   }
@@ -657,31 +643,7 @@ async function resolveReferenceImage(
     if (!path) {
       return;
     }
-    if (path.startsWith("https://")) {
-      const url = new URL(path);
-      const storeHost = blobStoreHost();
-      const allowed = storeHost
-        ? url.hostname === storeHost
-        : url.hostname.endsWith(BLOB_HOST_SUFFIX);
-      if (!allowed) {
-        // Loud on purpose: a silent rejection here hid a prod bug (a
-        // case-mismatched store host rejected the app's OWN blob URLs, disabling
-        // every reference image). If this fires for our own host, it is a bug.
-        console.warn(
-          `[stories] reference image REJECTED by host allowlist for story ${storyId} idx=${idx}:` +
-            ` ${url.hostname} not allowed (expected ${storeHost ?? `*${BLOB_HOST_SUFFIX}`}).`
-        );
-        return;
-      }
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(REFERENCE_FETCH_TIMEOUT_MS),
-      });
-      if (!res.ok) {
-        return;
-      }
-      return new Uint8Array(await res.arrayBuffer());
-    }
-    return (await readStoredMediaBytes(path)) ?? undefined;
+    return await resolveStoredMediaForModel(path);
   } catch (error) {
     // Best-effort only: a missing local file / DB hiccup must never fail the
     // image itself — generate without a reference instead.
@@ -733,67 +695,25 @@ async function generateSegmentImage(
     return { imagePath: null, imageStatus: "skipped" };
   }
   // History path: frozen snapshot, never the live editable rows.
-  const { heroes, place, doudous, outfit } = getFrozenStoryPromptContext(story);
+  const frozen = getFrozenStoryPromptContext(story);
 
   // A prior illustration of THIS story, sent as an image input so characters/
   // style stay consistent across beats (best-effort — null on beat 0 / no
   // prior image / fetch failure → plain text-to-image, as before).
   const referenceImage = await resolveReferenceImage(storyId, idx);
 
-  // The beat's OWN scene (emitted by the text model) wins over the story's
-  // frozen starting place: once the story walks through the magic door, the
-  // illustration must follow it — not stamp "aux États-Unis" on every page.
-  let sceneLine = "";
-  if (segment.sceneHint) {
-    sceneLine = `La scène : ${segment.sceneHint}`;
-  } else if (place.promptHint) {
-    sceneLine = `La scène se passe ${place.promptHint}.`;
-  }
-
-  // Story-level visual world (time of day, season, weather, light), frozen at
-  // creation. A DEFAULT ambiance, not an absolute order: the beat's own scene
-  // keeps priority (a story that walks through a magic door into space must be
-  // allowed to change its sky). Null on older stories → line omitted.
-  const ambianceLine = story.visualWorld
-    ? `Ambiance générale de l'histoire (sauf indication contraire de la scène) : ${story.visualWorld}.`
-    : "";
-
-  // Story-level frozen outfit (the heroes' wardrobe), a DEFAULT the reference
-  // image overrides. Mainly anchors beat 0 (no reference yet) and non-default
-  // heroes (no clothing in their imageHint). "" on older stories / safety drop
-  // → line omitted, image built exactly as before.
-  const outfitLine = outfitImageLine(outfit);
-
-  // Feed the WHOLE beat's text (now 1–3 short sentences) so the page's image
-  // reflects that full page, not just its first ~8-word sentence.
-  const prompt = [
-    // The reference anchors CHARACTER IDENTITY + STYLE only — never the decor.
-    // The earlier "dans une NOUVELLE scène" wording let the model clone page
-    // 1's backdrop on every page, so the illustrations never moved even when
-    // the story did.
-    referenceImage
-      ? "Reprends EXACTEMENT les personnages de l'image fournie (visages, coiffures, vêtements, proportions) et son style — mais PAS son décor ni son cadrage. Dessine le lieu où l'histoire se trouve MAINTENANT (voir « La scène » ci-dessous), même s'il ne ressemble plus à celui de l'image fournie :"
-      : "Illustration pour un bout d'une histoire d'enfant, tendre et rassurante.",
-    segment.paragraphs.join(" "),
-    sceneLine,
-    ambianceLine,
-    outfitLine,
-    // Single hero → identical to the old `hero.imageHint`; multi → grouped.
-    heroesImageLine(heroes),
-    // Only the FIRST doudou appears in illustrations — 6 peluches per page
-    // crowded every composition; the text still mentions them all.
-    doudouImageLine(doudous.slice(0, 1)),
-    imageStyleSuffix,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  // The illustration prompt (scene · ambiance · outfit · heroes · doudou ·
+  // style) is assembled by the pure builder — pinned byte-identical by
+  // test:golden. This function keeps only DB read / persist / sentinel.
+  const prompt = buildSegmentImagePrompt(
+    story,
+    segment,
+    referenceImage !== undefined,
+    frozen
+  );
 
   try {
-    const imagePath = await nanoBananaImageProvider.generateImage(
-      prompt,
-      model,
-      referenceImage
-    );
+    const imagePath = await generateImage(prompt, model, referenceImage);
     await db
       .update(storySegments)
       .set({ imagePath })

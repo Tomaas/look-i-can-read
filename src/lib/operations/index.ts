@@ -33,6 +33,26 @@ export {
   resolvePalierForFamille,
 } from "~/lib/operations/progression";
 export {
+  advanceSerie,
+  browserSerieStorage,
+  type CellRef,
+  clearSerie,
+  emptyEntries,
+  finishCurrent,
+  isCellRef,
+  isSerieFinished,
+  loadSession,
+  pencilAdvance,
+  readResumableSerie,
+  SETTINGS_CACHE_KEY,
+  type SerieStorage,
+  type SessionSettingsSource,
+  saveSerie,
+  shelfTrays,
+  takeTray,
+  writeCell,
+} from "~/lib/operations/serie-session";
+export {
   bridgeLegacySerie,
   defaultFamilySettings,
   FAMILLE_NOMS,

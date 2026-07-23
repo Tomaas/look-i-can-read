@@ -49,7 +49,12 @@ import {
   useSyncExternalStore,
 } from "react";
 import { Button } from "~/components/ui/button";
-import { clampFenetrePosition, type Position } from "~/lib/bureau/clamp";
+import {
+  clampFenetrePosition,
+  type Position,
+  reclampCommitted,
+  type Taille,
+} from "~/lib/bureau/clamp";
 import { cn } from "~/lib/cn";
 
 /** Hauteur de la barre de titre — appariée à la classe h-14 (56px) du cadre. */
@@ -62,6 +67,11 @@ const POINTER_ACTIVATION = { activationConstraint: { distance: 4 } };
 
 /** Le drag n'existe qu'au-dessus du breakpoint lg (D14-A). */
 const DESKTOP_QUERY = "(min-width: 1024px)";
+
+/** Le viewport au moment du commit — lu au même instant que le rect. */
+function viewportActuel(): Taille {
+  return { height: window.innerHeight, width: window.innerWidth };
+}
 
 function subscribeDesktop(onChange: () => void) {
   const media = window.matchMedia(DESKTOP_QUERY);
@@ -113,20 +123,11 @@ export function Fenetre({ children, icone, titre }: FenetreProps) {
       if (!rect) {
         return;
       }
-      setPosition((prev) => {
-        if (!prev) {
-          return prev;
-        }
-        const bornee = clampFenetrePosition(
-          prev,
-          { height: rect.height, width: rect.width },
-          { height: window.innerHeight, width: window.innerWidth },
-          FENETRE_TITLE_BAR_HEIGHT
-        );
-        // No-op → même référence : pas de re-rendu à chaque event resize
-        // quand la fenêtre est loin des bords.
-        return bornee.x === prev.x && bornee.y === prev.y ? prev : bornee;
-      });
+      // null-passthrough + no-op même référence : dans le helper pur —
+      // pas de re-rendu à chaque event resize loin des bords.
+      setPosition((prev) =>
+        reclampCommitted(prev, rect, viewportActuel(), FENETRE_TITLE_BAR_HEIGHT)
+      );
     }
     // Re-borne aussi à l'ATTACHE : le viewport a pu changer pendant
     // l'interlude <lg (rotation, restore) où l'écouteur était détaché.
@@ -152,8 +153,8 @@ export function Fenetre({ children, icone, titre }: FenetreProps) {
     setPosition(
       clampFenetrePosition(
         { x: origine.x + event.delta.x, y: origine.y + event.delta.y },
-        { height: rect.height, width: rect.width },
-        { height: window.innerHeight, width: window.innerWidth },
+        rect,
+        viewportActuel(),
         FENETRE_TITLE_BAR_HEIGHT
       )
     );
@@ -171,18 +172,9 @@ export function Fenetre({ children, icone, titre }: FenetreProps) {
     if (!rect) {
       return;
     }
-    setPosition((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const bornee = clampFenetrePosition(
-        prev,
-        { height: rect.height, width: rect.width },
-        { height: window.innerHeight, width: window.innerWidth },
-        FENETRE_TITLE_BAR_HEIGHT
-      );
-      return bornee.x === prev.x && bornee.y === prev.y ? prev : bornee;
-    });
+    setPosition((prev) =>
+      reclampCommitted(prev, rect, viewportActuel(), FENETRE_TITLE_BAR_HEIGHT)
+    );
   }
 
   return (

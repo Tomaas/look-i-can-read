@@ -1,6 +1,10 @@
 import { useDroppable } from "@dnd-kit/core";
 import { cn } from "~/lib/cn";
-import type { OperationLayout } from "~/lib/operations";
+import type {
+  CellRef,
+  OperationLayout,
+  SerieEntriesLike,
+} from "~/lib/operations";
 
 /**
  * On-screen posed operation — the same geometry as the printed A5 sheet
@@ -18,23 +22,6 @@ import type { OperationLayout } from "~/lib/operations";
  * scratch space, exactly like the little pencil "1" on paper.
  */
 
-export interface GridEntries {
-  carries: (string | null)[];
-  /** One entry per numeric column, left to right. null = still empty. */
-  result: (string | null)[];
-}
-
-export function emptyEntries(layout: OperationLayout): GridEntries {
-  return {
-    carries: layout.carrySlots.map(() => null),
-    result: layout.expectedDigits.map(() => null),
-  };
-}
-
-export type CellRef =
-  | { row: "result"; col: number }
-  | { row: "carry"; col: number };
-
 export function ColumnGrid({
   layout,
   entries,
@@ -43,7 +30,7 @@ export function ColumnGrid({
   variant,
 }: {
   layout: OperationLayout;
-  entries?: GridEntries;
+  entries?: SerieEntriesLike;
   selected?: CellRef | null;
   onSelect?: (cell: CellRef) => void;
   variant: "libre" | "solution";
