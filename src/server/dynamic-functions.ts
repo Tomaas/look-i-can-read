@@ -18,10 +18,7 @@ import { resolveElementsForCreation } from "~/server/elements-store";
 import { resolveHeroesForCreation } from "~/server/heroes-store";
 import { resolvePlaceForCreation } from "~/server/places-store";
 import { generateImage } from "~/server/providers/image/nanobanana";
-import {
-  blobStoreHost,
-  readStoredMediaBytes,
-} from "~/server/providers/media-store";
+import { resolveStoredMediaForModel } from "~/server/providers/media-store";
 import { sanitizeCustomPrompt } from "~/server/providers/text/custom-prompt";
 import { doudouImageLine } from "~/server/providers/text/doudou-prompt";
 import {
@@ -610,16 +607,13 @@ export const retrySegmentImageFn = createServerFn({ method: "POST" })
  * 0) as the canonical character/style anchor — chaining each image off the
  * previous one would compound drift instead of preventing it.
  *
- * Returns a URL for blob-hosted media (the AI SDK fetches it), raw bytes for
- * local-disk media, or undefined (beat 0 / nothing renderable yet / read
+ * Returns raw bytes, or undefined (beat 0 / nothing renderable yet / read
  * failure) — in which case the caller falls back to plain text-to-image.
  *
- * The https branch is ALLOWLISTED to THIS app's Vercel Blob store host (exact
- * hostname when the token is configured, else the public-blob suffix) — a
- * stored path pointing anywhere else (a tampered row, a future write path) is
- * ignored rather than fetched server-side (SSRF defense-in-depth). Local paths
- * go through `readStoredMediaBytes`, which rejects anything escaping the
- * media dir.
+ * The `/`-prefix (local) vs `https://` (blob) storage rule — incl. the blob
+ * host ALLOWLIST and the media-dir escape rejection — lives ENTIRELY in
+ * `resolveStoredMediaForModel` (media-store, the single media choke-point);
+ * this function only picks WHICH stored row anchors the story.
  *
  * The blob bytes are DOWNLOADED HERE, inside the best-effort try/catch, with a
  * bounded timeout — never handed to the AI SDK as a URL. A deleted/unreachable
@@ -628,13 +622,10 @@ export const retrySegmentImageFn = createServerFn({ method: "POST" })
  * every beat anchors on the same earliest image, would kill every later
  * illustration of the story with no working retry).
  */
-const BLOB_HOST_SUFFIX = ".public.blob.vercel-storage.com";
-const REFERENCE_FETCH_TIMEOUT_MS = 10_000;
-
 async function resolveReferenceImage(
   storyId: string,
   idx: number
-): Promise<Uint8Array | URL | undefined> {
+): Promise<Uint8Array | undefined> {
   if (idx <= 0) {
     return;
   }
@@ -657,31 +648,7 @@ async function resolveReferenceImage(
     if (!path) {
       return;
     }
-    if (path.startsWith("https://")) {
-      const url = new URL(path);
-      const storeHost = blobStoreHost();
-      const allowed = storeHost
-        ? url.hostname === storeHost
-        : url.hostname.endsWith(BLOB_HOST_SUFFIX);
-      if (!allowed) {
-        // Loud on purpose: a silent rejection here hid a prod bug (a
-        // case-mismatched store host rejected the app's OWN blob URLs, disabling
-        // every reference image). If this fires for our own host, it is a bug.
-        console.warn(
-          `[stories] reference image REJECTED by host allowlist for story ${storyId} idx=${idx}:` +
-            ` ${url.hostname} not allowed (expected ${storeHost ?? `*${BLOB_HOST_SUFFIX}`}).`
-        );
-        return;
-      }
-      const res = await fetch(url, {
-        signal: AbortSignal.timeout(REFERENCE_FETCH_TIMEOUT_MS),
-      });
-      if (!res.ok) {
-        return;
-      }
-      return new Uint8Array(await res.arrayBuffer());
-    }
-    return (await readStoredMediaBytes(path)) ?? undefined;
+    return await resolveStoredMediaForModel(path);
   } catch (error) {
     // Best-effort only: a missing local file / DB hiccup must never fail the
     // image itself — generate without a reference instead.

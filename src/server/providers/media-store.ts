@@ -135,10 +135,6 @@ export async function saveMedia(
   return `/data/media/${filename}`;
 }
 
-export function mediaFilePath(filename: string): string {
-  return join(MEDIA_DIR, filename);
-}
-
 // The web-path prefix local-disk `saveMedia` returns (see above). Exported so
 // readers of stored paths don't re-derive the storage convention by hand.
 export const MEDIA_WEB_PREFIX = "/data/media/";
@@ -187,4 +183,79 @@ export async function readStoredMediaBytes(
     return null;
   }
   return await readFile(full);
+}
+
+// The public-blob namespace suffix, the https allowlist FALLBACK when no rw
+// token is configured (then we can't derive the exact store host).
+const BLOB_HOST_SUFFIX = ".public.blob.vercel-storage.com";
+
+// Bound on fetching back a stored blob media (reference-image flow): a stalled
+// CDN fetch must degrade (→ plain text-to-image) rather than hang the beat.
+const STORED_MEDIA_FETCH_TIMEOUT_MS = 10_000;
+
+/**
+ * The https-branch ALLOWLIST decision for a stored media value, PURE
+ * (env-free) so the goldens can pin it: parse the stored `https://` string and
+ * accept it only when its hostname is THIS app's own Blob store (`storeHost`,
+ * rw-token-derived — see `blobStoreHost`) — or, when no token is configured
+ * (local dev reading old blob rows), any `*.public.blob.vercel-storage.com`
+ * host. Anything else (a tampered row, a future write path) returns null:
+ * ignored rather than fetched server-side (SSRF defense-in-depth).
+ */
+export function allowedStoredMediaUrl(
+  stored: string,
+  storeHost: string | null
+): URL | null {
+  if (!stored.startsWith("https://")) {
+    return null;
+  }
+  let url: URL;
+  try {
+    url = new URL(stored);
+  } catch {
+    return null;
+  }
+  const allowed = storeHost
+    ? url.hostname === storeHost
+    : url.hostname.endsWith(BLOB_HOST_SUFFIX);
+  return allowed ? url : null;
+}
+
+/**
+ * Read back a STORED media value (a `stories`/`story_segments` path column) as
+ * bytes for a model input — the single read-back counterpart of `saveMedia`,
+ * hiding the same `/`-prefix (local) vs `https://` (blob) back-compat boundary
+ * so no caller re-implements the storage rule:
+ *  - `https://…` → allowlisted via `allowedStoredMediaUrl` (own store host
+ *    when the rw token is set, else the public-blob suffix), then fetched with
+ *    a bounded timeout. A rejected host logs LOUDLY: a silent rejection here
+ *    once hid a prod bug (a case-mismatched store host rejected the app's OWN
+ *    blob URLs and disabled every reference image).
+ *  - `/data/media/…` → `readStoredMediaBytes` (rejects any path escaping the
+ *    media dir).
+ * Returns undefined when the value is rejected/unreadable — callers degrade
+ * (e.g. plain text-to-image). Errors propagate: the caller owns best-effort.
+ */
+export async function resolveStoredMediaForModel(
+  stored: string
+): Promise<Uint8Array | undefined> {
+  if (stored.startsWith("https://")) {
+    const storeHost = blobStoreHost();
+    const url = allowedStoredMediaUrl(stored, storeHost);
+    if (!url) {
+      console.warn(
+        `[media-store] stored https media REJECTED by host allowlist: ${stored}` +
+          ` (expected ${storeHost ?? `*${BLOB_HOST_SUFFIX}`}).`
+      );
+      return;
+    }
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(STORED_MEDIA_FETCH_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      return;
+    }
+    return new Uint8Array(await res.arrayBuffer());
+  }
+  return (await readStoredMediaBytes(stored)) ?? undefined;
 }
