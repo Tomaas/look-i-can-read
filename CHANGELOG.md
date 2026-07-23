@@ -4,6 +4,40 @@ Toutes les évolutions notables de l'app, une version par livraison.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/) adapté, versions
 4 chiffres `MAJOR.MINOR.PATCH.MICRO` (fichier `VERSION`).
 
+## [0.4.1.0] - 2026-07-23
+
+### Added
+
+- **L'étagère de calcul change avec les jours** : les plateaux ne montrent
+  plus toujours les mêmes scènes. Chaque famille a maintenant plusieurs
+  ambiances appariées scène + phrase — marrons, feuilles ou fleurs pour
+  l'addition ; donner au doudou ou ranger dans sa boîte pour la
+  soustraction ; paniers, bols ou sacs pour la multiplication — et
+  l'étagère est préparée « pendant la nuit » : elle change d'un jour à
+  l'autre, jamais sous les yeux de l'enfant, et reste identique toute la
+  journée (même si la fenêtre reste ouverte passé minuit).
+- **Les petites histoires des calculs varient davantage** : la
+  multiplication ne remplit plus toujours des paniers (boîtes, corbeilles,
+  sacs et bols entrent dans la ronde), la soustraction alterne entre
+  donner, offrir ou prêter au doudou et ranger, poser ou rapporter à la
+  maison, et l'addition gagne aussi de nouvelles tournures. Une série
+  interrompue reprend toujours mot pour mot les mêmes énoncés.
+
+### Changed
+
+- Sur l'étagère des calculs, la flèche « retour » (qui doublonnait la croix
+  de la fenêtre) et le trait de séparation sous les plateaux ont été
+  retirés : fermer la fenêtre est LE geste de sortie ; la flèche ne reste
+  qu'en série, pour « reposer le plateau ».
+- Les icônes du bureau et le portrait de l'écran d'accueil montrent
+  désormais la petite main du pointeur, comme tout ce qui se clique.
+
+### Fixed
+
+- Le libellé d'un énoncé ne dépend plus de la présence du doudou dans
+  l'espace parent : une base de données lente ou un doudou ajouté en cours
+  de route ne re-formule plus les énoncés d'une série reprise.
+
 ## [0.4.0.0] - 2026-07-22
 
 ### Added
