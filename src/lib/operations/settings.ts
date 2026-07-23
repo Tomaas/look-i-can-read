@@ -178,7 +178,7 @@ export function bridgeLegacySerie(
 
 /* ------------------------- Série : état & reprise ------------------------- */
 
-/** La grille écrite d'une opération (même forme que GridEntries côté UI). */
+/** La grille écrite d'une opération — LE type d'entrées, lib ET UI. */
 export interface SerieEntriesLike {
   carries: (string | null)[];
   result: (string | null)[];
