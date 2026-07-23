@@ -34,9 +34,11 @@ Format : [Keep a Changelog](https://keepachangelog.com/fr/) adapté, versions
 
 ### Fixed
 
-- Le libellé d'un énoncé ne dépend plus de la présence du doudou dans
-  l'espace parent : une base de données lente ou un doudou ajouté en cours
-  de route ne re-formule plus les énoncés d'une série reprise.
+- Les énoncés qui ne mettent pas en scène le doudou gardent exactement le
+  même libellé que le doudou soit chargé ou non : une base de données
+  lente au chargement ne peut plus re-formuler ces phrases-là d'une série
+  reprise. (Ceux qui citent le doudou suivent, eux, la configuration du
+  moment — c'est leur rôle.)
 
 ## [0.4.0.0] - 2026-07-22
 
