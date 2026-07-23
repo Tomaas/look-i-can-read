@@ -43,16 +43,21 @@ fixed on-branch in `08fe481`. Final gate re-run by the packager:
 
 ## Commits (oldest first)
 
-- `acc7288` refactor: concentre le re-bornage committé dans clamp.ts (c5)
-- `55d7642` chore: exclude `_ai_sessions/` from biome (shared gate fix)
-- `62cef9c` test: épingle les deux contrats prose du bureau (c6)
-- `21977e7` refactor: collapse the hypothetical text & image provider seams (c4)
-- `ca6fc25` refactor(operations): module serie-session (c1)
-- `ea072fd` refactor(calcul): la route ne garde que le rendu et le câblage dnd (c1)
-- `ab899f1` fix: restore media-store as the single media choke-point (c2, bug fix)
-- `286215b` refactor: extract the segment-image prompt builder (c3)
-- `08fe481` test: le contrat T2-A épingle l'APPEL de la gate (review fix)
-- packaging commit: VERSION 0.4.2.0, CHANGELOG, CLAUDE.md, TODOS.md, session docs
+Note: the branch history was rewritten post-packaging (commit messages
+translated to English; trees byte-identical) — lane reports and the codex
+review cite the PRE-rewrite shas (acc7288, 55d7642, 62cef9c, 21977e7,
+ca6fc25, ea072fd, ab899f1, 286215b, 08fe481, 1c6d930, in that order).
+
+- `04647f0` refactor: concentrate the committed-position re-clamp in clamp.ts (c5)
+- `16e7a0a` chore: exclude `_ai_sessions/` from biome (shared gate fix)
+- `4d6251d` test: pin the bureau's two prose contracts in routes.golden (c6)
+- `abb514a` refactor: collapse the hypothetical text & image provider seams (c4)
+- `f18f0aa` refactor(operations): serie-session module (c1)
+- `5035b36` refactor(calcul): the route keeps only rendering and dnd wiring (c1)
+- `f9cf2bf` fix: restore media-store as the single media choke-point (c2, bug fix)
+- `cf25a61` refactor: extract the segment-image prompt builder (c3)
+- `6dad532` test: the T2-A contract pins the gate's CALL (review fix)
+- `27d7c5c` packaging commit: VERSION 0.4.2.0, CHANGELOG, CLAUDE.md, TODOS.md, session docs
 
 ## Where the detail lives
 
