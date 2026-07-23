@@ -13,12 +13,7 @@ import {
 import { createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  type CellRef,
-  ColumnGrid,
-  emptyEntries,
-  type GridEntries,
-} from "~/components/calcul/column-grid";
+import { ColumnGrid } from "~/components/calcul/column-grid";
 import {
   DIGIT_TILE_CLASSES,
   SoftNumpad,
@@ -27,25 +22,30 @@ import { type TrayInfo, TrayShelf } from "~/components/calcul/tray-shelf";
 import { Button } from "~/components/ui/button";
 import { cn } from "~/lib/cn";
 import {
-  bridgeLegacySerie,
+  advanceSerie,
+  browserSerieStorage,
+  type CellRef,
+  clearSerie,
   enonceFor,
-  FAMILLES,
-  fingerprintOps,
-  isResumableSerie,
-  LEGACY_SERIE_STATE_KEY,
+  type FamilySettings,
+  finishCurrent,
+  isCellRef,
+  isSerieFinished,
   layoutOperation,
-  newSerieSeed,
-  normalizeFamilySettings,
+  loadSession,
   type Operation,
-  type Palier,
+  pencilAdvance,
   resolvePalierForFamille,
   type SerieStateLike,
   safeGenerateSerie,
-  serieStorageKeyOf,
+  saveSerie,
+  shelfTrays,
+  takeTray,
+  writeCell,
 } from "~/lib/operations";
 import { listDoudousFn } from "~/server/doudous-functions";
 import { listHeroesFn } from "~/server/heroes-functions";
-import { getMathSettingsFn, type MathSettings } from "~/server/math-functions";
+import { getMathSettingsFn } from "~/server/math-functions";
 
 /** 2A: a slow DB is treated like an unreachable one — short timeout, no error. */
 function withTimeout<T>(
@@ -79,11 +79,11 @@ export const Route = createFileRoute("/_bureau/calcul/")({
   },
 });
 
-const SETTINGS_CACHE_KEY = "calcul:settings";
-// La série en cours vit sous UNE clé PAR FAMILLE (serieStorageKeyOf, décision
-// 2A révisée : chaque plateau se souvient d'où il en était — rien n'est
-// jamais rangé dans le dos de l'enfant). L'ancienne clé unique
-// LEGACY_SERIE_STATE_KEY est migrée une fois par le pont (bridgeLegacySerie).
+// Toute la vie de la série hors rendu (clés localStorage, pont legacy, purge
+// authoritative, reprise/empreinte, gestes d'écriture) vit dans le module pur
+// serie-session (golden-testé) ; la route ne fait que le rendu et le dnd.
+// L'adaptateur ne touche window qu'à l'appel — sûr au niveau module.
+const storage = browserSerieStorage();
 
 // Durée du moment « rangé » (D-2A) : 🌿 respire, puis fondu vers l'étagère —
 // appariée au fondu de 300 ms de FadeIn, jamais un écran-destination.
@@ -102,78 +102,6 @@ const forgivingCollision: CollisionDetection = (args) => {
   const within = pointerWithin(args);
   return within.length > 0 ? within : rectIntersection(args);
 };
-
-/** The droppable payload crosses dnd-kit untyped — validate, never cast. */
-function isCellRef(value: unknown): value is CellRef {
-  const cell = value as CellRef | null;
-  return (
-    typeof cell === "object" &&
-    cell !== null &&
-    (cell.row === "result" || cell.row === "carry") &&
-    typeof cell.col === "number"
-  );
-}
-
-/**
- * Pencil flow, shared by tap and drag: after a result digit, the pencil steps
- * to the next column leftwards; col 0 and carry cells keep the pencil put.
- */
-function pencilAdvance(cell: CellRef): CellRef {
-  return cell.row === "result" && cell.col > 0
-    ? { col: cell.col - 1, row: "result" }
-    : cell;
-}
-
-/**
- * L'état de série vit dans le module pur (SerieStateLike, golden-testé) —
- * GridEntries (UI) et SerieEntriesLike (lib) sont structurellement identiques.
- */
-type SerieState = SerieStateLike;
-
-function readJson<T>(key: string): T | null {
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeJson(key: string, value: unknown) {
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    // Storage unavailable (private mode…) — the session simply won't resume.
-  }
-}
-
-/**
- * L'état « sorti » d'un plateau + reprise : lit la clé de la famille, valide
- * avec le prédicat complet (isResumableSerie, pur et golden-testé), PURGE
- * silencieusement une clé non reprenable (palier changé par le parent, cache
- * d'un autre format — l'éducatrice a réorganisé l'étagère, exception assumée
- * de la prémisse 4).
- */
-function readResumableSerie(
-  famille: Operation,
-  palierId: string,
-  serieSize: number
-): SerieState | null {
-  const key = serieStorageKeyOf(famille);
-  const saved = readJson<SerieState>(key);
-  if (saved === null) {
-    return null;
-  }
-  if (isResumableSerie(saved, famille, palierId, serieSize)) {
-    return saved;
-  }
-  try {
-    window.localStorage.removeItem(key);
-  } catch {
-    // Storage unavailable — reading already failed softly anyway.
-  }
-  return null;
-}
 
 /**
  * Les trois temps de l'atelier : l'étagère (le choix), la série (le travail),
@@ -200,9 +128,9 @@ type Phase =
  */
 function CalculWorkshopPage() {
   const { settings: dbSettings, heroName, doudouName } = Route.useLoaderData();
-  const [settings, setSettings] = useState<MathSettings | null>(null);
+  const [settings, setSettings] = useState<FamilySettings | null>(null);
   const [phase, setPhase] = useState<Phase>({ kind: "shelf" });
-  const [serie, setSerie] = useState<SerieState | null>(null);
+  const [serie, setSerie] = useState<SerieStateLike | null>(null);
   const [selected, setSelected] = useState<CellRef | null>(null);
   // Digit currently being dragged from the numpad (drives the DragOverlay).
   const [dragDigit, setDragDigit] = useState<string | null>(null);
@@ -217,82 +145,19 @@ function CalculWorkshopPage() {
   const dragOpIndexRef = useRef<number | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, POINTER_ACTIVATION));
 
-  // Settings: DB when reachable (and cache it), else device cache, else
-  // defaults. NORMALIZED whatever the source (normalizeFamilySettings, pure
-  // et golden-testée) — un cache édité ou un vieux format ne crashe jamais
-  // la page enfant. Même effet : le pont de clé legacy (une seule fois) et
-  // la purge des clés orphelines des familles désactivées (D-3A/F9).
+  // Ouverture de session (loadSession, module pur golden-testé) : pont de
+  // clé legacy (une seule fois), réglages DB → cache appareil → défauts,
+  // normalisés quelle que soit la source, cache + purge des clés orphelines
+  // SEULEMENT sur réglages authoritatifs (D-3A/F9, red-team RT1).
   useEffect(() => {
-    // Pont 2A/T4 : la série d'AVANT l'étagère est re-rangée sous la clé de
-    // sa famille (dérivée de son palier) — jamais écrasante, et l'ancienne
-    // clé ne disparaît qu'après RELECTURE de la clé cible (red-team RT1 : un
-    // write avalé par un quota plein ne doit pas coûter la série).
-    // readJson rend null pour « absente » comme pour « illisible » : on lit
-    // la chaîne brute pour pouvoir nettoyer une clé corrompue (adversarial #7).
-    let legacyStr: string | null = null;
-    try {
-      legacyStr = window.localStorage.getItem(LEGACY_SERIE_STATE_KEY);
-    } catch {
-      // Storage unavailable — nothing to migrate anyway.
-    }
-    if (legacyStr !== null) {
-      const legacy = bridgeLegacySerie(
-        readJson<unknown>(LEGACY_SERIE_STATE_KEY)
-      );
-      if (legacy) {
-        const target = serieStorageKeyOf(legacy.famille);
-        if (readJson<unknown>(target) === null) {
-          writeJson(target, legacy.state);
-        }
-        if (readJson<unknown>(target) === null) {
-          // La cible n'a pas pu s'écrire : on garde la legacy pour un
-          // prochain passage plutôt que de détruire la série.
-          return finishSettings();
-        }
-      }
-      try {
-        window.localStorage.removeItem(LEGACY_SERIE_STATE_KEY);
-      } catch {
-        // Storage unavailable — nothing to migrate anyway.
-      }
-    }
-    finishSettings();
-
-    function finishSettings() {
-      const normalized = normalizeFamilySettings(
-        dbSettings ?? readJson<unknown>(SETTINGS_CACHE_KEY)
-      );
-      // Le cache appareil ne mémorise que des réglages AUTHORITATIFS
-      // (adversarial #3) : des défauts servis pendant la fenêtre
-      // pré-migration écraseraient les vrais réglages mémorisés.
-      if (dbSettings?.authoritative) {
-        writeJson(SETTINGS_CACHE_KEY, normalized);
-      }
-      // Purge des clés orphelines (D-3A/F9) — SEULEMENT sur des réglages
-      // authoritatifs (vraies lignes DB). Des défauts (hors-ligne + cache
-      // froid, DB pas encore migrée) ne sont pas une vérité sur les familles
-      // et ne doivent JAMAIS coûter une série locale (red-team RT1 —
-      // « rien n'est jamais rangé dans le dos de l'enfant »).
-      if (dbSettings?.authoritative) {
-        for (const op of FAMILLES) {
-          if (!normalized.familles.some((f) => f.op === op)) {
-            try {
-              window.localStorage.removeItem(serieStorageKeyOf(op));
-            } catch {
-              // Storage unavailable — the ghost key is unreadable anyway.
-            }
-          }
-        }
-      }
-      setSettings(normalized);
-    }
+    setSettings(loadSession(storage, dbSettings));
   }, [dbSettings]);
 
   // Persistance : chaque frappe est sauvegardée sous la clé de SA famille —
   // reposer le plateau ou fermer l'onglet ne perd jamais rien.
   useEffect(() => {
     if (serie) {
-      writeJson(serieStorageKeyOf(serie.famille), serie);
+      saveSerie(storage, serie);
     }
   }, [serie]);
 
@@ -301,9 +166,7 @@ function CalculWorkshopPage() {
   // Une série VIDE (palier cassé, cas théorique) compte comme finie — même
   // chemin calme, jamais un écran bloqué.
   const finished =
-    phase.kind === "serie" &&
-    serie !== null &&
-    (serie.index >= serie.serieSize || serie.perOp.length === 0);
+    phase.kind === "serie" && serie !== null && isSerieFinished(serie);
   useEffect(() => {
     if (finished && serie) {
       setPhase({ famille: serie.famille, kind: "tidied" });
@@ -314,11 +177,7 @@ function CalculWorkshopPage() {
       return;
     }
     const timer = setTimeout(() => {
-      try {
-        window.localStorage.removeItem(serieStorageKeyOf(phase.famille));
-      } catch {
-        // Storage unavailable — la série finie ne reviendra pas non plus.
-      }
+      clearSerie(storage, phase.famille);
       setSerie(null);
       setPhase({ kind: "shelf" });
     }, TIDIED_MOMENT_MS);
@@ -345,32 +204,20 @@ function CalculWorkshopPage() {
   // d'empreinte (régénération seedée) bornées à UNE entrée d'étagère — memo
   // sur (settings, phase), jamais à chaque rendu (D-3A/F5 ; la purge d'une
   // clé non reprenable y vit aussi, idempotente).
-  const trays = useMemo<TrayInfo[]>(() => {
-    if (!settings || phase.kind !== "shelf") {
-      return [];
-    }
-    return settings.familles.map((f) => ({
-      op: f.op,
-      sorti:
-        readResumableSerie(
-          f.op,
-          resolvePalierForFamille(f.op, f.palier).id,
-          settings.serieSize
-        ) !== null,
-    }));
-  }, [settings, phase]);
+  const trays = useMemo<TrayInfo[]>(
+    () =>
+      settings && phase.kind === "shelf" ? shelfTrays(storage, settings) : [],
+    [settings, phase]
+  );
 
-  /** Prendre un plateau : reprise exacte si la série est reprenable, sinon
-      série fraîche au palier parental de CETTE famille. */
-  function takeTray(op: Operation) {
+  /** Prendre un plateau (takeTray, module pur) : reprise exacte si la série
+      est reprenable, sinon série fraîche au palier parental de CETTE famille. */
+  function prendrePlateau(op: Operation) {
     if (!settings) {
       return;
     }
-    const reglage = settings.familles.find((f) => f.op === op);
-    const palierForOp = resolvePalierForFamille(op, reglage?.palier);
-    const saved = readResumableSerie(op, palierForOp.id, settings.serieSize);
     setSelected(null);
-    setSerie(saved ?? freshSerie(op, palierForOp, settings.serieSize));
+    setSerie(takeTray(storage, settings, op));
     setPhase({ famille: op, kind: "serie" });
   }
 
@@ -396,7 +243,7 @@ function CalculWorkshopPage() {
           <TrayShelf
             doudouName={doudouName}
             heroName={heroName}
-            onTake={takeTray}
+            onTake={prendrePlateau}
             trays={trays}
           />
         </FadeIn>
@@ -420,44 +267,12 @@ function CalculWorkshopPage() {
   const layout = operation ? layoutOperation(operation) : null;
   const current = finished ? null : serie.perOp[serie.index];
 
-  function updateCurrent(update: Partial<SerieState["perOp"][number]>) {
-    setSerie((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const perOp = prev.perOp.map((op, i) =>
-        i === prev.index ? { ...op, ...update } : op
-      );
-      return { ...prev, perOp };
-    });
-  }
-
   function setCell(cell: CellRef, value: string | null) {
     // Everything derives from prev INSIDE the updater (never the render-time
-    // closure) and is bounds/done-guarded: a late drop or a second write in
-    // the same event can never clobber state or ink a frozen answer.
-    setSerie((prev) => {
-      if (!prev) {
-        return prev;
-      }
-      const op = prev.perOp[prev.index];
-      if (!op || op.done) {
-        return prev;
-      }
-      const rowKey = cell.row === "result" ? "result" : "carries";
-      if (cell.col < 0 || cell.col >= op.entries[rowKey].length) {
-        return prev;
-      }
-      const entries: GridEntries = {
-        carries: [...op.entries.carries],
-        result: [...op.entries.result],
-      };
-      entries[rowKey][cell.col] = value;
-      const perOp = prev.perOp.map((o, i) =>
-        i === prev.index ? { ...o, entries } : o
-      );
-      return { ...prev, perOp };
-    });
+    // closure); writeCell (module pur) is bounds/done-guarded: a late drop or
+    // a second write in the same event can never clobber state or ink a
+    // frozen answer.
+    setSerie((prev) => (prev ? writeCell(prev, cell, value) : prev));
   }
 
   function writeDigit(digit: string) {
@@ -525,7 +340,7 @@ function CalculWorkshopPage() {
 
   function nextTray() {
     setSelected(null);
-    setSerie((prev) => (prev ? { ...prev, index: prev.index + 1 } : prev));
+    setSerie((prev) => (prev ? advanceSerie(prev) : prev));
   }
 
   if (finished || !(operation && layout && current)) {
@@ -585,7 +400,7 @@ function CalculWorkshopPage() {
               className="gap-2 text-muted-foreground text-xl"
               disabled={current.entries.result.every((d) => d === null)}
               onClick={() => {
-                updateCurrent({ done: true });
+                setSerie((prev) => (prev ? finishCurrent(prev) : prev));
                 setSelected(null);
               }}
               variant="ghost"
@@ -684,28 +499,4 @@ function FadeIn({ children }: { children: React.ReactNode }) {
       {children}
     </div>
   );
-}
-
-function freshSerie(
-  famille: Operation,
-  palier: Palier,
-  serieSize: number
-): SerieState {
-  // Le seed naît à la PRISE du plateau (T1 : plus de seed pré-engagé).
-  const seed = newSerieSeed();
-  const ops = safeGenerateSerie(palier, seed, serieSize);
-  return {
-    famille,
-    // ops vide (palier cassé, cas théorique) : perOp vide → le rendu tombe
-    // sur l'état "rangé" via le garde operation/current — dégradation calme.
-    index: 0,
-    opsFingerprint: fingerprintOps(ops),
-    palierId: palier.id,
-    perOp: ops.map((op) => ({
-      done: false,
-      entries: emptyEntries(layoutOperation(op)),
-    })),
-    seed,
-    serieSize,
-  };
 }
