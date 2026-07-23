@@ -143,11 +143,13 @@ check(
 
 // (T2-A) La gate session-fermée vit à exactement DEUX endroits : `/` et la
 // layout _bureau — jamais __root, sinon /parents et /data/$ seraient gatés.
-// L'empreinte textuelle est l'appel à `lireSessionOuverte` (session.ts).
-const GATE_TOKEN = "lireSessionOuverte";
+// L'empreinte textuelle est l'APPEL `lireSessionOuverte(` (session.ts), hors
+// commentaires — la seule présence du token (ligne d'import, prose) ne
+// suffit pas : garder l'import en supprimant l'appel doit faire échouer.
+const APPEL_GATE = /\blireSessionOuverte\s*\(/;
 const EMPLACEMENTS_GATE = ["src/app/_bureau/route.tsx", "src/app/index.tsx"];
 const fichiersGate = sources
-  .filter((s) => s.contenu.includes(GATE_TOKEN))
+  .filter((s) => APPEL_GATE.test(sansCommentaires(s.contenu)))
   .map((s) => s.path)
   // Tri par code units (pas localeCompare) : l'ordre attendu est celui des
   // littéraux d'EMPLACEMENTS_GATE, indépendant de la locale de la machine.
