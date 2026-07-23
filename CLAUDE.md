@@ -1,8 +1,9 @@
 # CLAUDE.md — look-i-can-read
 
-Single-family web app, a two-door shelf: calm illustrated read-aloud stories
-in French where the configured child hero stars, plus a "Poser des calculs"
-mini-app (posed column arithmetic, no LLM). TanStack Start + React 19.
+Single-family web app, a calm fake-OS desktop (the "bureau") for one child:
+calm illustrated read-aloud stories in French where the configured child hero
+stars, plus a "Poser des calculs" mini-app (posed column arithmetic, no LLM),
+each opening in its own window. TanStack Start + React 19.
 Deploys via Docker (Compose) and runs locally; either way REQUIRES network +
 a Turso cloud database (no offline mode). No authentication — the compose
 file binds to loopback only; exposing it further is the operator's problem.
@@ -34,7 +35,12 @@ yes → don't.
   `test:data-route` pins the `/data/$` media-serving route;
   `test:reading-aids` pins the silent-letter/liaison annotator;
   `test:operations` pins the posed-operations module (seeded generator,
-  layout geometry, palier ladder, énoncé templates, calm-wording scan).
+  layout geometry, palier ladder, énoncé templates, calm-wording scan);
+  `test:bureau` pins the desktop layer's pure modules (window clamp incl.
+  resize re-clamp, session shape guard, icon-selection state machine,
+  childName↔hero identity match);
+  `test:routes` pins public-URL integrity of the `_bureau/` relocation (no
+  URL changed, no stale route id, /parents never under the layout).
 - `bun run db:migrate` — apply migrations to the remote Turso db (run once on
   setup / after schema changes). `db:generate` creates a new migration from
   schema edits; `db:push` is also available for quick dev sync to remote —
@@ -47,9 +53,29 @@ yes → don't.
 
 ## Architecture
 
-- **Framework**: TanStack Start (file routes in `src/app/`; index (two-door
-  shelf) + aventure + calcul + bibliotheque + parents section, incl.
-  /parents/calcul).
+- **Framework**: TanStack Start (file routes in `src/app/`; index (the
+  DESKTOP — see Bureau bullet) + aventure + calcul + bibliotheque (relocated
+  under the pathless layout `src/app/_bureau/`, public URLs unchanged) +
+  parents section, incl. /parents/calcul — /parents stays OUTSIDE the
+  desktop grammar).
+- **Bureau (the calm fake-OS frame)**: `/` renders the portrait screen OR
+  the desktop (3 icons, dblclick native + Enter — the "Ouvrir" fallback was
+  REMOVED by user decision 2026-07-22, single click only selects; "Ranger
+  le bureau" ritual) — the choice is 100% client (localStorage
+  `bureau:session`, shape-guarded, silent failure; pure modules in
+  `src/lib/bureau/`, golden-tested via `test:bureau`). The `_bureau` layout
+  wraps each mini-app in ONE window (`src/components/bureau/fenetre.tsx`):
+  ~85% viewport, drag by title bar only (@dnd-kit, clamp = title bar fully
+  visible, commit in left/top — NEVER a persistent transform, it would
+  offset /calcul's DragOverlay), reopen always centered, <lg fullscreen
+  without drag, print neutralized (`.bureau-fenetre` rules). CONTRACT: the
+  layout keeps `ssr: true` (Selective SSR is inherited down — `ssr:false`
+  would silently make the mini-apps client-only); the closed-session gate
+  lives at exactly TWO places (`_bureau` layout as an optimistic overlay +
+  `/`), never `__root` (else /parents and /data/$ would be gated). The
+  `__root` shell is route-aware: full-bleed for the desktop layer, the
+  `max-w-5xl` container is kept for /parents (the window frame provides the
+  container inside).
 - **Nitro**: `node-server` preset → builds a standalone `.output/server/
   index.mjs` (traced deps included, native libsql binding too) that `bun run
   start` and the Docker image both run. Deploy = `Dockerfile` (multi-stage:

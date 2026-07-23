@@ -1,62 +1,61 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookHeart, Grid3x3, Leaf } from "lucide-react";
-import { Button } from "~/components/ui/button";
-import { appConfig } from "~/config/app";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Bureau } from "~/components/bureau/bureau";
+import { EcranPortrait } from "~/components/bureau/portrait";
+import {
+  lireSessionOuverte,
+  ouvrirSession,
+  rangerBureau,
+} from "~/lib/bureau/session";
 
 export const Route = createFileRoute("/")({
   component: HomePage,
 });
 
 /**
- * Accueil — l'étagère. Two doors, like two activity trays on a Montessori
- * shelf: stories and posed operations. Deliberately NOT a mini-app registry
- * or a navigation system (eng-review scope decision): two plain links, the
- * abstraction can appear if a third mini-app ever exists. No stats, no
- * "last time", no counters, no cross-app mechanics.
+ * Accueil — le bureau d'Arsène. REVIREMENT DOCUMENTÉ de la décision
+ * eng-review « deliberately NOT a mini-app registry » (l'étagère à deux
+ * portes) : le fait nouveau est la curiosité d'Arsène pour le vrai
+ * ordinateur — le registre EST désormais la leçon (vie pratique Montessori :
+ * le cadre devient le programme, design doc user-main-design-20260721).
+ *
+ * `/` rend l'écran-portrait OU le bureau selon la session — jamais de
+ * redirect qui claque. La décision est 100 % CLIENT (le serveur ne lit pas
+ * localStorage) : le composant choisit après montage, d'où le premier paint
+ * en lavis nu — sinon mismatch d'hydratation ou flash du mauvais écran.
+ * C'est ici le second des DEUX seuls emplacements de la gate session-fermée
+ * (T2-A) — l'autre est la layout _bureau ; jamais __root.
  */
 function HomePage() {
+  const [etat, setEtat] = useState<"verification" | "portrait" | "bureau">(
+    "verification"
+  );
+  useEffect(() => {
+    setEtat(lireSessionOuverte() ? "bureau" : "portrait");
+  }, []);
+
+  if (etat === "verification") {
+    // SSR + premier rendu client : le lavis calme, rien d'autre.
+    return <div className="bureau-fond min-h-screen" />;
+  }
+
+  if (etat === "portrait") {
+    return (
+      <EcranPortrait
+        onOuvrir={() => {
+          ouvrirSession();
+          setEtat("bureau");
+        }}
+      />
+    );
+  }
+
   return (
-    <div className="flex min-h-[80vh] flex-col items-center justify-center gap-12 text-center">
-      <div className="space-y-3">
-        <p aria-hidden="true" className="text-6xl">
-          ✨
-        </p>
-        <h1 className="font-bold text-4xl leading-tight sm:text-5xl">
-          {appConfig.name}
-        </h1>
-      </div>
-
-      <div className="flex flex-col items-center gap-6 sm:flex-row">
-        <Button
-          className="h-auto gap-4 rounded-[2rem] px-10 py-8 text-2xl"
-          nativeButton={false}
-          render={<Link to="/aventure" />}
-          size="lg"
-        >
-          <Leaf className="size-8" />
-          Histoire où tu choisis
-        </Button>
-        <Button
-          className="h-auto gap-4 rounded-[2rem] px-10 py-8 text-2xl"
-          nativeButton={false}
-          render={<Link to="/calcul" />}
-          size="lg"
-          variant="secondary"
-        >
-          <Grid3x3 className="size-8" />
-          Poser des calculs
-        </Button>
-      </div>
-
-      <Button
-        className="gap-2 text-muted-foreground text-xl"
-        nativeButton={false}
-        render={<Link to="/bibliotheque" />}
-        variant="ghost"
-      >
-        <BookHeart className="size-5" />
-        Ma bibliothèque
-      </Button>
-    </div>
+    <Bureau
+      onRanger={() => {
+        rangerBureau();
+        setEtat("portrait");
+      }}
+    />
   );
 }

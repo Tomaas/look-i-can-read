@@ -8,7 +8,7 @@ import {
 import { getLibraryFn } from "~/server/functions";
 import { isRenderableImagePath } from "~/server/providers/types";
 
-export const Route = createFileRoute("/bibliotheque")({
+export const Route = createFileRoute("/_bureau/bibliotheque")({
   component: LibraryPage,
   loader: () => getLibraryFn(),
 });

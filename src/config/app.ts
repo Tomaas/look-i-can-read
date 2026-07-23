@@ -22,7 +22,12 @@ function withDe(name: string): string {
   return ELIDING_INITIAL.test(name) ? `d'${name}` : `de ${name}`;
 }
 
-const childName: string = (import.meta.env.VITE_CHILD_NAME || "").trim();
+/**
+ * Le prénom configuré, exporté pour l'identité du bureau (T4-A) : le portrait
+ * de l'écran de session est le héros dont le nom correspond à CE prénom —
+ * jamais « le premier héros de la table ». Vide si non configuré.
+ */
+export const childName: string = (import.meta.env.VITE_CHILD_NAME || "").trim();
 
 export const appConfig = {
   /** One-line description (meta description tag). */

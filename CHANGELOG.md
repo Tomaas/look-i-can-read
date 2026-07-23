@@ -4,6 +4,51 @@ Toutes les évolutions notables de l'app, une version par livraison.
 Format : [Keep a Changelog](https://keepachangelog.com/fr/) adapté, versions
 4 chiffres `MAJOR.MINOR.PATCH.MICRO` (fichier `VERSION`).
 
+## [0.4.0.0] - 2026-07-22
+
+### Added
+
+- **Le bureau d'Arsène** : l'accueil devient un petit ordinateur calme.
+  L'app s'ouvre sur l'écran de session — le portrait de l'enfant (son héros),
+  son prénom, un clic pour entrer, jamais de mot de passe — puis sur un vrai
+  bureau : trois icônes (Histoires, Calculs, Bibliothèque) posées sur un
+  lavis crème, avec un soleil pâle et une colline sauge à l'horizon.
+- Chaque activité s'ouvre dans une **vraie fenêtre** : barre de titre avec le
+  nom et le pictogramme de l'app, grande croix douce pour fermer, et la
+  fenêtre se déplace en tirant sa barre de titre — la barre ne peut jamais
+  sortir de l'écran, et chaque ouverture repart centrée. Sur un petit écran,
+  la fenêtre occupe tout l'espace et le déplacement s'efface.
+- Les gestes du vrai ordinateur s'apprennent tels quels : un clic
+  sélectionne une icône (son nom se surligne, comme sur un vrai bureau), le
+  **double-clic l'ouvre** — avec le délai du système, jamais un seuil
+  maison — et Entrée fonctionne aussi.
+- Le rituel **« Ranger le bureau »**, discret dans un coin, referme la
+  session vers le portrait. Session fermée, toute l'app se présente d'abord
+  par le portrait : ni le bouton Retour ni un lien direct ne sautent le
+  rituel.
+
+### Changed
+
+- Une histoire ou une série de calcul en cours **reprend exactement** après
+  fermeture de sa fenêtre — le cadre n'introduit aucune perte, et une page
+  ouverte depuis une liste défilée repart toujours en haut.
+- L'espace parent (/parents) reste volontairement hors du bureau : pas
+  d'icône, accès direct par l'adresse, présentation inchangée.
+- L'impression des livrets et des fiches depuis une fenêtre rend exactement
+  comme avant : le cadre disparaît entièrement du papier.
+
+### Fixed
+
+- Un déplacement de fenêtre interrompu (redimensionnement, Échap, changement
+  d'onglet) ne peut plus laisser la fenêtre coincée hors de l'écran.
+- Si le stockage local de l'appareil est indisponible, la session vit en
+  mémoire le temps de l'onglet : l'écran-portrait ne redevient jamais une
+  barrière répétée.
+- Un souci de connexion pendant l'ouverture d'une activité ne fige plus les
+  icônes du bureau : elles redeviennent utilisables d'elles-mêmes.
+- Un prénom accentué reconnaît son héros quelle que soit la façon dont
+  l'accent a été saisi dans l'espace parent.
+
 ## [0.3.1.0] - 2026-07-20
 
 ### Changed

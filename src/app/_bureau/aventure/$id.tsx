@@ -5,7 +5,7 @@ import { Button } from "~/components/ui/button";
 import { getDynamicStoryFn } from "~/server/dynamic-functions";
 import { getFlagsFn } from "~/server/functions";
 
-export const Route = createFileRoute("/aventure/$id")({
+export const Route = createFileRoute("/_bureau/aventure/$id")({
   component: AventureStoryPage,
   loader: async ({ params }) => {
     const [data, flags] = await Promise.all([

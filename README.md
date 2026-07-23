@@ -5,9 +5,12 @@ A tiny web app that invents calm, illustrated, read-aloud mini-stories in
 reading tool for beginning readers (fin CP / début CE1, ~6–7 years old) — not
 a game. No score, no timer, no rewards.
 
-Since v0.2 the home page is a small two-door shelf: the stories, plus a quiet
+Since v0.4 the home page is a small calm desktop — "the child's own
+computer", three icons and real windows (see [How it works for the
+child](#how-it-works-for-the-child)). Behind the icons: the stories, a quiet
 **"Poser des calculs"** workshop — column arithmetic the same calm way, with
-the level always chosen by the parent, never by an algorithm.
+the level always chosen by the parent, never by an algorithm — and the
+library of kept stories.
 
 The printed A5 booklet that comes out of the printer is often the real magic
 moment.
@@ -59,7 +62,10 @@ Two files to personalize (plus in-app management at `/parents`):
 - `src/config/app.ts` — the app's display name and booklet footer. Prefer
   setting `VITE_CHILD_NAME=Léa` (see `.env.example`) to derive both without
   touching the code; `VITE_APP_NAME` / `VITE_APP_DESCRIPTION` /
-  `VITE_STORY_LABEL` override the full strings.
+  `VITE_STORY_LABEL` override the full strings. `VITE_CHILD_NAME` also names
+  the desktop's user: the session-screen portrait is the hero whose name
+  matches it (case-, accent- and d'-elision-tolerant) — no match, or no
+  configured name, falls back to a soft star and the app name.
 - `src/config/characters.ts` — the heroes: replace the sample kids with your
   child, siblings, friends. The default hero is pre-selected in the wizard.
   Places, surprise elements and doudous have the same kind of config files
@@ -141,9 +147,11 @@ runtime) and a `compose.yml`. On the deploy machine:
 1. Create `.env.production` at the repo root with the runtime settings
    (same names as the table above: `ANTHROPIC_API_KEY`, `DATABASE_URL`,
    `TURSO_AUTH_TOKEN`, plus any optional image/TTS settings).
-2. The `VITE_*` branding vars are baked in at **build time** — put them in a
-   root `.env` file (Docker Compose reads it for `${...}` substitution) or
-   pass them as build args.
+2. The `VITE_*` branding vars are baked in at **build time**. `compose.yml`
+   forwards `VITE_CHILD_NAME` from a root `.env` file (Docker Compose reads
+   it for `${...}` substitution); the three full-string overrides
+   (`VITE_APP_NAME`, `VITE_APP_DESCRIPTION`, `VITE_STORY_LABEL`) currently
+   need a `compose.override.yml` or explicit build args.
 3. Run the migrations once from the checkout (`bun run db:migrate`), then:
 
 ```
@@ -169,8 +177,23 @@ Production notes:
 
 ## How it works for the child
 
-The home page offers two doors: the story, and the operations workshop.
-For a story:
+The app IS a small, calm computer — "the child's desktop". Opening it is a
+ritual: the portrait screen (their name, their hero's face, one click — never
+a password, never a failure state), then a desktop with three icons
+(Stories, Sums, My library). A single click selects an icon (the label
+highlights, like a real desktop); a real double-click opens it — the native
+one, so the gesture transfers to the family computer (Enter works too).
+Each app opens in ONE real window:
+a title bar you can drag (the bar can never leave the screen), a big soft
+close cross. No taskbar, no clock, no notifications, no sounds, no
+multi-window — the frame itself teaches pointing, clicking, double-clicking,
+dragging and closing. A discreet "Ranger le bureau" (tidy the desk) closes
+the session back to the portrait; until the desk is tidied, the session
+stays open on the device — reopening the app later lands straight on the
+desktop, like a computer left on. The parent pages stay outside this grammar
+(`/parents`, by URL only).
+
+Inside the Stories window:
 
 1. **Invent a story** → pick hero(es), a place, a surprise element (or hit
    "random 🎲").
@@ -189,6 +212,48 @@ short series of posed operations begins; the child writes the digits,
 compares with the solved version when ready, and the tray goes back on the
 shelf at the end of the series. A series left mid-way resumes exactly where
 it was — each tray remembers its own (kept on the device).
+
+## Installing "their computer" (operator checklist)
+
+The desktop is designed to be launched full screen from the child's own
+account on the family machine. Everything below is a one-time operator
+action — decide it BEFORE the evening you ship it, not during.
+
+1. **The 5-minute launcher test FIRST (decision D21-A).** From the child's
+   account, try:
+
+   ```
+   chromium --app=http://localhost:3009 --start-fullscreen
+   ```
+
+   plus a `.desktop` entry (icon + name) so it looks like their program. If
+   this delivers "their computer" full screen with zero browser chrome, you
+   are DONE — the PWA/manifest slice is deliberately not built unless this
+   test shows it adds something the launcher doesn't.
+2. **The child's user account** (this is half the product): on the server
+   machine itself, `http://localhost:3009` works directly. From another
+   machine, plain `http://<lan-ip>:3009` is fine for the launcher — once
+   you've exposed the port beyond the default loopback-only binding (that's
+   what the private `compose.override.yml` is for); only a PWA install would
+   require a secure context (localhost or an https overlay).
+3. **Browser**: Chromium/Chrome. VERIFY `--start-fullscreen` on the real
+   machine — without it the OS title bar stays visible above our window
+   (a system close button, often red). No kiosk mode: it would contradict
+   learning a real computer and complicate printing.
+4. **Autostart**: the Docker container must start with the server machine
+   (compose restart policy) — otherwise "their computer" greets them with a
+   browser error at wake-up.
+5. **Printer** reachable from the child's account (story booklets and A5
+   operation sheets print from inside the windows).
+6. **Recovery path**: if the app doesn't answer (network, container), the
+   child sees a browser error page — out of our hands. The family protocol
+   ("go get a parent") IS the recovery path; naming it here is enough.
+7. **Watch their first mouse session** without helping: how their hand
+   clicks, double-clicks (do they manage? at what pace?), drags. Target
+   sizes should copy their hands, not our idea of their hands. The
+   double-click delay stays the system's — never a custom threshold. If the
+   double-click turns out to be out of reach, the "Open" fallback button
+   (removed 2026-07-22) comes back in one commit.
 
 ## Technical notes
 
@@ -214,7 +279,8 @@ it was — each tray remembers its own (kept on the device).
   network hiccup).
 - **Tests**: `bun run test` runs golden assertion scripts (prompt identity,
   coherence validators, media store, media data route, reading aids, posed
-  operations) — plain Bun, no test runner needed.
+  operations, the desktop layer's pure modules, and public-URL integrity of
+  the route relocation) — plain Bun, no test runner needed.
 
 ## License
 

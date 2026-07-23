@@ -22,6 +22,70 @@
 **Contexte :** Soustraction = seul le diminuende posé, emprunt = échange inverse 1 bleu → 10 verts (variante exacte à confirmer avec l'école) ; multiplication = ligne posée en un geste (« poser encore 48 ») ; spec détaillée de la multiplication à 2 chiffres (produits partiels, décalage) à écrire à ce moment-là.
 **Depends on:** Tranche 5.
 
+## Bureau (le vrai petit ordinateur)
+
+### Observer le bureau après ship (protocole 1 semaine)
+**Priority:** P2
+**Contexte :** Quatre décisions du design doc du bureau
+(`~/.gstack/projects/Tomaas-look-i-can-read/user-main-design-20260721-141546.md`)
+sont parquées sur l'observation, jamais sur la mesure : (a) le drag de fenêtre —
+valeur ou friction ? s'il ne déplace jamais la fenêtre, la fenêtre devient fixe ;
+(b) les tailles de cibles (icônes, croix) — copient ses mains ; (c) le ressenti
+de la gate portrait — le clic-portrait reste-t-il un rituel regardé ou
+devient-il un réflexe aveugle ? (d) le double-clic SEUL ouvre (rattrapage
+« Ouvrir » retiré le 22/07 ; la voix Codex du pré-landing a relevé le risque
+de découvrabilité) : s'il n'y arrive pas, le bouton revient en un commit —
+la machine à états n'a pas bougé. Regarder une semaine, sans aider, sans
+chronométrer (contrainte calme : jamais de mesure de l'enfant).
+**Depends on:** le ship du bureau.
+
+### DragOverlay de /calcul sous le drag de fenêtre (multi-touch)
+**Priority:** P3
+**Contexte :** Relevé par le red team du pré-landing bureau : sur un écran
+TACTILE ≥ lg (iPad paysage), un doigt qui tient la barre de titre pendant
+qu'un second traîne une tuile du pavé ferait rendre le DragOverlay de
+/calcul décalé (le transform de drag du cadre devient son containing block)
+et rogné par l'overflow-hidden. Hors profil de la machine familiale
+(souris) ; correctif propre à la tranche 5, la prochaine ouverture légitime
+de /calcul : porter le DragOverlay sur document.body (ou garde croisée
+entre les deux DndContext).
+**Depends on:** Tranche 5 calcul (unification lib/storage.ts, D18-A).
+
+### Hauteurs des mini-apps dans la fenêtre (min-h-[80vh] → contexte fenêtré)
+**Priority:** P3
+**Contexte :** Relevé par le Codex adversarial du pré-landing bureau : les
+shells internes (`min-h-[80vh]` dans calcul/index.tsx et ailleurs) mesurent le
+VIEWPORT, pas la fenêtre de ~85vh — le contenu déborde donc toujours d'un
+poil et la fenêtre montre une barre de défilement même quand tout tiendrait.
+Cosmétique (une scrollbar est une grammaire d'OS légitime) ; correctif à la
+prochaine ouverture légitime des internes (tranche 5) : min-h-full dans le
+contexte fenêtré plutôt que 80vh.
+**Depends on:** Tranche 5 calcul.
+
+### Tranche clavier : la machine à écrire
+**Priority:** P3
+**Contexte :** Le design doc du bureau (D24-A) coupe explicitement le clavier
+du périmètre : la grammaire livrée est 100 % pointeur alors que le besoin
+énoncé disait « souris ET clavier ». Le foyer naturel de l'alphabétisation
+clavier est la « machine à écrire » écartée en D3 : une mini-app calme où les
+lettres tapées apparaissent grandes et belles (adjacente à la lecture —
+peut-être avec les aides de lecture de `src/lib/reading-aids/`), une icône de
+plus sur le bureau. À ouvrir après le ship du bureau, quand l'observation
+montre qu'Arsène est à l'aise avec le pointeur.
+**Depends on:** le ship du bureau.
+
+### Résilience du brouillon d'aventure pendant la génération
+**Priority:** P3
+**Contexte :** `src/app/_bureau/aventure/index.tsx` (~l.380) efface le brouillon AVANT
+l'appel serveur : quitter pendant une génération en vol perd le choix de
+l'enfant. Préexistant (pas introduit par le bureau), relevé par la voix
+extérieure de la ceo-review du 21/07 (T3), épinglé tel quel par le plan /qa,
+et gardé HORS du périmètre bureau (prémisse 6 : internes intouchés). Correctif
+candidat : effacer après résolution, ou restaurer au démontage — toutes les
+sorties (croix, flèche retour, bouton Retour) deviennent alors sans perte.
+À réviser séparément, avec sa propre attention à la machine à états de
+l'aventure.
+
 ## Deploy (Docker/Compose)
 
 ### Forwarder les build args de branding dans compose.yml
