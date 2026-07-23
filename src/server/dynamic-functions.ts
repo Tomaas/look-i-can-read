@@ -3,7 +3,6 @@ import { and, asc, eq, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import { z } from "zod";
 import { appConfig } from "~/config/app";
 import { resolveImageModel } from "~/config/image-models";
-import { imageStyleSuffix } from "~/config/style";
 import { serverEnv } from "~/env";
 import { db } from "~/server/db";
 import {
@@ -18,17 +17,13 @@ import { resolveElementsForCreation } from "~/server/elements-store";
 import { resolveHeroesForCreation } from "~/server/heroes-store";
 import { resolvePlaceForCreation } from "~/server/places-store";
 import { generateImage } from "~/server/providers/image/nanobanana";
+import { buildSegmentImagePrompt } from "~/server/providers/image/segment-prompt";
 import { resolveStoredMediaForModel } from "~/server/providers/media-store";
 import { sanitizeCustomPrompt } from "~/server/providers/text/custom-prompt";
-import { doudouImageLine } from "~/server/providers/text/doudou-prompt";
 import {
   generateBeat,
   generateStoryArc,
 } from "~/server/providers/text/dynamic";
-import {
-  heroesImageLine,
-  outfitImageLine,
-} from "~/server/providers/text/hero-prompt";
 import {
   type BeatHistoryEntry,
   type DynamicBeat,
@@ -700,60 +695,22 @@ async function generateSegmentImage(
     return { imagePath: null, imageStatus: "skipped" };
   }
   // History path: frozen snapshot, never the live editable rows.
-  const { heroes, place, doudous, outfit } = getFrozenStoryPromptContext(story);
+  const frozen = getFrozenStoryPromptContext(story);
 
   // A prior illustration of THIS story, sent as an image input so characters/
   // style stay consistent across beats (best-effort — null on beat 0 / no
   // prior image / fetch failure → plain text-to-image, as before).
   const referenceImage = await resolveReferenceImage(storyId, idx);
 
-  // The beat's OWN scene (emitted by the text model) wins over the story's
-  // frozen starting place: once the story walks through the magic door, the
-  // illustration must follow it — not stamp "aux États-Unis" on every page.
-  let sceneLine = "";
-  if (segment.sceneHint) {
-    sceneLine = `La scène : ${segment.sceneHint}`;
-  } else if (place.promptHint) {
-    sceneLine = `La scène se passe ${place.promptHint}.`;
-  }
-
-  // Story-level visual world (time of day, season, weather, light), frozen at
-  // creation. A DEFAULT ambiance, not an absolute order: the beat's own scene
-  // keeps priority (a story that walks through a magic door into space must be
-  // allowed to change its sky). Null on older stories → line omitted.
-  const ambianceLine = story.visualWorld
-    ? `Ambiance générale de l'histoire (sauf indication contraire de la scène) : ${story.visualWorld}.`
-    : "";
-
-  // Story-level frozen outfit (the heroes' wardrobe), a DEFAULT the reference
-  // image overrides. Mainly anchors beat 0 (no reference yet) and non-default
-  // heroes (no clothing in their imageHint). "" on older stories / safety drop
-  // → line omitted, image built exactly as before.
-  const outfitLine = outfitImageLine(outfit);
-
-  // Feed the WHOLE beat's text (now 1–3 short sentences) so the page's image
-  // reflects that full page, not just its first ~8-word sentence.
-  const prompt = [
-    // The reference anchors CHARACTER IDENTITY + STYLE only — never the decor.
-    // The earlier "dans une NOUVELLE scène" wording let the model clone page
-    // 1's backdrop on every page, so the illustrations never moved even when
-    // the story did.
-    referenceImage
-      ? "Reprends EXACTEMENT les personnages de l'image fournie (visages, coiffures, vêtements, proportions) et son style — mais PAS son décor ni son cadrage. Dessine le lieu où l'histoire se trouve MAINTENANT (voir « La scène » ci-dessous), même s'il ne ressemble plus à celui de l'image fournie :"
-      : "Illustration pour un bout d'une histoire d'enfant, tendre et rassurante.",
-    segment.paragraphs.join(" "),
-    sceneLine,
-    ambianceLine,
-    outfitLine,
-    // Single hero → identical to the old `hero.imageHint`; multi → grouped.
-    heroesImageLine(heroes),
-    // Only the FIRST doudou appears in illustrations — 6 peluches per page
-    // crowded every composition; the text still mentions them all.
-    doudouImageLine(doudous.slice(0, 1)),
-    imageStyleSuffix,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  // The illustration prompt (scene · ambiance · outfit · heroes · doudou ·
+  // style) is assembled by the pure builder — pinned byte-identical by
+  // test:golden. This function keeps only DB read / persist / sentinel.
+  const prompt = buildSegmentImagePrompt(
+    story,
+    segment,
+    referenceImage !== undefined,
+    frozen
+  );
 
   try {
     const imagePath = await generateImage(prompt, model, referenceImage);
