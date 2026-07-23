@@ -39,8 +39,9 @@ moment.
 - **Library**: every kept story is saved and re-readable.
 - **"Poser des calculs" workshop** (`/calcul`): the child first takes a tray
   from a small shelf — one tray per operation family the parent has prepared
-  (additions, subtractions, multiplications), each with its own little fixed
-  scene, never a level number. Then a short series of column operations the
+  (additions, subtractions, multiplications), each with its own little
+  scene — quietly rotated from one day to the next, never under the child's
+  eyes — and never a level number. Then a short series of column operations the
   child writes freely on a soft numpad (tap a key, or drag the digit straight
   onto a cell), then compares with the solved version — nothing is
   marked, nothing is scored. Word problems can feature the family's hero and

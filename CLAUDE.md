@@ -185,10 +185,14 @@ yes → don't.
   cannot be deactivated) — NO automatic progression, no comfort score, no
   evaluation of the child (the calm constraint applies in full). `/calcul`
   opens on the TRAY SHELF (`src/components/calcul/tray-shelf.tsx`): one tray
-  per activated family — fixed scene (frozen object counts, no numbers,
-  in-palette SVGs), sign medallion, phrase — the child picks a tray, never
+  per activated family — a scene (frozen object counts, no numbers,
+  in-palette SVGs), sign medallion, phrase; each family has a small set of
+  scene+phrase variants rotated PER DAY (`varianteDuJour`, pure, seeded on
+  famille+local day — UX 2026-07-23: never "toujours des marrons"; stable
+  within a day, aria-label never changes) — the child picks a tray, never
   sees a level; a non-activated family does NOT exist on screen (no greyed
-  tray). Then the "série qui se range" runs unchanged: free writing on a soft
+  tray). The template énoncés draw from seeded pools too (objects,
+  containers, verbs — multiplication is no longer always "paniers"). Then the "série qui se range" runs unchanged: free writing on a soft
   numpad — tap into the selected cell or drag the digit tile straight onto a
   grid cell (`@dnd-kit/core`: draggable keys, droppable cells, DragOverlay
   ghost, forgiving drop for small fingers; everything inks like pencil, never
@@ -196,8 +200,10 @@ yes → don't.
   FAMILY (localStorage key per family, shape-guarded; the "sorti" tray state
   uses the full resumable predicate, never key-existence; a one-time bridge
   migrates the pre-shelf `calcul:serie` key; storage failure degrades
-  silently — the child never sees an error). Back arrow is two-level:
-  série → "Reposer le plateau" (shelf) → "Retour à l'accueil"; the end of a
+  silently — the child never sees an error). Back arrow exists ONLY in a
+  série ("Reposer le plateau" → shelf); the shelf has NO arrow — the window
+  close is the way home (UX 2026-07-23: redundant arrow + drawn shelf plank
+  removed); the end of a
   série is a 🌿 transition back to the shelf, never a destination. Server
   functions in `src/server/math-functions.ts` read/write `math_skills` (one
   atomic `db.batch` save; zod cross-checks palier↔family); dirty ids are

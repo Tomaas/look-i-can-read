@@ -1,4 +1,9 @@
-export { type EnonceEntities, enonceFor } from "~/lib/operations/enonces";
+export {
+  type EnonceEntities,
+  enonceFor,
+  OBJETS,
+  varianteDuJour,
+} from "~/lib/operations/enonces";
 export {
   countBorrows,
   countCarries,

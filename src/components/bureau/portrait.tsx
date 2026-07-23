@@ -53,7 +53,7 @@ export function EcranPortrait({ onOuvrir }: { onOuvrir: () => void }) {
   return (
     <div className="bureau-fond fixed inset-0 z-50 flex flex-col items-center justify-center gap-10">
       <button
-        className="group flex flex-col items-center gap-6 rounded-[3rem] p-8 outline-none focus-visible:ring-4 focus-visible:ring-ring"
+        className="group flex cursor-pointer flex-col items-center gap-6 rounded-[3rem] p-8 outline-none focus-visible:ring-4 focus-visible:ring-ring"
         onClick={onOuvrir}
         type="button"
       >
