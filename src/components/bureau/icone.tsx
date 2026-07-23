@@ -49,7 +49,7 @@ export function IconeBureau({
     // data-icone-bureau : le « clic ailleurs » du bureau ignore l'icône.
     <div className="flex w-44 flex-col items-center" data-icone-bureau>
       <button
-        className="group flex flex-col items-center gap-2.5 rounded-2xl p-3 outline-none focus-visible:ring-4 focus-visible:ring-ring"
+        className="group flex cursor-pointer flex-col items-center gap-2.5 rounded-2xl p-3 outline-none focus-visible:ring-4 focus-visible:ring-ring"
         onClick={() => onEvenement("click")}
         onDoubleClick={() => onEvenement("dblclick")}
         onKeyDown={(event) => {
