@@ -10,7 +10,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -391,7 +391,7 @@ function CalculWorkshopPage() {
 
   if (phase.kind === "shelf") {
     return (
-      <WorkshopShell arrow={{ kind: "accueil" }}>
+      <WorkshopShell>
         <FadeIn>
           <TrayShelf
             doudouName={doudouName}
@@ -407,7 +407,7 @@ function CalculWorkshopPage() {
   // Le moment « rangé », partagé par les trois chemins qui y mènent (phase
   // tidied, série absente, série finie/vide en attente de l'effet).
   const tidiedScreen = (
-    <WorkshopShell arrow={{ kind: "accueil" }}>
+    <WorkshopShell>
       <TidiedMoment />
     </WorkshopShell>
   );
@@ -535,7 +535,7 @@ function CalculWorkshopPage() {
   }
 
   return (
-    <WorkshopShell arrow={{ kind: "reposer", onReposer: reposerPlateau }}>
+    <WorkshopShell onReposer={reposerPlateau}>
       {/* No tray/progress row (review decision 3B): the series is bounded but
           never counted in front of the child — the end simply arrives, like
           the end of a story. */}
@@ -615,45 +615,32 @@ function CalculWorkshopPage() {
 }
 
 /**
- * Common frame — la flèche à deux niveaux (T2/D-4A), libellés IMPOSÉS :
- * deux « étagères » coexistent dans l'app (l'accueil à deux portes et
- * l'étagère de plateaux), les noms ne se recyclent pas. Zone tactile ≥44px.
+ * Common frame — la flèche n'existe qu'en série (« Reposer le plateau »,
+ * T2/D-4A révisé UX 2026-07-23) : sur l'étagère (et le moment « rangé »),
+ * la croix de la fenêtre fait déjà le retour à l'accueil — une flèche en
+ * doublon brouillait le geste. Zone tactile ≥44px.
  */
-type ShellArrow =
-  | { kind: "accueil" }
-  | { kind: "reposer"; onReposer: () => void };
-
 function WorkshopShell({
-  arrow,
+  onReposer,
   children,
 }: {
-  arrow: ShellArrow;
+  onReposer?: () => void;
   children: React.ReactNode;
 }) {
   return (
     <div className="mx-auto flex min-h-[80vh] w-full max-w-3xl flex-col items-center gap-8 py-6">
-      <div className="w-full">
-        {arrow.kind === "accueil" ? (
-          <Button
-            aria-label="Retour à l'accueil"
-            className="min-h-11 min-w-11 gap-2 text-lg text-muted-foreground"
-            nativeButton={false}
-            render={<Link aria-label="Retour à l'accueil" to="/" />}
-            variant="ghost"
-          >
-            <ArrowLeft className="size-5" />
-          </Button>
-        ) : (
+      {onReposer ? (
+        <div className="w-full">
           <Button
             aria-label="Reposer le plateau"
             className="min-h-11 min-w-11 gap-2 text-lg text-muted-foreground"
-            onClick={arrow.onReposer}
+            onClick={onReposer}
             variant="ghost"
           >
             <ArrowLeft className="size-5" />
           </Button>
-        )}
-      </div>
+        </div>
+      ) : null}
       {children}
     </div>
   );
