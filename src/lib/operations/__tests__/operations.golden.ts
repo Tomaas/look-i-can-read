@@ -38,6 +38,7 @@ import {
   MIN_SERIE_SIZE,
   matchesQuota,
   normalizeFamilySettings,
+  OBJETS,
   PALIERS,
   palierById,
   paliersByFamille,
@@ -50,6 +51,7 @@ import {
   settingsFromRows,
   skillKeyOf,
   UnsatisfiableConstraintError,
+  varianteDuJour,
 } from "~/lib/operations";
 
 let failures = 0;
@@ -99,7 +101,7 @@ check("countMultCarries(48, 7) = 2", countMultCarries(48, 7) === 2);
 // La sémantique des quotas vit dans matchesQuota (exportée) — pas de copie ici.
 const quotaHolds = matchesQuota;
 
-// Précondition exécutable : countBorrows(a &lt; b) lève au lieu de boucler.
+// Précondition exécutable : countBorrows(a < b) lève au lieu de boucler.
 {
   let threw = false;
   try {
@@ -491,7 +493,10 @@ check(
   const sansDoudou = enonceFor(op, { hero: "Léa" });
   check("énoncé: fonctionne sans doudou", sansDoudou.includes("Léa"));
 
-  // Calme par construction : aucun mot d'enjeu ne peut sortir des gabarits.
+  // Calme + sobriété par construction, sur les DEUX branches (avec/sans
+  // doudou) : aucun mot d'enjeu, et chaque gabarit tient la promesse
+  // « UNE phrase courte » (≤ 1 point, < 90 caractères) — les pools élargis
+  // (UX 2026-07-23) restent couverts en entier.
   const FORBIDDEN = [
     "bravo",
     "gagné",
@@ -502,20 +507,32 @@ check(
     "point",
   ];
   let calm = true;
+  let sobre = true;
   for (const palier of PALIERS) {
     for (let seed = 1; seed <= 60; seed += 1) {
       const o = generateOperation(palier.constraints, seed);
-      const phrase = enonceFor(o, {
-        doudou: "Doudou",
-        hero: "Arsène",
-      }).toLowerCase();
-      if (FORBIDDEN.some((w) => phrase.includes(w))) {
-        calm = false;
-        break;
+      const phrases = [
+        enonceFor(o, { doudou: "Doudou", hero: "Arsène" }),
+        enonceFor(o, { hero: "Arsène" }),
+      ];
+      for (const phrase of phrases) {
+        if (FORBIDDEN.some((w) => phrase.toLowerCase().includes(w))) {
+          calm = false;
+        }
+        if (!(phrase.split(".").length <= 2 && phrase.length < 90)) {
+          sobre = false;
+        }
       }
     }
   }
-  check("énoncés: aucun terme d'enjeu sur tous les paliers × 60 seeds", calm);
+  check(
+    "énoncés: aucun terme d'enjeu sur tous les paliers × 60 seeds × 2 branches",
+    calm
+  );
+  check(
+    "énoncés: sobriété (1 phrase, < 90 car.) sur TOUS les gabarits — paliers × 60 seeds × 2 branches",
+    sobre
+  );
 }
 
 // Identité des gabarits (comme prompt-identity) : la phrase exacte est
@@ -531,29 +548,74 @@ check(
   check(
     "énoncé épinglé (sans doudou): variante solo exacte",
     enonceFor(op, { hero: "Arsène" }) ===
-      "Arsène a 32 plumes et en trouve encore 2.",
+      "Arsène ramasse 32 plumes, puis encore 2.",
     enonceFor(op, { hero: "Arsène" })
   );
+  // Invariance à la config d'entités (red-team 2026-07-23) : quand la
+  // branche solo sort, le libellé est LE MÊME avec ou sans doudou — le
+  // tirage de branche est consommé inconditionnellement. Vérifié sur les
+  // TROIS familles (chaque branche a son propre garde compagnon).
+  {
+    let invariant = true;
+    for (const palierIdx of [0, 3, 5]) {
+      for (let seed = 1; seed <= 100; seed += 1) {
+        const o = generateOperation(PALIERS[palierIdx].constraints, seed);
+        const avec = enonceFor(o, { doudou: "Zaichik", hero: "A" });
+        if (!avec.includes("Zaichik") && avec !== enonceFor(o, { hero: "A" })) {
+          invariant = false;
+          break;
+        }
+      }
+    }
+    check(
+      "énoncé solo: libellé invariant à la présence du doudou (3 familles × 100 seeds)",
+      invariant
+    );
+  }
+}
+
+// Pin délibéré du pool de contenants (identité, comme les phrases épinglées).
+const CONTENANTS_PIN = ["paniers", "boîtes", "corbeilles", "sacs", "bols"];
+
+/** Réduit une phrase à son gabarit : nombres → N, objets → OBJ (dérivés du
+    pool EXPORTÉ — un objet ajouté ne fait pas dériver le normaliseur),
+    contenants → CONT (depuis le pin ci-dessus). Mots ANCRÉS (\b) et
+    échappés : un futur objet sous-chaîne d'un gabarit (« os » dans « pose »)
+    ou porteur d'un métacaractère ne peut pas fausser la normalisation. */
+function motsRegex(mots: readonly string[]): RegExp {
+  const escaped = mots.map((m) => m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(`\\b(?:${escaped.join("|")})\\b`, "g");
+}
+function gabaritOf(phrase: string): string {
+  return phrase
+    .replaceAll(/\d+/g, "N")
+    .replaceAll(motsRegex(OBJETS), "OBJ")
+    .replaceAll(motsRegex(CONTENANTS_PIN), "CONT");
 }
 
 // Couverture des branches de gabarits : avec un doudou, les deux variantes
 // (compagnon / solo) sortent bien selon la seed — addition ET soustraction.
+// La branche compagnon se détecte par la PRÉSENCE DU NOM du doudou, jamais
+// par un verbe : les pools tournent, un verbe n'identifie plus la branche.
 {
+  const DOUDOU = "Zaichik";
   const addVariants = new Set<string>();
   const sousVariants = new Set<string>();
+  const addCompagnon = new Set<string>();
+  const sousCompagnon = new Set<string>();
   for (let seed = 1; seed <= 100; seed += 1) {
     const add = generateOperation(PALIERS[0].constraints, seed);
-    addVariants.add(
-      enonceFor(add, { doudou: "D", hero: "A" }).includes("apporte")
-        ? "compagnon"
-        : "solo"
-    );
+    const addPhrase = enonceFor(add, { doudou: DOUDOU, hero: "A" });
+    addVariants.add(addPhrase.includes(DOUDOU) ? "compagnon" : "solo");
+    if (addPhrase.includes(DOUDOU)) {
+      addCompagnon.add(gabaritOf(addPhrase));
+    }
     const sous = generateOperation(PALIERS[3].constraints, seed);
-    sousVariants.add(
-      enonceFor(sous, { doudou: "D", hero: "A" }).includes("donne")
-        ? "compagnon"
-        : "solo"
-    );
+    const sousPhrase = enonceFor(sous, { doudou: DOUDOU, hero: "A" });
+    sousVariants.add(sousPhrase.includes(DOUDOU) ? "compagnon" : "solo");
+    if (sousPhrase.includes(DOUDOU)) {
+      sousCompagnon.add(gabaritOf(sousPhrase));
+    }
   }
   check(
     "énoncé addition: les deux variantes (compagnon/solo) apparaissent",
@@ -563,13 +625,97 @@ check(
     "énoncé soustraction: les deux variantes (compagnon/solo) apparaissent",
     sousVariants.size === 2
   );
-
-  const mult = generateOperation(PALIERS[5].constraints, 3);
-  const multPhrase = enonceFor(mult, { doudou: "Doudou", hero: "Arsène" });
   check(
-    "énoncé multiplication: gabarit paniers, sans compagnon",
-    multPhrase.includes("paniers") && !multPhrase.includes("Doudou"),
-    multPhrase
+    "énoncé addition compagnon: le pool tourne (≥ 2 gabarits sur 100 seeds)",
+    addCompagnon.size >= 2,
+    [...addCompagnon].join(" | ")
+  );
+  check(
+    "énoncé soustraction compagnon: le pool tourne (≥ 2 gabarits sur 100 seeds)",
+    sousCompagnon.size >= 2,
+    [...sousCompagnon].join(" | ")
+  );
+
+  // Multiplication : un CONTENANT du pool (plus jamais « toujours des
+  // paniers » — UX 2026-07-23), jamais de compagnon, et le pool ET les
+  // tournures (remplit/prépare) tournent vraiment sur les seeds.
+  const contenantsVus = new Set<string>();
+  const multGabarits = new Set<string>();
+  let multOk = true;
+  for (let seed = 1; seed <= 100; seed += 1) {
+    const mult = generateOperation(PALIERS[5].constraints, seed);
+    const multPhrase = enonceFor(mult, { doudou: "Doudou", hero: "Arsène" });
+    const contenant = CONTENANTS_PIN.find((c) => multPhrase.includes(c));
+    if (!contenant || multPhrase.includes("Doudou")) {
+      multOk = false;
+      break;
+    }
+    contenantsVus.add(contenant);
+    multGabarits.add(gabaritOf(multPhrase));
+  }
+  check(
+    "énoncé multiplication: toujours un contenant du pool, sans compagnon",
+    multOk
+  );
+  check(
+    "énoncé multiplication: plusieurs contenants sortent sur 100 seeds",
+    contenantsVus.size >= 3,
+    [...contenantsVus].join(", ")
+  );
+  check(
+    "énoncé multiplication: les deux tournures sortent sur 100 seeds",
+    multGabarits.size >= 2,
+    [...multGabarits].join(" | ")
+  );
+
+  // Variété des gabarits (UX 2026-07-23) : les pools solo tournent aussi —
+  // la soustraction sans doudou ne dit pas toujours « dans sa boîte ».
+  const sousSolo = new Set<string>();
+  const addSolo = new Set<string>();
+  for (let seed = 1; seed <= 100; seed += 1) {
+    const sous = generateOperation(PALIERS[3].constraints, seed);
+    sousSolo.add(gabaritOf(enonceFor(sous, { hero: "A" })));
+    const add = generateOperation(PALIERS[0].constraints, seed);
+    addSolo.add(gabaritOf(enonceFor(add, { hero: "A" })));
+  }
+  check(
+    "énoncé soustraction solo: plusieurs gabarits sortent sur 100 seeds",
+    sousSolo.size >= 2
+  );
+  check(
+    "énoncé addition solo: plusieurs gabarits sortent sur 100 seeds",
+    addSolo.size >= 2
+  );
+}
+
+/* ------------------- Variante du jour (étagère, UX 2026-07-23) ------------------ */
+{
+  // Deux appels séparés (pas une self-compare : on épingle la VALEUR exacte —
+  // si le hachage change, ce pin casse, comme les pins PRNG).
+  const v1 = varianteDuJour("addition", "2026-7-23", 3);
+  check(
+    "varianteDuJour: déterministe, valeur épinglée (addition, 2026-7-23 → 1)",
+    v1 === 1,
+    String(v1)
+  );
+  let borne = true;
+  const vues = new Set<number>();
+  for (let j = 1; j <= 31; j += 1) {
+    const v = varianteDuJour("multiplication", `2026-7-${j}`, 3);
+    if (!(Number.isInteger(v) && v >= 0 && v < 3)) {
+      borne = false;
+    }
+    vues.add(v);
+  }
+  check("varianteDuJour: toujours dans [0, count)", borne);
+  check(
+    "varianteDuJour: tourne vraiment sur un mois (≥ 2 variantes)",
+    vues.size >= 2
+  );
+  check(
+    "varianteDuJour: count ≤ 1 rend toujours 0",
+    varianteDuJour("soustraction", "2026-7-23", 1) === 0 &&
+      varianteDuJour("soustraction", "2026-7-23", 0) === 0
   );
 }
 
