@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Architecture review — look-i-can-read</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      mermaid.initialize({ startOnLoad: true, theme: "neutral", securityLevel: "loose" });
+    </script>
+    <style>
+      .seam { stroke-dasharray: 4 4; }
+      .leak { stroke: #dc2626; }
+      .deep { background: linear-gradient(135deg, #0f172a, #1e293b); }
+    </style>
+  </head>
+  <body class="bg-stone-50 text-slate-900 font-sans">
+    <main class="max-w-5xl mx-auto px-6 py-12 space-y-12">
+
+      <header class="space-y-3">
+        <h1 class="font-serif text-3xl font-semibold">Architecture review — look-i-can-read</h1>
+        <p class="text-sm text-slate-500">2026-07-23 · main @ ab64e89 · scope: churn hot spots (operations/calcul, bureau, story adapters)</p>
+        <div class="flex flex-wrap gap-4 text-xs text-slate-600 items-center pt-1">
+          <span class="inline-flex items-center gap-2"><span class="inline-block w-6 h-4 border-2 border-slate-500 bg-white rounded-sm"></span> module</span>
+          <span class="inline-flex items-center gap-2"><svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="#64748b" stroke-width="2" class="seam"/></svg> seam</span>
+          <span class="inline-flex items-center gap-2"><svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="#dc2626" stroke-width="2.5"/></svg> leakage</span>
+          <span class="inline-flex items-center gap-2"><span class="inline-block w-6 h-4 deep rounded-sm"></span> deep module</span>
+        </div>
+      </header>
+
+      <section id="candidates" class="space-y-10">
+
+        <!-- ============ CANDIDATE 1 ============ -->
+        <article id="c1" class="rounded-xl border border-slate-200 bg-white p-8 space-y-5 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl font-semibold">1 · Deepen a <span class="font-mono text-xl">serieSession</span> module</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold uppercase tracking-wider">Strong</span>
+              <span class="rounded-full bg-slate-100 text-slate-600 px-3 py-1 text-xs uppercase tracking-wider">local-substitutable</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">src/app/_bureau/calcul/index.tsx:133–529 · src/lib/operations/settings.ts · src/components/calcul/column-grid.tsx:21</p>
+
+          <!-- call-graph collapse -->
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="text-xs uppercase tracking-wider text-slate-400 mb-3">Before — orchestration inlined in the route</p>
+              <div class="space-y-1.5" style="min-height:280px">
+                <div class="border-2 border-slate-400 bg-white rounded px-3 py-2 text-xs uppercase tracking-wider">/calcul route · 711 lines</div>
+                <div class="ml-4 space-y-1.5">
+                  <div class="border border-red-300 bg-red-50 rounded px-3 py-1.5 text-xs text-red-800">legacy bridge dance · :225–289 <span class="text-red-400">untested</span></div>
+                  <div class="border border-red-300 bg-red-50 rounded px-3 py-1.5 text-xs text-red-800">authoritative gate → purge séries · :261–288 <span class="text-red-400">untested</span></div>
+                  <div class="border border-red-300 bg-red-50 rounded px-3 py-1.5 text-xs text-red-800">resume-or-fresh + purge-on-mismatch · :157–176 <span class="text-red-400">untested</span></div>
+                  <div class="border border-red-300 bg-red-50 rounded px-3 py-1.5 text-xs text-red-800">seed/fingerprint round-trip · :336–342, :689–711 <span class="text-red-400">untested</span></div>
+                  <div class="border border-red-300 bg-red-50 rounded px-3 py-1.5 text-xs text-red-800">raw localStorage + orphan key <span class="font-mono">calcul:settings</span> · :82,:133–148</div>
+                  <div class="border border-slate-300 bg-white rounded px-3 py-1.5 text-xs">rendering · DnD · pencil flow</div>
+                </div>
+                <div class="border-2 border-slate-700 deep text-stone-100 rounded px-3 py-2 text-xs uppercase tracking-wider mt-2">lib/operations/settings.ts — pure predicates, all pinned ✓</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="text-xs uppercase tracking-wider text-slate-400 mb-3">After — the session module absorbs the glue</p>
+              <div class="space-y-1.5" style="min-height:280px">
+                <div class="border border-slate-300 bg-white rounded px-3 py-2 text-xs uppercase tracking-wider">/calcul route — rendering · DnD only</div>
+                <svg width="100%" height="22"><line x1="50%" y1="0" x2="50%" y2="22" stroke="#64748b" stroke-width="2" class="seam"/></svg>
+                <div class="border-2 border-slate-800 deep text-stone-100 rounded px-3 py-3 text-xs">
+                  <p class="uppercase tracking-wider mb-2">lib/operations/serie-session — deep</p>
+                  <p class="font-mono text-emerald-300 mb-2">loadSession · writeCell · advance · finish</p>
+                  <div class="space-y-1 opacity-60">
+                    <p>legacy bridge · authoritative purge · resume decision</p>
+                    <p>fingerprint round-trip · all storage keys incl. calcul:settings</p>
+                  </div>
+                </div>
+                <svg width="100%" height="22"><line x1="50%" y1="0" x2="50%" y2="22" stroke="#64748b" stroke-width="2" class="seam"/></svg>
+                <div class="border border-slate-300 bg-white rounded px-3 py-2 text-xs uppercase tracking-wider">storage adapter — window.localStorage in prod, in-memory in goldens</div>
+              </div>
+            </div>
+          </div>
+
+          <p><strong>Problem</strong> — the pure predicates in <span class="font-mono text-sm">settings.ts</span> are exhaustively pinned, but the ~250 lines that call them (legacy-bridge write-confirm-remove dance, the <span class="font-mono text-sm">authoritative</span> gate that decides whether to purge a child's série, resume-vs-fresh, fingerprint round-trip) are welded to React effects and <span class="font-mono text-sm">window</span> — no locality, no tests where the bugs live.</p>
+          <p><strong>Solution</strong> — a <span class="font-mono text-sm">serieSession</span> module in <span class="font-mono text-sm">lib/operations/</span>: pure core behind a four-verb interface, storage behind a small adapter (localStorage in prod, in-memory in goldens — two adapters, real seam).</p>
+          <ul class="list-disc list-inside text-sm space-y-1 text-slate-700">
+            <li>locality: série lifecycle lives in one module</li>
+            <li>interface shrinks; implementation absorbs the glue</li>
+            <li>goldens reach the purge/bridge branches</li>
+            <li>route drops to rendering + DnD</li>
+            <li>storage vocabulary reunited (orphan <span class="font-mono">calcul:settings</span> key)</li>
+            <li>one entries type, not two + a comment</li>
+          </ul>
+        </article>
+
+        <!-- ============ CANDIDATE 2 ============ -->
+        <article id="c2" class="rounded-xl border border-slate-200 bg-white p-8 space-y-5 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl font-semibold">2 · Restore <span class="font-mono text-xl">media-store</span> as the single choke-point</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-emerald-100 text-emerald-800 px-3 py-1 text-xs font-semibold uppercase tracking-wider">Strong</span>
+              <span class="rounded-full bg-slate-100 text-slate-600 px-3 py-1 text-xs uppercase tracking-wider">ports &amp; adapters</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">src/server/providers/media-store.ts · src/server/dynamic-functions.ts:631–693 · src/server/providers/tts/edge.ts:28–32</p>
+
+          <div class="rounded-lg border border-slate-200 bg-white p-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">Before — two leaks across the seam</p>
+                <pre class="mermaid">
+flowchart TD
+  DF["dynamic-functions.ts<br/>resolveReferenceImage"] -->|"re-declares BLOB_HOST_SUFFIX<br/>re-implements / vs https:// split"| MS["media-store"]
+  EDGE["tts/edge.ts"] -->|"writes disk directly,<br/>hand-builds /data/media path"| DISK[("DATA_DIR/media")]
+  EL["tts/elevenlabs.ts"] --> MS
+  MS --> DISK
+  MS --> BLOB[("Vercel Blob")]
+  classDef leak stroke:#dc2626,stroke-width:2px;
+  class DF,EDGE leak
+                </pre>
+              </div>
+              <div>
+                <p class="text-xs uppercase tracking-wider text-slate-400 mb-2">After — every byte through the choke-point</p>
+                <pre class="mermaid">
+flowchart TD
+  DF["dynamic-functions.ts"] --> MS
+  EDGE["tts/edge.ts<br/>(bytes, no paths)"] --> MS
+  EL["tts/elevenlabs.ts"] --> MS
+  MS["media-store — deep<br/>saveMedia · resolveStoredMediaForModel"] --> DISK[("DATA_DIR/media")]
+  MS --> BLOB[("Vercel Blob")]
+  classDef deep fill:#0f172a,color:#f5f5f4,stroke:#0f172a;
+  class MS deep
+                </pre>
+              </div>
+            </div>
+          </div>
+
+          <p><strong>Problem</strong> — media-store claims the <span class="font-mono text-sm">/</span>-prefix vs <span class="font-mono text-sm">https://</span> rule as its back-compat boundary, but <span class="font-mono text-sm">resolveReferenceImage</span> re-implements the whole branch (own <span class="font-mono text-sm">BLOB_HOST_SUFFIX</span>, own allowlist compare), and edge TTS — the default provider — bypasses <span class="font-mono text-sm">saveMedia</span> entirely, so audio silently breaks in Blob mode and the two TTS adapters don't honor the same contract.</p>
+          <p><strong>Solution</strong> — media-store exports the read-back (<span class="font-mono text-sm">resolveStoredMediaForModel</span>) hiding both branches; edge TTS synthesizes to bytes and saves through <span class="font-mono text-sm">saveMedia</span> like elevenlabs.</p>
+          <ul class="list-disc list-inside text-sm space-y-1 text-slate-700">
+            <li>storage rule stops leaking across the seam</li>
+            <li>TTS adapters become truly substitutable</li>
+            <li>Blob deploys get working audio</li>
+            <li>leverage: one read-back, N consumers</li>
+            <li>goldens can pin both branches at one interface</li>
+          </ul>
+        </article>
+
+        <!-- ============ CANDIDATE 3 ============ -->
+        <article id="c3" class="rounded-xl border border-slate-200 bg-white p-8 space-y-5 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl font-semibold">3 · Extract the segment-image prompt builder</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold uppercase tracking-wider">Worth exploring</span>
+              <span class="rounded-full bg-slate-100 text-slate-600 px-3 py-1 text-xs uppercase tracking-wider">in-process</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">src/server/dynamic-functions.ts:701–835 · hero-prompt.ts · doudou-prompt.ts · src/config/style.ts</p>
+
+          <!-- cross-section -->
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="text-xs uppercase tracking-wider text-slate-400 mb-3">Before — prompt knowledge scattered</p>
+              <div class="space-y-1" style="min-height:250px">
+                <div class="h-10 border-l-4 border-red-400 bg-white rounded-r px-3 flex items-center text-xs">dynamic-functions — sceneLine · ambianceLine · outfitLine, hand-assembled inline</div>
+                <div class="h-10 border-l-4 border-red-400 bg-white rounded-r px-3 flex items-center text-xs">hero-prompt.ts — heroesImageLine</div>
+                <div class="h-10 border-l-4 border-red-400 bg-white rounded-r px-3 flex items-center text-xs">doudou-prompt.ts — doudouImageLine</div>
+                <div class="h-10 border-l-4 border-red-400 bg-white rounded-r px-3 flex items-center text-xs">config/style.ts — imageStyleSuffix</div>
+                <div class="h-10 border-l-4 border-slate-300 bg-white rounded-r px-3 flex items-center text-xs text-slate-400">image provider — passthrough, knows nothing</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="text-xs uppercase tracking-wider text-slate-400 mb-3">After — one thick band, golden-testable</p>
+              <div class="space-y-1" style="min-height:250px">
+                <div class="h-24 deep text-stone-100 rounded px-3 flex flex-col justify-center text-xs">
+                  <span class="uppercase tracking-wider mb-1">buildSegmentImagePrompt(story, segment, ref, frozenCtx)</span>
+                  <span class="opacity-60">scene · ambiance · outfit · heroes · doudou · style — all inside</span>
+                </div>
+                <div class="h-10 border-l-4 border-slate-300 bg-white rounded-r px-3 flex items-center text-xs">dynamic-functions — DB read · persist · sentinel only</div>
+                <div class="h-10 border-l-4 border-slate-300 bg-white rounded-r px-3 flex items-center text-xs text-slate-400">image provider — unchanged</div>
+              </div>
+            </div>
+          </div>
+
+          <p><strong>Problem</strong> — "what an illustration prompt contains" has no home: it's assembled inline at <span class="font-mono text-sm">dynamic-functions.ts:745–789</span> from four modules, while the text side already keeps <span class="font-mono text-sm">buildPrompt</span> as a pinned, golden-tested module.</p>
+          <p><strong>Solution</strong> — mirror the text side: one <span class="font-mono text-sm">buildSegmentImagePrompt</span> module, pinned by the same prompt-identity golden pattern.</p>
+          <ul class="list-disc list-inside text-sm space-y-1 text-slate-700">
+            <li>locality: illustration prompt in one module</li>
+            <li>prompt identity becomes pinnable</li>
+            <li>symmetry with text's <span class="font-mono">buildPrompt</span></li>
+            <li>visual-world / sceneHint priority rule gets a spec</li>
+          </ul>
+        </article>
+
+        <!-- ============ CANDIDATE 4 ============ -->
+        <article id="c4" class="rounded-xl border border-slate-200 bg-white p-8 space-y-5 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl font-semibold">4 · Collapse the hypothetical text &amp; image seams</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold uppercase tracking-wider">Worth exploring</span>
+              <span class="rounded-full bg-slate-100 text-slate-600 px-3 py-1 text-xs uppercase tracking-wider">in-process</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">src/server/providers/types.ts:137–157 · text/dynamic.ts · image/nanobanana.ts · tts/*</p>
+
+          <!-- mass diagram -->
+          <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+            <p class="text-xs uppercase tracking-wider text-slate-400 mb-3">Adapter census — one adapter = hypothetical seam, two = real</p>
+            <div class="grid grid-cols-3 gap-6" style="min-height:220px">
+              <div class="flex flex-col items-center justify-end gap-1">
+                <div class="w-full border-2 border-red-400 bg-red-50 rounded-t px-2 py-3 text-center text-xs text-red-800">interface<br/><span class="font-mono">DynamicTextProvider</span></div>
+                <div class="w-full deep text-stone-100 rounded-b px-2 py-6 text-center text-xs">1 impl · imported concretely<br/><span class="opacity-60">arc fn not even on the interface</span></div>
+                <p class="text-xs uppercase tracking-wider text-slate-500 pt-1">text — hypothetical</p>
+              </div>
+              <div class="flex flex-col items-center justify-end gap-1">
+                <div class="w-full border-2 border-red-400 bg-red-50 rounded-t px-2 py-3 text-center text-xs text-red-800">interface<br/><span class="font-mono">ImageProvider</span></div>
+                <div class="w-full deep text-stone-100 rounded-b px-2 py-6 text-center text-xs">1 impl · real variation is the <span class="font-mono">model</span> arg inside it</div>
+                <p class="text-xs uppercase tracking-wider text-slate-500 pt-1">image — hypothetical</p>
+              </div>
+              <div class="flex flex-col items-center justify-end gap-1">
+                <div class="w-full border-2 border-emerald-500 bg-emerald-50 rounded-t px-2 py-2 text-center text-xs text-emerald-800">interface<br/><span class="font-mono">TtsProvider</span></div>
+                <div class="w-full deep text-stone-100 rounded-b px-2 py-8 text-center text-xs">2 impls · env-switched at runtime</div>
+                <p class="text-xs uppercase tracking-wider text-slate-500 pt-1">tts — real seam ✓</p>
+              </div>
+            </div>
+          </div>
+
+          <p><strong>Problem</strong> — <span class="font-mono text-sm">DynamicTextProvider</span> and <span class="font-mono text-sm">ImageProvider</span> each have exactly one implementation, imported by concrete name, never injected — shallow indirection whose interface covers less than the module's real surface (<span class="font-mono text-sm">generateStoryArc</span> sits outside it).</p>
+          <p><strong>Solution</strong> — delete the two hypothetical interfaces and call the modules directly; keep the TTS seam (two live adapters) and give it the <span class="font-mono text-sm">getTtsProvider()</span> factory it's missing.</p>
+          <ul class="list-disc list-inside text-sm space-y-1 text-slate-700">
+            <li>deletion test passes: nothing to concentrate — pure annotation</li>
+            <li>interface stops under-describing the module</li>
+            <li>the one real seam (tts) stands out</li>
+            <li>re-introduce only when a second adapter arrives</li>
+          </ul>
+          <div class="rounded-md bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-900">CLAUDE.md describes "adapters behind types.ts" as the architecture — no ADR exists, but touching this means updating that description deliberately.</div>
+        </article>
+
+        <!-- ============ CANDIDATE 5 ============ -->
+        <article id="c5" class="rounded-xl border border-slate-200 bg-white p-8 space-y-5 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl font-semibold">5 · Concentrate the window re-clamp</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold uppercase tracking-wider">Worth exploring</span>
+              <span class="rounded-full bg-slate-100 text-slate-600 px-3 py-1 text-xs uppercase tracking-wider">in-process</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">src/components/bureau/fenetre.tsx:106–186 · src/lib/bureau/clamp.ts</p>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4 relative">
+              <p class="text-xs uppercase tracking-wider text-slate-400 mb-3">Before — 4 call sites, 2 duplicated no-op blocks</p>
+              <div class="grid grid-cols-2 gap-2" style="min-height:210px">
+                <div class="border border-red-300 bg-red-50 rounded p-2 text-xs text-red-800">resize effect :106–133<br/><span class="opacity-70">clamp + same-ref no-op</span></div>
+                <div class="border border-slate-300 bg-white rounded p-2 text-xs">handleDragEnd :145–160<br/><span class="text-slate-400">clamp</span></div>
+                <div class="border border-red-300 bg-red-50 rounded p-2 text-xs text-red-800">handleDragCancel :162–186<br/><span class="opacity-70">clamp + same-ref no-op (again)</span></div>
+                <div class="border border-slate-300 bg-white rounded p-2 text-xs">reclamp-on-attach :133<br/><span class="text-slate-400">clamp</span></div>
+                <div class="col-span-2 border-2 border-slate-500 bg-white rounded p-2 text-xs text-center uppercase tracking-wider mt-2">clamp.ts — clampFenetrePosition (pinned ✓)</div>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="text-xs uppercase tracking-wider text-slate-400 mb-3">After — one committed-position helper</p>
+              <div class="flex flex-col gap-2 justify-center" style="min-height:210px">
+                <div class="border border-slate-300 bg-white rounded p-2 text-xs text-center">fenetre.tsx — event wiring only (drag vs resize)</div>
+                <svg width="100%" height="20"><line x1="50%" y1="0" x2="50%" y2="20" stroke="#64748b" stroke-width="2" class="seam"/></svg>
+                <div class="deep text-stone-100 rounded p-3 text-xs text-center">
+                  <span class="uppercase tracking-wider">clamp.ts — deep(er)</span><br/>
+                  <span class="font-mono text-emerald-300">reclampCommitted(prev, rect, viewport, barH)</span><br/>
+                  <span class="opacity-60">title-bar invariant + same-reference no-op, once</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p><strong>Problem</strong> — the title-bar-visible invariant is pinned in <span class="font-mono text-sm">clamp.ts</span>, but the committed-position re-clamp (rect read, viewport read, same-reference no-op) is repeated at four sites in <span class="font-mono text-sm">fenetre.tsx</span>, coupled by a drag-in-flight ref you must trace through all four.</p>
+          <p><strong>Solution</strong> — one <span class="font-mono text-sm">reclampCommitted</span> helper in <span class="font-mono text-sm">clamp.ts</span> absorbs the duplication; the component keeps only event wiring.</p>
+          <ul class="list-disc list-inside text-sm space-y-1 text-slate-700">
+            <li>locality: re-clamp rule in one module</li>
+            <li>no-op optimization written once</li>
+            <li>golden reaches the no-op branch</li>
+          </ul>
+        </article>
+
+        <!-- ============ CANDIDATE 6 ============ -->
+        <article id="c6" class="rounded-xl border border-slate-200 bg-white p-8 space-y-5 shadow-sm">
+          <div class="flex items-start justify-between gap-4">
+            <h2 class="font-serif text-2xl font-semibold">6 · Pin the prose-only bureau contracts</h2>
+            <div class="flex gap-2 shrink-0">
+              <span class="rounded-full bg-amber-100 text-amber-800 px-3 py-1 text-xs font-semibold uppercase tracking-wider">Worth exploring</span>
+              <span class="rounded-full bg-slate-100 text-slate-600 px-3 py-1 text-xs uppercase tracking-wider">in-process</span>
+            </div>
+          </div>
+          <p class="font-mono text-sm text-slate-500">src/lib/bureau/__tests__/routes.golden.ts · src/app/_bureau/route.tsx:18–31 · src/app/index.tsx:26–27</p>
+
+          <div class="grid grid-cols-2 gap-6">
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="text-xs uppercase tracking-wider text-slate-400 mb-3">Before — enforced by comments</p>
+              <div class="space-y-2" style="min-height:180px">
+                <div class="border border-red-300 bg-red-50 rounded p-3 text-xs text-red-900 font-mono">// ssr:false would silently make the<br/>// mini-apps client-only — NEVER set it</div>
+                <div class="border border-red-300 bg-red-50 rounded p-3 text-xs text-red-900 font-mono">// the gate lives at exactly TWO places,<br/>// never __root</div>
+                <p class="text-xs text-slate-500">Two load-bearing contracts, zero assertions. A future edit violates them silently.</p>
+              </div>
+            </div>
+            <div class="rounded-lg border border-slate-200 bg-stone-50 p-4">
+              <p class="text-xs uppercase tracking-wider text-slate-400 mb-3">After — pinned in routes.golden</p>
+              <div class="space-y-2" style="min-height:180px">
+                <div class="deep text-stone-100 rounded p-3 text-xs font-mono">assert: no "ssr:" token under src/app/_bureau/**</div>
+                <div class="deep text-stone-100 rounded p-3 text-xs font-mono">assert: lireSessionOuverte call sites ⊆ { index.tsx, _bureau/route.tsx }</div>
+                <p class="text-xs text-slate-500">Same text-scan style routes.golden already uses. Zero runtime cost.</p>
+              </div>
+            </div>
+          </div>
+
+          <p><strong>Problem</strong> — the two contracts the bureau layer depends on (<span class="font-mono text-sm">ssr</span> inheritance; gate-in-exactly-two-places) exist only as comments; <span class="font-mono text-sm">routes.golden.ts</span> already text-scans routes but doesn't cover them.</p>
+          <p><strong>Solution</strong> — two textual assertions in the existing golden, matching its style.</p>
+          <ul class="list-disc list-inside text-sm space-y-1 text-slate-700">
+            <li>documented contract → pinned contract</li>
+            <li>cheapest candidate on this page</li>
+            <li>protects /parents and /data/$ from accidental gating</li>
+          </ul>
+        </article>
+
+      </section>
+
+      <!-- ============ TOP RECOMMENDATION ============ -->
+      <section id="top-recommendation" class="rounded-xl border-2 border-emerald-600 bg-emerald-50 p-8 space-y-3">
+        <p class="text-xs uppercase tracking-wider text-emerald-700 font-semibold">Top recommendation</p>
+        <h2 class="font-serif text-2xl font-semibold"><a href="#c1" class="underline decoration-emerald-400 underline-offset-4">1 · Deepen a <span class="font-mono text-xl">serieSession</span> module</a></h2>
+        <p class="text-sm text-slate-700 max-w-3xl">It sits in the hottest churn area, the untested glue it absorbs is exactly where a bug would delete a child's série, and the fix uses a pattern the repo already trusts — a pure module with a substitutable storage adapter, pinned by standalone goldens.</p>
+      </section>
+
+      <footer class="text-xs text-slate-400 pb-8">
+        Already deep — left alone: generator.ts · settings.ts pure predicates · progression.ts · layout.ts · session.ts · identite.ts · getFrozenStoryPromptContext · use-image-reveal.
+      </footer>
+
+    </main>
+  </body>
+</html>
