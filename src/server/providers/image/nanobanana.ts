@@ -3,7 +3,6 @@ import { generateText } from "ai";
 import { serverEnv } from "~/env";
 import { generateId } from "~/lib/id-generator";
 import { saveMedia } from "~/server/providers/media-store";
-import type { ImageProvider } from "~/server/providers/types";
 
 // Gemini image models bill per OUTPUT token at $30 / 1M tokens; a standard
 // (<=1024px) image is ~1290 output tokens ≈ $0.039/image. We estimate cost from
@@ -35,79 +34,85 @@ const IMAGE_USD_PER_IMAGE = 0.039;
  * independently-generated scenes. Without it every beat reinvented the
  * characters (hair color, clothes, age drifted page to page). Input images
  * bill as INPUT tokens (cheap) — the expensive part stays the output image.
+ *
+ * This is the app's SOLE image generation entry point (a plain module
+ * function, imported by concrete name; there is deliberately no provider
+ * interface — see the adapter-census note in `types.ts`). `model` overrides
+ * the env default for THIS request (parent-pickable model; already
+ * allowlist-resolved by the caller). `referenceImage` (URL for blob-hosted,
+ * bytes for local-disk media) is a prior illustration of the SAME story, sent
+ * alongside the prompt so the model keeps the characters/style consistent
+ * across beats. Omitted → pure text-to-image (opening beat, or no prior image
+ * available).
  */
-export const nanoBananaImageProvider: ImageProvider = {
-  async generateImage(
-    prompt: string,
-    model?: string,
-    referenceImage?: Uint8Array | URL
-  ): Promise<string> {
-    if (!serverEnv.geminiApiKey) {
-      throw new Error("GEMINI_API_KEY manquante.");
-    }
+export async function generateImage(
+  prompt: string,
+  model?: string,
+  referenceImage?: Uint8Array | URL
+): Promise<string> {
+  if (!serverEnv.geminiApiKey) {
+    throw new Error("GEMINI_API_KEY manquante.");
+  }
 
-    const google = createGoogleGenerativeAI({ apiKey: serverEnv.geminiApiKey });
+  const google = createGoogleGenerativeAI({ apiKey: serverEnv.geminiApiKey });
 
-    const providerOptions = {
-      google: {
-        // Pin a low, display-matched output to cut cost (see header).
-        imageConfig: {
-          aspectRatio: "4:3",
-          imageSize: serverEnv.imageResolution,
-        },
-        responseModalities: ["IMAGE"],
+  const providerOptions = {
+    google: {
+      // Pin a low, display-matched output to cut cost (see header).
+      imageConfig: {
+        aspectRatio: "4:3",
+        imageSize: serverEnv.imageResolution,
       },
-    };
+      responseModalities: ["IMAGE"],
+    },
+  };
 
-    const result = await generateText({
-      // A stalled Gemini call must fail (→ calm "no drawing" state) rather
-      // than hold the request open past any client reveal timeout.
-      abortSignal: AbortSignal.timeout(90_000),
-      model: google(model ?? serverEnv.imageModel),
-      ...(referenceImage
-        ? {
-            messages: [
-              {
-                content: [
-                  { image: referenceImage, type: "image" as const },
-                  { text: prompt, type: "text" as const },
-                ],
-                role: "user" as const,
-              },
-            ],
-          }
-        : { prompt }),
-      providerOptions,
-    });
+  const result = await generateText({
+    // A stalled Gemini call must fail (→ calm "no drawing" state) rather
+    // than hold the request open past any client reveal timeout.
+    abortSignal: AbortSignal.timeout(90_000),
+    model: google(model ?? serverEnv.imageModel),
+    ...(referenceImage
+      ? {
+          messages: [
+            {
+              content: [
+                { image: referenceImage, type: "image" as const },
+                { text: prompt, type: "text" as const },
+              ],
+              role: "user" as const,
+            },
+          ],
+        }
+      : { prompt }),
+    providerOptions,
+  });
 
-    const imageFile = result.files.find((f) =>
-      f.mediaType?.startsWith("image/")
-    );
-    if (!imageFile) {
-      throw new Error("Aucune image renvoyée par le générateur d'image.");
-    }
+  const imageFile = result.files.find((f) => f.mediaType?.startsWith("image/"));
+  if (!imageFile) {
+    throw new Error("Aucune image renvoyée par le générateur d'image.");
+  }
 
-    const usedModel = model ?? serverEnv.imageModel;
-    console.log(
-      `[image-gen] model=${usedModel} ref=${referenceImage ? "yes" : "no"} prompt=${prompt}`
-    );
-    try {
-      const outTokens = result.usage?.outputTokens;
-      const cost =
-        outTokens === undefined
-          ? IMAGE_USD_PER_IMAGE
-          : outTokens * IMAGE_USD_PER_OUTPUT_TOKEN;
-      const basis =
-        outTokens === undefined
-          ? "flat per-image estimate"
-          : `${outTokens} output tokens @ $30/1M`;
-      console.log(`[image-gen] cost≈$${cost.toFixed(4)} (${basis})`);
-    } catch {
-      // Never let cost logging break image generation.
-    }
+  const usedModel = model ?? serverEnv.imageModel;
+  console.log(
+    `[image-gen] model=${usedModel} ref=${referenceImage ? "yes" : "no"} prompt=${prompt}`
+  );
+  try {
+    const outTokens = result.usage?.outputTokens;
+    const cost =
+      outTokens === undefined
+        ? IMAGE_USD_PER_IMAGE
+        : outTokens * IMAGE_USD_PER_OUTPUT_TOKEN;
+    const basis =
+      outTokens === undefined
+        ? "flat per-image estimate"
+        : `${outTokens} output tokens @ $30/1M`;
+    console.log(`[image-gen] cost≈$${cost.toFixed(4)} (${basis})`);
+  } catch {
+    // Never let cost logging break image generation.
+  }
 
-    const ext = imageFile.mediaType === "image/jpeg" ? "jpg" : "png";
-    const filename = `${generateId("img")}.${ext}`;
-    return saveMedia(filename, imageFile.uint8Array);
-  },
-};
+  const ext = imageFile.mediaType === "image/jpeg" ? "jpg" : "png";
+  const filename = `${generateId("img")}.${ext}`;
+  return saveMedia(filename, imageFile.uint8Array);
+}

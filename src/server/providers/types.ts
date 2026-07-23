@@ -131,30 +131,12 @@ export interface StoryArcResult {
   visualWorld: string;
 }
 
-/**
- * Dynamic text provider — generates one beat at a time, conditioned on history.
- */
-export interface DynamicTextProvider {
-  generateBeat: (input: GenerateBeatInput) => Promise<DynamicBeat>;
-}
-
-/**
- * Image provider — turns a story into an illustration file path under DATA_DIR.
- * Default implementation targets Nano Banana (Gemini image model).
- */
-export interface ImageProvider {
-  // `model` overrides the env default for THIS request (parent-pickable model;
-  // already allowlist-resolved by the caller). Omitted → the env default.
-  // `referenceImage` (URL for blob-hosted, bytes for local-disk media) is a
-  // prior illustration of the SAME story, sent alongside the prompt so the
-  // model keeps the characters/style consistent across beats. Omitted → pure
-  // text-to-image (opening beat, or no prior image available).
-  generateImage: (
-    prompt: string,
-    model?: string,
-    referenceImage?: Uint8Array | URL
-  ) => Promise<string>;
-}
+// NOTE (adapter census): text generation (`text/dynamic.ts`) and image
+// generation (`image/nanobanana.ts`) each have exactly ONE implementation,
+// imported by concrete name — they are plain modules, not injected adapters,
+// so no interface exists for them here (re-introduce one only when a second
+// adapter actually arrives). TTS below IS a real seam: two live adapters,
+// env-switched via `getTtsProvider()`.
 
 /**
  * The outcome of an image-generation attempt, surfaced from the server fns to

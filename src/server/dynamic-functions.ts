@@ -17,7 +17,7 @@ import { resolveDoudousForCreation } from "~/server/doudous-store";
 import { resolveElementsForCreation } from "~/server/elements-store";
 import { resolveHeroesForCreation } from "~/server/heroes-store";
 import { resolvePlaceForCreation } from "~/server/places-store";
-import { nanoBananaImageProvider } from "~/server/providers/image/nanobanana";
+import { generateImage } from "~/server/providers/image/nanobanana";
 import {
   blobStoreHost,
   readStoredMediaBytes,
@@ -25,7 +25,7 @@ import {
 import { sanitizeCustomPrompt } from "~/server/providers/text/custom-prompt";
 import { doudouImageLine } from "~/server/providers/text/doudou-prompt";
 import {
-  anthropicDynamicProvider,
+  generateBeat,
   generateStoryArc,
 } from "~/server/providers/text/dynamic";
 import {
@@ -166,7 +166,7 @@ export const startDynamicStoryFn = createServerFn({ method: "POST" })
     });
     let beat: DynamicBeat;
     try {
-      beat = await anthropicDynamicProvider.generateBeat({
+      beat = await generateBeat({
         customPrompt: customPrompt ?? undefined,
         doudous,
         elements,
@@ -406,7 +406,7 @@ export const continueDynamicStoryFn = createServerFn({ method: "POST" })
     });
     let beat: DynamicBeat;
     try {
-      beat = await anthropicDynamicProvider.generateBeat({
+      beat = await generateBeat({
         // Frozen saveur, re-applied on every beat (continuation can't see the
         // original parcours state — it must come from the persisted column).
         customPrompt: sanitizeCustomPrompt(story.customPrompt) ?? undefined,
@@ -789,11 +789,7 @@ async function generateSegmentImage(
     .join(" ");
 
   try {
-    const imagePath = await nanoBananaImageProvider.generateImage(
-      prompt,
-      model,
-      referenceImage
-    );
+    const imagePath = await generateImage(prompt, model, referenceImage);
     await db
       .update(storySegments)
       .set({ imagePath })

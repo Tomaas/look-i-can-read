@@ -4,7 +4,6 @@ import { z } from "zod";
 import { serverEnv } from "~/env";
 import type {
   DynamicBeat,
-  DynamicTextProvider,
   GenerateArcInput,
   GenerateBeatInput,
   StoryArcResult,
@@ -721,92 +720,99 @@ export async function generateStoryArc(
   return null;
 }
 
-export const anthropicDynamicProvider: DynamicTextProvider = {
-  async generateBeat(input: GenerateBeatInput): Promise<DynamicBeat> {
-    if (!serverEnv.anthropicApiKey) {
-      throw new Error("ANTHROPIC_API_KEY manquante.");
-    }
+/**
+ * Generate one story beat, conditioned on history — the app's SOLE text
+ * generation entry point (a plain module function, imported by concrete name;
+ * there is deliberately no provider interface — see the adapter-census note in
+ * `types.ts`). Validates against the safety + structure contracts with up to 3
+ * corrective attempts, then coerces or throws.
+ */
+export async function generateBeat(
+  input: GenerateBeatInput
+): Promise<DynamicBeat> {
+  if (!serverEnv.anthropicApiKey) {
+    throw new Error("ANTHROPIC_API_KEY manquante.");
+  }
 
-    // Named-hero safety contract applies to the PRIMARY hero only (codex #2/#5).
-    const heroName = primaryHeroName(input.heroes);
-    // Several corrective attempts for EVERY beat. A soft-fail is worst at the
-    // very start of a story (beat 0) for an anxious child, so opening/regular
-    // beats get the same robustness as the forced-final beat.
-    const maxAttempts = 3;
+  // Named-hero safety contract applies to the PRIMARY hero only (codex #2/#5).
+  const heroName = primaryHeroName(input.heroes);
+  // Several corrective attempts for EVERY beat. A soft-fail is worst at the
+  // very start of a story (beat 0) for an anxious child, so opening/regular
+  // beats get the same robustness as the forced-final beat.
+  const maxAttempts = 3;
 
-    let last: DynamicBeat | null = null;
-    let lastProblems: string[] = [];
-    // Whether the LAST failure was a SAFETY one. Only then is the child's saveur
-    // dropped on the next attempt (it may be the cause); a structure/readability
-    // -only retry keeps the flavour. A transient parse error keeps it too (the
-    // flavour is not the cause of a schema mismatch).
-    let lastSafetyFailed = false;
+  let last: DynamicBeat | null = null;
+  let lastProblems: string[] = [];
+  // Whether the LAST failure was a SAFETY one. Only then is the child's saveur
+  // dropped on the next attempt (it may be the cause); a structure/readability
+  // -only retry keeps the flavour. A transient parse error keeps it too (the
+  // flavour is not the cause of a schema mismatch).
+  let lastSafetyFailed = false;
 
-    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-      if (attempt > 0) {
-        // Corrective retry — say WHY, so a billed extra call is never silent.
-        console.warn(
-          `[stories] beat corrective retry ${attempt + 1}/${maxAttempts}` +
-            ` (safety=${lastSafetyFailed}): ${lastProblems.join(" | ")}`
-        );
-      }
-      let beat: DynamicBeat;
-      try {
-        // biome-ignore lint/performance/noAwaitInLoops: retries correctifs SÉQUENTIELS par design — chaque tentative dépend des problèmes de la précédente.
-        beat = await generateOnce(
-          input,
-          attempt + 1,
-          attempt === 0 ? undefined : lastProblems,
-          lastSafetyFailed
-        );
-      } catch (genErr) {
-        // A transient generation/parse failure (e.g. generateObject "response
-        // did not match schema") on ONE attempt must not abort the whole beat —
-        // retry. Record it so a final hard-fail explains what happened.
-        lastProblems = [
-          genErr instanceof Error ? genErr.message : "génération échouée",
-        ];
-        lastSafetyFailed = false;
-        continue;
-      }
-      const problems = validateBeat(
-        beat,
-        heroName,
-        input.mustEnd,
-        isLanding(input)
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (attempt > 0) {
+      // Corrective retry — say WHY, so a billed extra call is never silent.
+      console.warn(
+        `[stories] beat corrective retry ${attempt + 1}/${maxAttempts}` +
+          ` (safety=${lastSafetyFailed}): ${lastProblems.join(" | ")}`
       );
-      if (problems.length === 0) {
-        return beat;
-      }
-      last = beat;
-      lastProblems = problems;
-      lastSafetyFailed = safetyProblems(beat, heroName).length > 0;
     }
-
-    // Robust fallback (any beat): if the remaining problems are only STRUCTURAL
-    // but the TEXT is SAFE, coerce into a valid beat rather than soft-failing.
-    // Guarantees the child almost never sees "On réessaie ?" — especially on
-    // beat 0 — while the safety guard-rail stays absolute.
-    if (last) {
-      const coerced = coerceBeat(last, heroName, input.mustEnd);
-      if (coerced) {
-        // Server-side diagnostic (TanStack swallows thrown errors client-side).
-        console.warn(
-          `[stories] beat coerced after ${maxAttempts} attempts (mustEnd=${input.mustEnd}); text was safe. Problems: ${lastProblems.join("; ")}`
-        );
-        return coerced;
-      }
+    let beat: DynamicBeat;
+    try {
+      // biome-ignore lint/performance/noAwaitInLoops: retries correctifs SÉQUENTIELS par design — chaque tentative dépend des problèmes de la précédente.
+      beat = await generateOnce(
+        input,
+        attempt + 1,
+        attempt === 0 ? undefined : lastProblems,
+        lastSafetyFailed
+      );
+    } catch (genErr) {
+      // A transient generation/parse failure (e.g. generateObject "response
+      // did not match schema") on ONE attempt must not abort the whole beat —
+      // retry. Record it so a final hard-fail explains what happened.
+      lastProblems = [
+        genErr instanceof Error ? genErr.message : "génération échouée",
+      ];
+      lastSafetyFailed = false;
+      continue;
     }
+    const problems = validateBeat(
+      beat,
+      heroName,
+      input.mustEnd,
+      isLanding(input)
+    );
+    if (problems.length === 0) {
+      return beat;
+    }
+    last = beat;
+    lastProblems = problems;
+    lastSafetyFailed = safetyProblems(beat, heroName).length > 0;
+  }
 
-    // Text itself is unsafe (or choices were unsalvageable) — log and throw;
-    // the caller turns this into the gentle "On réessaie ?" soft-fail that
-    // retries the current beat without losing prior segments.
-    // Server-side diagnostic (TanStack swallows thrown errors client-side).
-    console.error(
-      `[stories] beat generation failed after ${maxAttempts} attempts (mustEnd=${input.mustEnd}). Problems: ${lastProblems.join("; ")}`
-    );
-    throw new Error(
-      `Le bout généré ne respecte pas les règles : ${lastProblems.join(" ")}`
-    );
-  },
-};
+  // Robust fallback (any beat): if the remaining problems are only STRUCTURAL
+  // but the TEXT is SAFE, coerce into a valid beat rather than soft-failing.
+  // Guarantees the child almost never sees "On réessaie ?" — especially on
+  // beat 0 — while the safety guard-rail stays absolute.
+  if (last) {
+    const coerced = coerceBeat(last, heroName, input.mustEnd);
+    if (coerced) {
+      // Server-side diagnostic (TanStack swallows thrown errors client-side).
+      console.warn(
+        `[stories] beat coerced after ${maxAttempts} attempts (mustEnd=${input.mustEnd}); text was safe. Problems: ${lastProblems.join("; ")}`
+      );
+      return coerced;
+    }
+  }
+
+  // Text itself is unsafe (or choices were unsalvageable) — log and throw;
+  // the caller turns this into the gentle "On réessaie ?" soft-fail that
+  // retries the current beat without losing prior segments.
+  // Server-side diagnostic (TanStack swallows thrown errors client-side).
+  console.error(
+    `[stories] beat generation failed after ${maxAttempts} attempts (mustEnd=${input.mustEnd}). Problems: ${lastProblems.join("; ")}`
+  );
+  throw new Error(
+    `Le bout généré ne respecte pas les règles : ${lastProblems.join(" ")}`
+  );
+}
